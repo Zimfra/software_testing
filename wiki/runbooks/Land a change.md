@@ -27,7 +27,8 @@ requests on GitHub (owner decision, 2026-10-09).
    For parallel sessions, use a worktree under `.worktrees/` instead.
 2. Work test-first. Commit with conventional subjects. Wiki files go in their own
    `docs(wiki): ` commits. The pre-commit hook refuses commits on main and mixed wiki staging,
-   and runs lint, types, wiki:lint and skills:lint.
+   and runs lint, types, wiki:lint and skills:lint; the pre-merge-commit hook refuses a merge
+   commit on main.
 3. Record the change: a `CHANGELOG.md` entry, the owning work record under `wiki/work/`
    (status or next action, plus `VERIFIED:` evidence), and an operating document when
    workflow-critical files change. See [[Change records]].
@@ -55,8 +56,8 @@ requests on GitHub (owner decision, 2026-10-09).
 ## Verify
 
 - `gh pr view <n> --json state,mergedBy` shows `MERGED` by the owner.
-- `npm run audit` (after `git fetch origin`) reports every commit on main since the PR-only
-  rule as a merged pull request.
+- `npm run audit` fetches origin's main and reports every commit on it since the PR-only rule
+  as a merged pull request.
 - The pre-push hook refuses `git push origin main`; the GitHub ruleset refuses it too.
 - Dependabot opens weekly pull requests for the pinned GitHub Actions and all npm
   dependencies (development ones grouped). A bot cannot write a

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync, statSync } from "node:fs";
+import { chmodSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { parse } from "yaml";
@@ -11,7 +11,7 @@ const root = join(import.meta.dirname, "../..");
 const hook = (name: string): string => readFileSync(join(root, ".githooks", name), "utf8");
 
 await test("hooks are executable shell scripts that stop at the first failure", () => {
-  for (const name of ["pre-commit", "pre-push"]) {
+  for (const name of ["pre-commit", "pre-merge-commit", "pre-push"]) {
     assert.ok((statSync(join(root, ".githooks", name)).mode & 0o111) !== 0, `${name} is not executable`);
     assert.ok(hook(name).startsWith("#!/bin/sh\n"), `${name} needs a sh shebang`);
     assert.match(hook(name), /^set -eu$/m);
@@ -21,6 +21,37 @@ await test("hooks are executable shell scripts that stop at the first failure", 
 await test("pre-commit refuses commits on main and mixed wiki staging before anything else", () => {
   const lines = hook("pre-commit").split("\n").filter((line) => line && !line.startsWith("#"));
   assert.deepEqual(lines.slice(1, 3), ["node scripts/git/branch-guard.ts commit", "node scripts/wiki/wiki-compliance.ts --staged"]);
+});
+
+await test("pre-merge-commit refuses a merge commit on main, which pre-commit never sees", async (t) => {
+  const lines = hook("pre-merge-commit").split("\n").filter((line) => line && !line.startsWith("#"));
+  assert.deepEqual(lines, ["set -eu", "node scripts/git/branch-guard.ts commit"]);
+  const repo = createRepo("pre-merge-commit-");
+  t.after(() => repo.cleanup());
+  const installed = join(repo.dir, ".git/hooks/pre-merge-commit");
+  writeFileSync(installed, hook("pre-merge-commit").replace("node scripts/git/branch-guard.ts", `node "${join(root, "scripts/git/branch-guard.ts")}"`));
+  chmodSync(installed, 0o755);
+  const base = repo.commit("base");
+  repo.git(["switch", "--quiet", "-c", "feat/x"]);
+  repo.commit("feat: work");
+  repo.git(["switch", "--quiet", "main"]);
+  repo.commit("main moves");
+  const merge = (): { status: number | null; stderr: string } =>
+    spawnSync("git", ["merge", "--no-ff", "--quiet", "-m", "merge", "feat/x"], { cwd: repo.dir, env: cleanGitEnv, encoding: "utf8" });
+  await t.test("on main it is refused and main does not move", () => {
+    const before = repo.git(["rev-parse", "HEAD"]);
+    const result = merge();
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Do not commit on main/);
+    assert.equal(repo.git(["rev-parse", "HEAD"]), before);
+    repo.git(["merge", "--abort"]);
+  });
+  await t.test("merging main into a feature branch is allowed", () => {
+    repo.git(["switch", "--quiet", "feat/x"]);
+    const result = spawnSync("git", ["merge", "--no-ff", "--quiet", "-m", "merge main", "main"], { cwd: repo.dir, env: cleanGitEnv, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    assert.notEqual(repo.git(["rev-parse", "HEAD^1"]), base);
+  });
 });
 
 await test("pre-push guards the ref updates, then runs the full check and refuses if it changed git state", () => {

@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { test } from "node:test";
-import { classifyLandings, githubMerged, prNumberOf } from "./landing-audit.ts";
+import { test, type TestContext } from "node:test";
+import { cleanGitEnv, createRepo, type RepoFixture } from "../test-support/repo-fixture.ts";
+import { classifyLandings, githubMerged, main, prNumberOf } from "./landing-audit.ts";
 
 await test("prNumberOf reads GitHub merge and squash subjects", () => {
   assert.equal(prNumberOf("Merge pull request #12 from ahzeems/feat/x"), 12);
@@ -23,16 +25,23 @@ await test("classifyLandings flags commits that did not land through a merged PR
   assert.deepEqual(result.map((entry) => [entry.sha.slice(0, 1), entry.verdict]), [["a", "ok"], ["b", "no-pr"], ["c", "unverified-pr"]]);
 });
 
-await test("the audit walks main's first-parent history from the configured start", async (t) => {
-  const { createRepo } = await import("../test-support/repo-fixture.ts");
-  const { main } = await import("./landing-audit.ts");
+// The fixture's main, published to a local bare origin, as GitHub holds it.
+function publish(t: TestContext, repo: RepoFixture): void {
+  const remote = mkdtempSync(join(tmpdir(), "landing-audit-origin-"));
+  t.after(() => rmSync(remote, { recursive: true, force: true }));
+  execFileSync("git", ["init", "--quiet", "--bare", remote], { env: cleanGitEnv });
+  repo.git(["remote", "add", "origin", remote]);
+  repo.git(["push", "--quiet", "origin", "main"]);
+}
+
+await test("the audit walks main's first-parent history from the configured start", (t) => {
   const repo = createRepo("landing-audit-");
   t.after(() => repo.cleanup());
   const start = repo.commit("start");
   const landed = repo.commit("Merge pull request #2 from o/feat");
   repo.write("config/landing-audit.json", JSON.stringify({ since: start, repo: "o/r" }));
   repo.commit("fix: direct push");
-  repo.git(["update-ref", "refs/remotes/origin/main", "HEAD"]);
+  publish(t, repo);
   repo.write("config/landing-audit.json", JSON.stringify({ since: "0".repeat(40), repo: "o/r" }));
   const err: string[] = [];
   const code = main([], { cwd: repo.dir, output: { write: () => undefined, warn: (line) => err.push(line) }, merged: (pr, sha) => pr === 2 && sha === landed });
@@ -41,13 +50,37 @@ await test("the audit walks main's first-parent history from the configured star
   assert.doesNotMatch(err.join("\n"), /#2/);
 });
 
-await test("the audit reads its start point from origin/main and needs a full commit id", async (t) => {
-  const { createRepo } = await import("../test-support/repo-fixture.ts");
-  const { main } = await import("./landing-audit.ts");
+await test("the audit fetches origin first, so a stale local origin/main cannot hide a direct push", (t) => {
+  const repo = createRepo("landing-audit-stale-");
+  t.after(() => repo.cleanup());
+  const start = repo.commit("start");
+  repo.write("config/landing-audit.json", JSON.stringify({ since: start, repo: "o/r" }));
+  const landed = repo.commit("Merge pull request #2 from o/feat");
+  publish(t, repo);
+  repo.commit("fix: direct push");
+  repo.git(["push", "--quiet", "origin", "main"]);
+  repo.git(["update-ref", "refs/remotes/origin/main", landed]);
+  const err: string[] = [];
+  const code = main([], { cwd: repo.dir, output: { write: () => undefined, warn: (line) => err.push(line) }, merged: (pr, sha) => pr === 2 && sha === landed });
+  assert.equal(code, 1, "the direct push on origin is found although the local ref predates it");
+  assert.match(err.join("\n"), /\[no-pr\] fix: direct push/);
+});
+
+await test("an origin that cannot be fetched is an error, never a clean verdict", (t) => {
+  const repo = createRepo("landing-audit-offline-");
+  t.after(() => repo.cleanup());
+  repo.write("config/landing-audit.json", JSON.stringify({ since: "c".repeat(40), repo: "o/r" }));
+  repo.git(["update-ref", "refs/remotes/origin/main", repo.commit("start")]);
+  repo.git(["remote", "add", "origin", join(repo.dir, "no-such-remote")]);
+  assert.throws(() => main([], { cwd: repo.dir, output: { write: () => undefined, warn: () => undefined }, merged: () => true }), /git fetch/);
+});
+
+await test("the audit reads its start point from origin/main and needs a full commit id", (t) => {
   const repo = createRepo("landing-audit-config-");
   t.after(() => repo.cleanup());
   repo.write("config/landing-audit.json", JSON.stringify({ since: "916259b", repo: "o/r" }));
-  repo.git(["update-ref", "refs/remotes/origin/main", repo.commit("start")]);
+  repo.commit("start");
+  publish(t, repo);
   assert.throws(() => main([], { cwd: repo.dir, output: { write: () => undefined, warn: () => undefined }, merged: () => true }), /full "since" commit id/);
 });
 
@@ -87,9 +120,7 @@ await test("GitHub's answer decides the verdict, and a gh failure is an error, n
   assert.throws(() => githubMerged(undefined, "o/r", { program: broken })(1, sha), /gh pr view 1 failed: HTTP 401/);
 });
 
-await test("--help prints usage, other arguments are an error, and a bad repo name is refused", async (t) => {
-  const { createRepo } = await import("../test-support/repo-fixture.ts");
-  const { main } = await import("./landing-audit.ts");
+await test("--help prints usage, other arguments are an error, and a bad repo name is refused", (t) => {
   const lines: string[] = [];
   const output = { write: (line: string) => lines.push(line), warn: (line: string) => lines.push(line) };
   assert.equal(main(["--help"], { output }), 0);
@@ -98,6 +129,7 @@ await test("--help prints usage, other arguments are an error, and a bad repo na
   const repo = createRepo("landing-audit-repo-");
   t.after(() => repo.cleanup());
   repo.write("config/landing-audit.json", JSON.stringify({ since: "c".repeat(40), repo: "not a repo" }));
-  repo.git(["update-ref", "refs/remotes/origin/main", repo.commit("start")]);
+  repo.commit("start");
+  publish(t, repo);
   assert.throws(() => main([], { cwd: repo.dir, output, merged: () => true }), /"repo" as owner\/name/);
 });

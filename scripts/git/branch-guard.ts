@@ -1,5 +1,5 @@
 // CLI for the branch rules, run by the git hooks. Read-only.
-//   commit: refuses a commit on main (pre-commit)
+//   commit: refuses a commit on main (pre-commit, and pre-merge-commit for git merge)
 //   push:   reads git's ref updates on stdin and refuses pushes to main, rewrites of a
 //           published branch and deletions of unlanded branches (pre-push)
 import { readFileSync } from "node:fs";

@@ -39,7 +39,26 @@ const SHELL_PAYLOAD = /\b(?:bash|sh|zsh)\s+(?:-[a-z]+\s+)*-[a-z]*c(?:\s+--)?\s+(
 // Heredoc bodies are data. A quoted string is joined into its word with only word characters kept,
 // as the shell joins it: "gh" is still gh and 'HEAD:main' still a refspec, while a quoted commit
 // message becomes one harmless word and its separators split nothing.
-const HEREDOC = /<<-?\s*(["']?)(\w+)\1[^\n]*\n[\s\S]*?\n\2(?=\n|$)/g;
+// A here-string (<<<) is not a heredoc.
+const HEREDOC = /(?<!<)<<-?\s*(["']?)(\w+)\1[^\n]*\n[\s\S]*?\n\t*\2(?=\n|$)/g;
+// Two heredocs on one line are not parsed: their bodies are read as commands rather than risk
+// stripping a command as data.
+const TWO_HEREDOCS = /(?<!<)<<(?!<)[^\n]*(?<!<)<<(?!<)/;
+// Except shell input: a heredoc or here-string a shell reads (bash <<EOF, cat <<EOF | sudo sh,
+// bash <<< '...') is code, and so is what echo or printf pipes into a shell. Whether a command
+// runs a shell is decided by programOf, which skips wrappers and NAME=value words; `sh -n` only
+// parses. Lines and pipelines are split, never matched with nested patterns, so a long command
+// costs linear time.
+const LINE_HEREDOC = /(^|\n)([^\n]*?)(?<!<)<<(?!<)-?\s*(["']?)(\w+)\3([^\n]*)\n([\s\S]*?)\n\t*\4(?=\n|$)/g;
+const SHELLS = new Set(["bash", "sh", "zsh", "dash", "ksh"]);
+const PIPE = /(?<!\|)\|(?!\|)/;
+const COMMAND_SEPARATOR = /[;&(]/;
+const SOURCE = /(?:^|[;&(])[ \t]*(?:echo|printf)\b/;
+const SOURCE_PREFIX = /^[\s\S]*?(?:^|[;&(])[ \t]*(?:echo|printf)\b/;
+const HERE_STRING = /<<<[ \t]*('[^']*'|"(?:\\.|[^"\\])*"|[^\s;&|]+)/;
+// Outside quotes a backslash only escapes the next character (me\rge is merge).
+const ESCAPE = /\\(?=[\w.:/+@^~-])/g;
+const QUOTED_OPENER = /(?<!<)<<(?!<)-?\s*(["'])(\w+)\1/;
 const QUOTED = /'[^']*'|"(?:\\.|[^"\\])*"/g;
 const NOT_WORD = /[^\w.:/+@^~-]/g;
 const BACKTICKS = /`([^`]*)`/g;
@@ -59,12 +78,74 @@ const WRAPPER_VALUE_FLAGS: Record<string, ReadonlySet<string>> = {
 const WRAPPER_ARGUMENTS: Record<string, number> = { timeout: 1 };
 const GH_FLAGS_WITH_VALUE = new Set(["-R", "--repo", "--hostname"]);
 
+// A backslash-newline joins two lines with nothing between them (ec\<newline>ho is echo), except
+// in the body of a heredoc with a quoted delimiter, which the shell keeps as written.
+function joinContinuations(command: string): string {
+  const lines: string[] = [];
+  let pending = "";
+  let quotedEnd: RegExp | null = null;
+  for (const line of command.split(/\r?\n/)) {
+    if (quotedEnd !== null) {
+      lines.push(line);
+      if (quotedEnd.test(line)) quotedEnd = null;
+      continue;
+    }
+    if (line.endsWith("\\")) {
+      pending += line.slice(0, -1);
+      continue;
+    }
+    const joined = pending + line;
+    pending = "";
+    lines.push(joined);
+    const tag = QUOTED_OPENER.exec(joined)?.[2];
+    if (tag !== undefined) quotedEnd = new RegExp(`^\\t*${tag}$`);
+  }
+  return [...lines, pending].join("\n");
+}
+
+// Whether the first command of a fragment runs a shell that executes its input.
+function runsShell(fragment: string): boolean {
+  const first = fragment.split(COMMAND_SEPARATOR)[0] ?? "";
+  const { program, rest } = programOf(first.trim().split(/[ \t]+/).filter(Boolean));
+  return program !== undefined && SHELLS.has(program) && !rest.includes("-n");
+}
+
+const lastCommand = (text: string): string => text.split(/[;&|(]/).pop() ?? "";
+
+// What one line feeds a shell: a here-string a shell reads, and what echo or printf sends down a
+// pipeline that reaches a shell. Stages are walked from the end, so each line is read once.
+function shellInputOf(line: string): string[] {
+  const stages = line.split(PIPE);
+  const fed: string[] = [];
+  let shellLater = false;
+  for (let index = stages.length - 1; index >= 0; index--) {
+    const stage = stages[index] ?? "";
+    const hereString = HERE_STRING.exec(stage);
+    if (hereString !== null && runsShell(lastCommand(stage.slice(0, hereString.index)))) fed.push(hereString[1] ?? "");
+    else if (shellLater && SOURCE.test(stage)) fed.push(stage.replace(SOURCE_PREFIX, ""));
+    if (runsShell(stage)) shellLater = true;
+  }
+  return fed.flatMap((source) => [source, ...[...source.matchAll(QUOTED)].map((quoted) => quoted[0].slice(1, -1))]);
+}
+
+// Shell input becomes command lines of its own; other heredocs are left to be stripped as data. A
+// line ending in a pipe continues on the next, as in the shell.
+function liftShellInput(command: string): string {
+  const heredocs = command.replace(LINE_HEREDOC, (match, start: string, before: string, _quote, _tag, after: string, body: string) =>
+    runsShell(lastCommand(before)) || after.split(PIPE).slice(1).some(runsShell) ? `${start}${before} ${after}\n${body}\n` : match);
+  const lines = heredocs.replace(/\|[ \t]*\n/g, "| ").split("\n").flatMap(shellInputOf);
+  return [heredocs, ...lines].join("\n");
+}
+
 function commandParts(command: string): string[][] {
-  const lifted = command.replace(SHELL_PAYLOAD, (_match, _q1, first: string | undefined, _q2, second: string | undefined) => `\n${first ?? second ?? ""}\n`);
-  const runnable = lifted.replace(HEREDOC, " ").replace(SINGLE_QUOTED, " ");
+  const joined = joinContinuations(command);
+  const dropData = (text: string): string => TWO_HEREDOCS.test(joined) ? text : text.replace(HEREDOC, " ");
+  const lifted = liftShellInput(joined)
+    .replace(SHELL_PAYLOAD, (_match, _q1, first: string | undefined, _q2, second: string | undefined) => `\n${first ?? second ?? ""}\n`);
+  const runnable = dropData(lifted).replace(SINGLE_QUOTED, " ");
   const substituted = [...runnable.matchAll(SUBSTITUTION)].map((match) => match[1] ?? "");
-  const code = [lifted, ...substituted].join("\n").replace(HEREDOC, " ").replace(BACKTICKS, (_match, inner: string) => `\n${inner}\n`)
-    .replace(QUOTED, (quoted) => quoted.slice(1, -1).replace(NOT_WORD, ""));
+  const code = dropData([lifted, ...substituted].join("\n")).replace(BACKTICKS, (_match, inner: string) => `\n${inner}\n`)
+    .replace(QUOTED, (quoted) => quoted.slice(1, -1).replace(NOT_WORD, "")).replace(ESCAPE, "");
   return code.split(SEPARATOR).map((part) => part.trim().split(/\s+/).filter(Boolean));
 }
 
