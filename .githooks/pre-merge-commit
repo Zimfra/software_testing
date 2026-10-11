@@ -1,0 +1,4 @@
+#!/bin/sh
+# A merge that makes a commit runs this hook, not pre-commit, so main is refused here too.
+set -eu
+node scripts/git/branch-guard.ts commit
