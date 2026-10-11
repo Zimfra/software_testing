@@ -36,11 +36,14 @@ await test("line continuations, backslash escapes and shell input fed by a hered
   }
 });
 
-// Each case below was checked against bash 5.3 on 2026-10-11: a continuation joins with nothing
-// (ec\<newline>ho runs echo), and a quoted heredoc delimiter keeps its body as written.
+// bash 5.3 (2026-10-11) joins a continuation with nothing (ec\<newline>ho runs echo) and keeps a
+// quoted-delimiter heredoc body as written. It does not join a backslash before CRLF; the hook
+// does, which refuses more than bash would run.
 await test("the shell's own joining and heredoc rules decide what runs", () => {
   for (const command of [
     "gh pr me\\\nrge 5", "gh pr me\\\r\nrge 5", "gh\\\r\n pr merge 5",
+    "echo 'gh pr merge 5' | env FOO=1 bash", "echo 'gh pr merge 5' | sudo -u root bash", "cat <<EOF | env X=1 bash\ngh pr merge 5\nEOF",
+    "env FOO=1 bash <<EOF\ngh pr merge 5\nEOF", "FOO=1 bash <<EOF\ngh pr merge 5\nEOF", "cat <<EOF | sudo -u root sh\ngh pr merge 5\nEOF",
     "cat <<'EOF' > f\nfoo \\\nEOF\ngh pr merge 5\nEOF",
     "cat <<A <<B | bash\nx\nA\ngh pr merge 5\nB", "cat <<A | bash <<B\nx\nA\ngh pr merge 5\nB",
     "cat <<EOF | sudo bash\ngh pr merge 5\nEOF", "sudo bash <<EOF\ngh pr merge 5\nEOF", "bash --norc <<EOF\ngh pr merge 5\nEOF",
@@ -52,6 +55,15 @@ await test("the shell's own joining and heredoc rules decide what runs", () => {
     "git commit -m 'bash | sh' -m 'gh pr merge 5'", "grep -rn \"gh pr merge 5\" docs | sh", "git log --grep='gh pr merge' | sh",
     "echo 'gh pr merge 5' | sh -n", "cat <<'EOF' | grep merge\ngh pr merge 5\nEOF", "git log --format=%s | shasum",
   ]) assert.equal(isPrMerge(command), false, command);
+});
+
+await test("a long command is judged in well under the hook's time, not quadratically", () => {
+  for (const command of ["\n".repeat(100_000), " \n".repeat(50_000), "echo a | bash\n".repeat(7_000)]) {
+    const started = performance.now();
+    isPrMerge(command);
+    isPushingToMain(command);
+    assert.ok(performance.now() - started < 2_000, `${JSON.stringify(command.slice(0, 20))}... took ${Math.round(performance.now() - started)} ms`);
+  }
 });
 
 await test("common ways to merge a pull request are blocked", () => {

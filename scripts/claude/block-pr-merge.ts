@@ -46,12 +46,16 @@ const HEREDOC = /(?<!<)<<-?\s*(["']?)(\w+)\1[^\n]*\n[\s\S]*?\n\t*\2(?=\n|$)/g;
 const TWO_HEREDOCS = /(?<!<)<<(?!<)[^\n]*(?<!<)<<(?!<)/;
 // Except shell input: a heredoc or here-string a shell reads (bash <<EOF, cat <<EOF | sudo sh,
 // bash <<< '...') is code, and so is what echo or printf pipes into a shell. `sh -n` only parses.
-const SHELL = String.raw`(?:(?:\S*\/)?(?:sudo|doas|env|nohup|time|exec|command)\s+(?:-\S+\s+)*)*(?:\S*\/)?(?:bash|sh|zsh|dash|ksh)\b`;
+// Before the shell: NAME=value words, and wrappers with their flags, values and assignments
+// (env FOO=1 bash, sudo -u root sh). Blanks are [ \t] so a run of newlines is not rescanned.
+const SHELL_NAME = String.raw`(?:[^\s/]*\/)*(?:bash|sh|zsh|dash|ksh)\b`;
+const WRAPPER_WORD = String.raw`(?:-[^\s]*|\w+=[^\s]*|\w+(?=[ \t]+${SHELL_NAME}))`;
+const SHELL = String.raw`(?:\w+=[^\s]*[ \t]+)*(?:(?:[^\s/]*\/)*(?:sudo|doas|env|nohup|time|exec|command)(?:[ \t]+${WRAPPER_WORD})*[ \t]+)*${SHELL_NAME}`;
 const LINE_HEREDOC = /(^|\n)([^\n]*?)(?<!<)<<(?!<)-?\s*(["']?)(\w+)\3([^\n]*)\n([\s\S]*?)\n\t*\4(?=\n|$)/g;
-const READS_STDIN = new RegExp(String.raw`(?:^|[;&|(]\s*)${SHELL}(?:\s+[^\s<>|;&]+)*\s*$`);
-const PIPES_TO_SHELL = new RegExp(String.raw`\|\s*${SHELL}(?!\s+-n\b)`);
-const PIPED_SOURCE = new RegExp(String.raw`(?:^|[\n;&(]\s*)(?:echo|printf)\s+([^\n]*?)\|\s*${SHELL}(?!\s+-n\b)`, "g");
-const HERE_STRING = new RegExp(String.raw`(?:^|[\n;&|(]\s*)${SHELL}(?:\s+[^\s<>|;&]+)*\s*<<<\s*('[^']*'|"(?:\\.|[^"\\])*"|\S+)`, "g");
+const READS_STDIN = new RegExp(String.raw`(?:^|[;&|(][ \t]*)${SHELL}(?:[ \t]+[^\s<>|;&]+)*[ \t]*$`);
+const PIPES_TO_SHELL = new RegExp(String.raw`\|[ \t]*${SHELL}(?![ \t]+-n\b)`);
+const PIPED_SOURCE = new RegExp(String.raw`(?:^|[\n;&(])[ \t]*(?:echo|printf)[ \t]+([^\n]*?)\|[ \t]*${SHELL}(?![ \t]+-n\b)`, "g");
+const HERE_STRING = new RegExp(String.raw`(?:^|[\n;&|(])[ \t]*${SHELL}(?:[ \t]+[^\s<>|;&]+)*[ \t]*<<<[ \t]*('[^']*'|"(?:\\.|[^"\\])*"|\S+)`, "g");
 // Outside quotes a backslash only escapes the next character (me\rge is merge).
 const ESCAPE = /\\(?=[\w.:/+@^~-])/g;
 const QUOTED_OPENER = /(?<!<)<<(?!<)-?\s*(["'])(\w+)\1/;
