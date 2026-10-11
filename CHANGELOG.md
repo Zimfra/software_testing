@@ -4,6 +4,10 @@ Every branch adds its own entry here, under a `## YYYY-MM-DD` heading dated betw
 started and the day it lands (UTC). Entries describe the change; they never cite
 facts that only exist after the owner merges. `npm run changelog:guard` enforces this.
 
+## 2026-10-11
+
+- Fixed the `.claude/settings.json` deny rule for merging through the GitHub API: it mixed a `*` wildcard with the trailing `:*` prefix form, which Claude Code reads as a literal prefix that never matches (Claude Code 2.1.296 now warns about it at startup). It now ends in `merge*`, and `scripts/git/hooks.test.ts` refuses any deny rule that mixes the two forms.
+
 ## 2026-10-10
 
 - Closed the Zimi migration: the Merge gate contract, landing runbook and Memory index now state that `protect-main` requires a code owner's approval and that no credential for the owner's account is on the machine agents use, instead of calling those owner steps pending; the migration project and idea are marked done.
