@@ -1,6 +1,7 @@
 // npm run audit: does every commit on main's first-parent history since the PR-only rule
-// began correspond to a pull request the owner merged? Read-only. It asks GitHub, which
-// records every merge, rather than git notes, which do not travel with fetch.
+// began correspond to a pull request the owner merged? It fetches origin's main and changes
+// nothing else. It asks GitHub, which records every merge, rather than git notes, which do not
+// travel with fetch.
 import { spawnSync } from "node:child_process";
 import { EXIT_ERROR, EXIT_OK, EXIT_REFUSED, consoleOutput, isEntryPoint, runCli, type Output } from "../lib/cli.ts";
 import { git, gitLines, gitOptionsAt, type GitOptions } from "../lib/git.ts";
@@ -66,6 +67,8 @@ export function main(args: readonly string[], options: Options = {}): number {
     return EXIT_ERROR;
   }
   const gitOptions = gitOptionsAt(options.cwd);
+  // A stale origin/main would audit old history and could report a direct push as absent.
+  git(["fetch", "--quiet", "origin", "main"], gitOptions);
   const config = auditConfig(gitOptions);
   const first = config.since;
   const commits = gitLines(["log", "--first-parent", "--format=%H%x09%s", `${first}..refs/remotes/origin/main`], gitOptions)
