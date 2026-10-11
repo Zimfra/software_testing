@@ -17,7 +17,8 @@ evidence:
   - "VERIFIED: an ECC security review of e03b796 found bypasses (a mid-word continuation, a quoted-delimiter heredoc ended early, two heredocs on a line, wrapped or other shells, here-strings) and false positives (any quoted string in a command piped to a shell); the test added for them failed at e03b796 and passes after the fix."
   - "VERIFIED: bash 5.3 on 2026-10-11 joined ec, backslash, newline, ho into echo; kept a quoted-delimiter heredoc body as written, so a body line ending in a backslash did not hide the delimiter after it; and joined that line in an unquoted heredoc, so its body ran on to the next delimiter."
   - "VERIFIED: the security re-review of da9a0cd found 40,000 newlines took 13 seconds (16 ms before the change) and that shells behind wrappers with values (sudo -u root bash, env FOO=1 bash, FOO=1 bash) were missed; tests for both failed at da9a0cd (the newline run took 161 seconds) and pass after, 100,000 newlines now judged within the test's 2-second limit."
-  - "VERIFIED: inputs of about 100 KB made of unterminated heredoc openers (10,000 copies of: cat <<E, newline, x, newline) still take seconds: the reviewer measured 2.4 to 4.9 seconds before this change, and the final head took 2.7 to 4.4 seconds in this session's run."
+  - "VERIFIED: the third security review of 53902fc found `a=b|` repeated took 24 seconds for 100 KB, some wrapped shells still missed (sudo -u root -E bash, nice -n 5 bash) and commands naming a shell only as an argument refused (sudo tee bash/notes); tests for these failed at 53902fc and pass after shell detection moved from regexes to the hook's own command parser."
+  - "VERIFIED: inputs of about 100 KB made of unterminated heredoc openers (10,000 copies of: cat <<E, newline, x, newline) still take seconds: the reviewer measured 2.4 to 4.9 seconds before this change, and this branch took 2.7 to 4.9 seconds across this session's runs."
 ---
 
 ## Problem
