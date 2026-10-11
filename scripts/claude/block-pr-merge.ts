@@ -39,17 +39,22 @@ const SHELL_PAYLOAD = /\b(?:bash|sh|zsh)\s+(?:-[a-z]+\s+)*-[a-z]*c(?:\s+--)?\s+(
 // Heredoc bodies are data. A quoted string is joined into its word with only word characters kept,
 // as the shell joins it: "gh" is still gh and 'HEAD:main' still a refspec, while a quoted commit
 // message becomes one harmless word and its separators split nothing.
-const HEREDOC = /<<-?\s*(["']?)(\w+)\1[^\n]*\n[\s\S]*?\n\t*\2(?=\n|$)/g;
-// Except shell input: a heredoc a shell reads (bash <<EOF, cat <<EOF | sh) is code, and so is a
-// quoted string piped into a shell (echo '...' | bash).
-const SHELL = String.raw`(?:\S*\/)?(?:bash|sh|zsh)\b`;
-const LINE_HEREDOC = /(^|\n)([^\n]*?)<<-?\s*(["']?)(\w+)\3([^\n]*)\n([\s\S]*?)\n\t*\4(?=\n|$)/g;
-const READS_STDIN = new RegExp(String.raw`(?:^|[;&|(]\s*)${SHELL}(?:\s+-\w+)*\s*$`);
-const PIPES_TO_SHELL = new RegExp(String.raw`\|\s*${SHELL}`);
-// A backslash-newline joins two lines into one command, and outside quotes a backslash only
-// escapes the next character (me\rge is merge), as the shell reads them.
-const CONTINUATION = /\\\n/g;
+// A here-string (<<<) is not a heredoc.
+const HEREDOC = /(?<!<)<<-?\s*(["']?)(\w+)\1[^\n]*\n[\s\S]*?\n\t*\2(?=\n|$)/g;
+// Two heredocs on one line are not parsed: their bodies are read as commands rather than risk
+// stripping a command as data.
+const TWO_HEREDOCS = /(?<!<)<<(?!<)[^\n]*(?<!<)<<(?!<)/;
+// Except shell input: a heredoc or here-string a shell reads (bash <<EOF, cat <<EOF | sudo sh,
+// bash <<< '...') is code, and so is what echo or printf pipes into a shell. `sh -n` only parses.
+const SHELL = String.raw`(?:(?:\S*\/)?(?:sudo|doas|env|nohup|time|exec|command)\s+(?:-\S+\s+)*)*(?:\S*\/)?(?:bash|sh|zsh|dash|ksh)\b`;
+const LINE_HEREDOC = /(^|\n)([^\n]*?)(?<!<)<<(?!<)-?\s*(["']?)(\w+)\3([^\n]*)\n([\s\S]*?)\n\t*\4(?=\n|$)/g;
+const READS_STDIN = new RegExp(String.raw`(?:^|[;&|(]\s*)${SHELL}(?:\s+[^\s<>|;&]+)*\s*$`);
+const PIPES_TO_SHELL = new RegExp(String.raw`\|\s*${SHELL}(?!\s+-n\b)`);
+const PIPED_SOURCE = new RegExp(String.raw`(?:^|[\n;&(]\s*)(?:echo|printf)\s+([^\n]*?)\|\s*${SHELL}(?!\s+-n\b)`, "g");
+const HERE_STRING = new RegExp(String.raw`(?:^|[\n;&|(]\s*)${SHELL}(?:\s+[^\s<>|;&]+)*\s*<<<\s*('[^']*'|"(?:\\.|[^"\\])*"|\S+)`, "g");
+// Outside quotes a backslash only escapes the next character (me\rge is merge).
 const ESCAPE = /\\(?=[\w.:/+@^~-])/g;
+const QUOTED_OPENER = /(?<!<)<<(?!<)-?\s*(["'])(\w+)\1/;
 const QUOTED = /'[^']*'|"(?:\\.|[^"\\])*"/g;
 const NOT_WORD = /[^\w.:/+@^~-]/g;
 const BACKTICKS = /`([^`]*)`/g;
@@ -69,20 +74,48 @@ const WRAPPER_VALUE_FLAGS: Record<string, ReadonlySet<string>> = {
 const WRAPPER_ARGUMENTS: Record<string, number> = { timeout: 1 };
 const GH_FLAGS_WITH_VALUE = new Set(["-R", "--repo", "--hostname"]);
 
+// A backslash-newline joins two lines with nothing between them (ec\<newline>ho is echo), except
+// in the body of a heredoc with a quoted delimiter, which the shell keeps as written.
+function joinContinuations(command: string): string {
+  const lines: string[] = [];
+  let pending = "";
+  let quotedEnd: RegExp | null = null;
+  for (const line of command.split(/\r?\n/)) {
+    if (quotedEnd !== null) {
+      lines.push(line);
+      if (quotedEnd.test(line)) quotedEnd = null;
+      continue;
+    }
+    if (line.endsWith("\\")) {
+      pending += line.slice(0, -1);
+      continue;
+    }
+    const joined = pending + line;
+    pending = "";
+    lines.push(joined);
+    const tag = QUOTED_OPENER.exec(joined)?.[2];
+    if (tag !== undefined) quotedEnd = new RegExp(`^\\t*${tag}$`);
+  }
+  return [...lines, pending].join("\n");
+}
+
 // Shell input becomes command lines of its own; other heredocs are left to be stripped as data.
 function liftShellInput(command: string): string {
   const heredocs = command.replace(LINE_HEREDOC, (match, start: string, before: string, _quote, _tag, after: string, body: string) =>
     READS_STDIN.test(before) || PIPES_TO_SHELL.test(after) ? `${start}${before} ${after}\n${body}\n` : match);
-  if (!PIPES_TO_SHELL.test(heredocs)) return heredocs;
-  return [heredocs, ...[...heredocs.matchAll(QUOTED)].map((match) => match[0].slice(1, -1))].join("\n");
+  const fed = [...heredocs.matchAll(PIPED_SOURCE), ...heredocs.matchAll(HERE_STRING)].map((match) => match[1] ?? "");
+  const lines = fed.flatMap((source) => [source, ...[...source.matchAll(QUOTED)].map((quoted) => quoted[0].slice(1, -1))]);
+  return [heredocs, ...lines].join("\n");
 }
 
 function commandParts(command: string): string[][] {
-  const lifted = liftShellInput(command.replace(CONTINUATION, " "))
+  const joined = joinContinuations(command);
+  const dropData = (text: string): string => TWO_HEREDOCS.test(joined) ? text : text.replace(HEREDOC, " ");
+  const lifted = liftShellInput(joined)
     .replace(SHELL_PAYLOAD, (_match, _q1, first: string | undefined, _q2, second: string | undefined) => `\n${first ?? second ?? ""}\n`);
-  const runnable = lifted.replace(HEREDOC, " ").replace(SINGLE_QUOTED, " ");
+  const runnable = dropData(lifted).replace(SINGLE_QUOTED, " ");
   const substituted = [...runnable.matchAll(SUBSTITUTION)].map((match) => match[1] ?? "");
-  const code = [lifted, ...substituted].join("\n").replace(HEREDOC, " ").replace(BACKTICKS, (_match, inner: string) => `\n${inner}\n`)
+  const code = dropData([lifted, ...substituted].join("\n")).replace(BACKTICKS, (_match, inner: string) => `\n${inner}\n`)
     .replace(QUOTED, (quoted) => quoted.slice(1, -1).replace(NOT_WORD, "")).replace(ESCAPE, "");
   return code.split(SEPARATOR).map((part) => part.trim().split(/\s+/).filter(Boolean));
 }

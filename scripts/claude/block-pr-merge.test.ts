@@ -36,6 +36,24 @@ await test("line continuations, backslash escapes and shell input fed by a hered
   }
 });
 
+// Each case below was checked against bash 5.3 on 2026-10-11: a continuation joins with nothing
+// (ec\<newline>ho runs echo), and a quoted heredoc delimiter keeps its body as written.
+await test("the shell's own joining and heredoc rules decide what runs", () => {
+  for (const command of [
+    "gh pr me\\\nrge 5", "gh pr me\\\r\nrge 5", "gh\\\r\n pr merge 5",
+    "cat <<'EOF' > f\nfoo \\\nEOF\ngh pr merge 5\nEOF",
+    "cat <<A <<B | bash\nx\nA\ngh pr merge 5\nB", "cat <<A | bash <<B\nx\nA\ngh pr merge 5\nB",
+    "cat <<EOF | sudo bash\ngh pr merge 5\nEOF", "sudo bash <<EOF\ngh pr merge 5\nEOF", "bash --norc <<EOF\ngh pr merge 5\nEOF",
+    "bash 0<<EOF\ngh pr merge 5\nEOF", "echo 'gh pr merge 5' | env bash", "echo 'gh pr merge 5' | dash",
+    "echo gh pr merge 5 | bash", "echo 'x; gh pr merge 5' | bash", "bash <<< 'gh pr merge 5'", "bash <<<\"gh pr merge 5\"",
+  ]) assert.equal(isPrMerge(command), true, command);
+  for (const command of [
+    "cat <<EOF > f\nfoo \\\nEOF\ngh pr merge 5\nEOF",
+    "git commit -m 'bash | sh' -m 'gh pr merge 5'", "grep -rn \"gh pr merge 5\" docs | sh", "git log --grep='gh pr merge' | sh",
+    "echo 'gh pr merge 5' | sh -n", "cat <<'EOF' | grep merge\ngh pr merge 5\nEOF", "git log --format=%s | shasum",
+  ]) assert.equal(isPrMerge(command), false, command);
+});
+
 await test("common ways to merge a pull request are blocked", () => {
   for (const command of [
     "gh pr merge 7", "gh pr merge 7 --squash --delete-branch", "gh -R o/r pr merge 7", "GH_TOKEN=x gh pr merge 7",
