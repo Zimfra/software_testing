@@ -45,17 +45,17 @@ const HEREDOC = /(?<!<)<<-?\s*(["']?)(\w+)\1[^\n]*\n[\s\S]*?\n\t*\2(?=\n|$)/g;
 // stripping a command as data.
 const TWO_HEREDOCS = /(?<!<)<<(?!<)[^\n]*(?<!<)<<(?!<)/;
 // Except shell input: a heredoc or here-string a shell reads (bash <<EOF, cat <<EOF | sudo sh,
-// bash <<< '...') is code, and so is what echo or printf pipes into a shell. `sh -n` only parses.
-// Before the shell: NAME=value words, and wrappers with their flags, values and assignments
-// (env FOO=1 bash, sudo -u root sh). Blanks are [ \t] so a run of newlines is not rescanned.
-const SHELL_NAME = String.raw`(?:[^\s/]*\/)*(?:bash|sh|zsh|dash|ksh)\b`;
-const WRAPPER_WORD = String.raw`(?:-[^\s]*|\w+=[^\s]*|\w+(?=[ \t]+${SHELL_NAME}))`;
-const SHELL = String.raw`(?:\w+=[^\s]*[ \t]+)*(?:(?:[^\s/]*\/)*(?:sudo|doas|env|nohup|time|exec|command)(?:[ \t]+${WRAPPER_WORD})*[ \t]+)*${SHELL_NAME}`;
+// bash <<< '...') is code, and so is what echo or printf pipes into a shell. Whether a command
+// runs a shell is decided by programOf, which skips wrappers and NAME=value words; `sh -n` only
+// parses. Lines and pipelines are split, never matched with nested patterns, so a long command
+// costs linear time.
 const LINE_HEREDOC = /(^|\n)([^\n]*?)(?<!<)<<(?!<)-?\s*(["']?)(\w+)\3([^\n]*)\n([\s\S]*?)\n\t*\4(?=\n|$)/g;
-const READS_STDIN = new RegExp(String.raw`(?:^|[;&|(][ \t]*)${SHELL}(?:[ \t]+[^\s<>|;&]+)*[ \t]*$`);
-const PIPES_TO_SHELL = new RegExp(String.raw`\|[ \t]*${SHELL}(?![ \t]+-n\b)`);
-const PIPED_SOURCE = new RegExp(String.raw`(?:^|[\n;&(])[ \t]*(?:echo|printf)[ \t]+([^\n]*?)\|[ \t]*${SHELL}(?![ \t]+-n\b)`, "g");
-const HERE_STRING = new RegExp(String.raw`(?:^|[\n;&|(])[ \t]*${SHELL}(?:[ \t]+[^\s<>|;&]+)*[ \t]*<<<[ \t]*('[^']*'|"(?:\\.|[^"\\])*"|\S+)`, "g");
+const SHELLS = new Set(["bash", "sh", "zsh", "dash", "ksh"]);
+const PIPE = /(?<!\|)\|(?!\|)/;
+const COMMAND_SEPARATOR = /[;&(]/;
+const SOURCE = /(?:^|[;&(])[ \t]*(?:echo|printf)\b/;
+const SOURCE_PREFIX = /^[\s\S]*?(?:^|[;&(])[ \t]*(?:echo|printf)\b/;
+const HERE_STRING = /<<<[ \t]*('[^']*'|"(?:\\.|[^"\\])*"|[^\s;&|]+)/;
 // Outside quotes a backslash only escapes the next character (me\rge is merge).
 const ESCAPE = /\\(?=[\w.:/+@^~-])/g;
 const QUOTED_OPENER = /(?<!<)<<(?!<)-?\s*(["'])(\w+)\1/;
@@ -103,12 +103,37 @@ function joinContinuations(command: string): string {
   return [...lines, pending].join("\n");
 }
 
-// Shell input becomes command lines of its own; other heredocs are left to be stripped as data.
+// Whether the first command of a fragment runs a shell that executes its input.
+function runsShell(fragment: string): boolean {
+  const first = fragment.split(COMMAND_SEPARATOR)[0] ?? "";
+  const { program, rest } = programOf(first.trim().split(/[ \t]+/).filter(Boolean));
+  return program !== undefined && SHELLS.has(program) && !rest.includes("-n");
+}
+
+const lastCommand = (text: string): string => text.split(/[;&|(]/).pop() ?? "";
+
+// What one line feeds a shell: a here-string a shell reads, and what echo or printf sends down a
+// pipeline that reaches a shell. Stages are walked from the end, so each line is read once.
+function shellInputOf(line: string): string[] {
+  const stages = line.split(PIPE);
+  const fed: string[] = [];
+  let shellLater = false;
+  for (let index = stages.length - 1; index >= 0; index--) {
+    const stage = stages[index] ?? "";
+    const hereString = HERE_STRING.exec(stage);
+    if (hereString !== null && runsShell(lastCommand(stage.slice(0, hereString.index)))) fed.push(hereString[1] ?? "");
+    else if (shellLater && SOURCE.test(stage)) fed.push(stage.replace(SOURCE_PREFIX, ""));
+    if (runsShell(stage)) shellLater = true;
+  }
+  return fed.flatMap((source) => [source, ...[...source.matchAll(QUOTED)].map((quoted) => quoted[0].slice(1, -1))]);
+}
+
+// Shell input becomes command lines of its own; other heredocs are left to be stripped as data. A
+// line ending in a pipe continues on the next, as in the shell.
 function liftShellInput(command: string): string {
   const heredocs = command.replace(LINE_HEREDOC, (match, start: string, before: string, _quote, _tag, after: string, body: string) =>
-    READS_STDIN.test(before) || PIPES_TO_SHELL.test(after) ? `${start}${before} ${after}\n${body}\n` : match);
-  const fed = [...heredocs.matchAll(PIPED_SOURCE), ...heredocs.matchAll(HERE_STRING)].map((match) => match[1] ?? "");
-  const lines = fed.flatMap((source) => [source, ...[...source.matchAll(QUOTED)].map((quoted) => quoted[0].slice(1, -1))]);
+    runsShell(lastCommand(before)) || after.split(PIPE).slice(1).some(runsShell) ? `${start}${before} ${after}\n${body}\n` : match);
+  const lines = heredocs.replace(/\|[ \t]*\n/g, "| ").split("\n").flatMap(shellInputOf);
   return [heredocs, ...lines].join("\n");
 }
 

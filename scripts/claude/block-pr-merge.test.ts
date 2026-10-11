@@ -44,6 +44,8 @@ await test("the shell's own joining and heredoc rules decide what runs", () => {
     "gh pr me\\\nrge 5", "gh pr me\\\r\nrge 5", "gh\\\r\n pr merge 5",
     "echo 'gh pr merge 5' | env FOO=1 bash", "echo 'gh pr merge 5' | sudo -u root bash", "cat <<EOF | env X=1 bash\ngh pr merge 5\nEOF",
     "env FOO=1 bash <<EOF\ngh pr merge 5\nEOF", "FOO=1 bash <<EOF\ngh pr merge 5\nEOF", "cat <<EOF | sudo -u root sh\ngh pr merge 5\nEOF",
+    "echo 'gh pr merge 5' | sudo -u root -E bash", "echo 'gh pr merge 5' | env -u X A=1 bash", "echo 'gh pr merge 5' | nice -n 5 bash",
+    "echo 'gh pr merge 5' | timeout 5 bash", "echo 'gh pr merge 5' |\n bash", "cat f | echo 'gh pr merge 5' | bash",
     "cat <<'EOF' > f\nfoo \\\nEOF\ngh pr merge 5\nEOF",
     "cat <<A <<B | bash\nx\nA\ngh pr merge 5\nB", "cat <<A | bash <<B\nx\nA\ngh pr merge 5\nB",
     "cat <<EOF | sudo bash\ngh pr merge 5\nEOF", "sudo bash <<EOF\ngh pr merge 5\nEOF", "bash --norc <<EOF\ngh pr merge 5\nEOF",
@@ -54,11 +56,13 @@ await test("the shell's own joining and heredoc rules decide what runs", () => {
     "cat <<EOF > f\nfoo \\\nEOF\ngh pr merge 5\nEOF",
     "git commit -m 'bash | sh' -m 'gh pr merge 5'", "grep -rn \"gh pr merge 5\" docs | sh", "git log --grep='gh pr merge' | sh",
     "echo 'gh pr merge 5' | sh -n", "cat <<'EOF' | grep merge\ngh pr merge 5\nEOF", "git log --format=%s | shasum",
+    "echo 'gh pr merge 5' | env grep sh", "echo 'gh pr merge 5' | sudo tee bash/notes", "sudo tee bash <<EOF\ngh pr merge 5 docs\nEOF",
+    "exec cat sh <<EOF\ngh pr merge 5 docs\nEOF",
   ]) assert.equal(isPrMerge(command), false, command);
 });
 
 await test("a long command is judged in well under the hook's time, not quadratically", () => {
-  for (const command of ["\n".repeat(100_000), " \n".repeat(50_000), "echo a | bash\n".repeat(7_000)]) {
+  for (const command of ["\n".repeat(100_000), " \n".repeat(50_000), "echo a | bash\n".repeat(7_000), "a=b|".repeat(25_000), "a=b;".repeat(25_000), "a|".repeat(50_000)]) {
     const started = performance.now();
     isPrMerge(command);
     isPushingToMain(command);
