@@ -17,7 +17,23 @@ await test("ordinary work stays allowed", () => {
     "gh pr review 7 -bapprove", "gh pr review 7 -Fa.txt", "gh api graphql -f query='{ viewer { login } }'",
     "git commit -m 'never run $(gh pr merge 5)'", "git commit -m \"never run \\$(gh pr merge 5)\"",
     "git commit -F - <<'EOT'\nfix: block $(gh pr merge 5)\nEOT",
+    "cat <<EOF > notes.md\ngh pr merge is the owner's act\nEOF", "npm test \\\n  -- --grep merge", "echo 'gh pr merge 5' | grep merge",
+    "git commit -m 'C:\\\\gh\\\\merge'",
   ]) assert.equal(isPrMerge(command), false, command);
+});
+
+await test("line continuations, backslash escapes and shell input fed by a heredoc or pipe are read as commands", () => {
+  for (const command of [
+    "gh pr merge\\\n 5", "gh \\\n  pr merge 5", "gh pr me\\rge 5", "\\g\\h pr merge 5",
+    "bash <<EOF\ngh pr merge 5\nEOF", "sh <<'EOF'\ngh pr merge 5\nEOF", "bash -s <<-EOF\n\tgh pr merge 5\n\tEOF",
+    "cat <<EOF | bash\ngh pr merge 5\nEOF", "echo 'gh pr merge 5' | bash", "printf '%s\\n' \"gh pr merge 5\" | /bin/sh",
+  ]) assert.equal(isPrMerge(command), true, command);
+  for (const command of [
+    "git push \\\n  origin main", "git push origin \\\n  HEAD:main", "git push origin HEAD:ma\\in", "bash <<EOF\ngit push origin main\nEOF",
+  ]) assert.equal(isPushingToMain(command), true, command);
+  for (const command of ["git push \\\n  origin feat/x", "cat <<EOF | bash\ngit push origin feat/x\nEOF"]) {
+    assert.equal(isPushingToMain(command), false, command);
+  }
 });
 
 await test("common ways to merge a pull request are blocked", () => {
