@@ -6,6 +6,8 @@ facts that only exist after the owner merges. `npm run changelog:guard` enforces
 
 ## 2026-10-11
 
+- Closed the gaps the final audit of main found in the local backstops: the merge-blocking hook now joins backslash-newline continuations, drops backslash escapes outside quotes and reads a heredoc or quoted string fed to a shell as commands; `npm run audit` fetches origin's main before auditing it, so a stale local ref cannot hide a direct push; a new `.githooks/pre-merge-commit` refuses merge commits on main, which `git merge` never sent through pre-commit; and the Merge gate contract lists `rules:check` among the guards, the ruleset's unattributed-changes setting and the new hook.
+
 - Fixed the `.claude/settings.json` deny rule for merging through the GitHub API: it mixed a `*` wildcard with the trailing `:*` prefix form, which Claude Code reads as a literal prefix that never matches (Claude Code 2.1.296 now warns about it at startup). It now ends in `merge*`, and `scripts/git/hooks.test.ts` refuses any deny rule that mixes the two forms.
 
 ## 2026-10-10
