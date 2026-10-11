@@ -16,7 +16,8 @@ evidence:
   - "VERIFIED: scripts/git/hooks.test.ts failed before .githooks/pre-merge-commit existed and passes after; as a control, the same merge on main in a scratch repository with no hook succeeded (exit 0)."
   - "VERIFIED: an ECC security review of e03b796 found bypasses (a mid-word continuation, a quoted-delimiter heredoc ended early, two heredocs on a line, wrapped or other shells, here-strings) and false positives (any quoted string in a command piped to a shell); the test added for them failed at e03b796 and passes after the fix."
   - "VERIFIED: bash 5.3 on 2026-10-11 joined ec, backslash, newline, ho into echo; kept a quoted-delimiter heredoc body as written, so a body line ending in a backslash did not hide the delimiter after it; and joined that line in an unquoted heredoc, so its body ran on to the next delimiter."
-  - "VERIFIED: on about 100 KB of unterminated heredoc openers the hook takes 3 to 4 seconds, the same order as before this change (2 to 5 seconds); other 100 KB inputs take under 0.1 seconds."
+  - "VERIFIED: the security re-review of da9a0cd found 40,000 newlines took 13 seconds (16 ms before the change) and that shells behind wrappers with values (sudo -u root bash, env FOO=1 bash, FOO=1 bash) were missed; tests for both failed at da9a0cd (the newline run took 161 seconds) and pass after, 100,000 newlines now judged within the test's 2-second limit."
+  - "VERIFIED: inputs of about 100 KB made of unterminated heredoc openers (10,000 copies of: cat <<E, newline, x, newline) still take seconds: the reviewer measured 2.4 to 4.9 seconds before this change, and the final head took 2.7 to 4.4 seconds in this session's run."
 ---
 
 ## Problem
