@@ -141,5 +141,10 @@ await test("Claude Code is denied merging and pushing main", () => {
   const deny = typeof settings === "object" && settings !== null && "permissions" in settings
     && typeof settings.permissions === "object" && settings.permissions !== null && "deny" in settings.permissions ? settings.permissions.deny : [];
   assert.ok(Array.isArray(deny));
-  for (const rule of ["Bash(gh pr merge:*)", "Bash(git push origin main)", "Bash(git push --force:*)"]) assert.ok(deny.includes(rule), rule);
+  for (const rule of ["Bash(gh pr merge:*)", "Bash(git push origin main)", "Bash(git push --force:*)", "Bash(gh api -X PUT repos/ahzeems/Zeemrepo/pulls/*/merge*)"]) {
+    assert.ok(deny.includes(rule), rule);
+  }
+  // Claude Code reads a rule that mixes a * wildcard with the trailing :* prefix form as a literal
+  // prefix, so it never matches.
+  for (const rule of deny) assert.doesNotMatch(String(rule), /\*.*:\*\)$/, `${String(rule)} mixes * with :*`);
 });
