@@ -25,7 +25,7 @@ export function currentIdentity(readUser: () => { username: string } = userInfo)
 const SERVICE_ACCOUNTS = new Set([
   "node", "root", "ubuntu", "debian", "alpine", "admin", "administrator", "user", "users", "app",
   "web", "www-data", "nobody", "daemon", "deploy", "docker", "runner", "build", "builder", "ci",
-  "test", "guest", "service", "nginx", "apache", "postgres", "mysql", "redis", "container",
+  "test", "guest", "service", "nginx", "apache", "postgres", "mysql", "redis", "container", "agent",
 ]);
 
 // Hostnames that name a role or a default, not this machine: CI runners and containers use them.

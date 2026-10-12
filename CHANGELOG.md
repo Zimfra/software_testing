@@ -4,6 +4,10 @@ Every branch adds its own entry here, under a `## YYYY-MM-DD` heading dated betw
 started and the day it lands (UTC). Entries describe the change; they never cite
 facts that only exist after the owner merges. `npm run changelog:guard` enforces this.
 
+## 2026-10-12
+
+- The wiki privacy scan now treats the account name `agent` as a role name, like `node` or `runner`, instead of a personal username. A checkout validated by a user named `agent` (the Sandcastle sandbox user) no longer fails `wiki:lint` on the `agent:` field of every note; a login that names a person, or a `/home/<user>` path, is still flagged.
+
 ## 2026-10-11
 
 - Closed the gaps the final audit of main found in the local backstops: the merge-blocking hook now joins backslash-newline continuations, drops backslash escapes outside quotes and reads a heredoc or quoted string fed to a shell as commands; `npm run audit` fetches origin's main before auditing it, so a stale local ref cannot hide a direct push; a new `.githooks/pre-merge-commit` refuses a `git merge` that would commit on main, which never ran pre-commit; and the Merge gate contract lists `rules:check` among the guards, the ruleset's unattributed-changes setting and the new hook.

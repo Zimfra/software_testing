@@ -60,12 +60,14 @@ await test("findSensitive leaves allowed placeholders and public addresses alone
 });
 
 await test("a service account is not redacted as a personal identifier", () => {
-  for (const account of ["node", "root", "ubuntu", "deploy", "www-data", "runner"]) {
+  for (const account of ["node", "root", "ubuntu", "deploy", "www-data", "runner", "agent"]) {
     assert.equal(isPersonalAccount(account), false, account);
   }
   assert.equal(isPersonalAccount("alice"), true);
   assert.equal(isPersonalAccount("bob"), false, "names under four characters are too common to match");
   assert.equal(redactionChecks({ host: "ci", user: "node" }).some((check) => /machine/.test(check.name)), false);
+  assert.equal(redactionChecks({ host: "ci", user: "agent" }).some((check) => /machine/.test(check.name)), false);
+  assert.equal(redactionChecks({ host: "ci", user: "alice" }).some((check) => /username/.test(check.name)), true);
 });
 
 await test("a generic hostname is not checked, and a user with no passwd entry is not an error", () => {
