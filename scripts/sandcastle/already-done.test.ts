@@ -78,6 +78,20 @@ await test("pendingIssues keeps a branch that was created at HEAD and never got 
   }
 });
 
+await test("pendingIssues keeps a branch whose only reflog entries are a reset, not a commit", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["branch", "sandcastle/issue-10"]);
+    repo.write("later.txt", "l");
+    repo.commit("chore: HEAD moves on");
+    repo.git(["branch", "--force", "sandcastle/issue-10", "HEAD"]);
+    assert.deepEqual(pendingIssues([issue("10")], repo.dir), [issue("10")]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 await test("pendingIssues drops a branch whose commits were fast-forwarded into HEAD", () => {
   const repo = createRepo();
   try {

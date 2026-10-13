@@ -9,7 +9,7 @@ For each branch:
 1. Run `git merge <branch> --no-edit`
 2. If there are merge conflicts, keep the lines from both sides and change nothing else (`CHANGELOG.md` conflicts are the common case: keep both entries). Do not rewrite code or text while resolving a conflict.
 3. Run `npm run typecheck` and `npm run test` after each merge.
-4. If they fail, stop. Make any fix in a separate commit after the merge commit, with its own `<type>: <description>` subject, never inside the merge commit.
+4. If they fail, make the fix in a separate commit after the merge commit, with its own `<type>: <description>` subject, never inside the merge commit, then run them again. If they still fail, stop and do not comment on that branch's issue.
 
 Follow `CLAUDE.md` and `.claude/rules/zeem/`. Never use `--no-verify`. Never push. Never rebase or force-push. Stage files by name.
 
@@ -17,7 +17,7 @@ Follow `CLAUDE.md` and `.claude/rules/zeem/`. Never use `--no-verify`. Never pus
 
 Do not close any issue. An item is done only when the owner merges its pull request.
 
-For each branch that was merged, leave a comment with the following command:
+For each branch that was merged and whose typecheck and tests pass, leave a comment with the following command:
 
 `gh issue comment -R Zimfra/software_testing <ID> --body "Branch <branch> was merged into the integration branch. A pull request is pending."`
 

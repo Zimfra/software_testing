@@ -4,9 +4,11 @@ export type PlannedIssue = { id: string; title: string; branch: string };
 
 // Sandcastle creates the branch at HEAD before the implementer runs, so a branch that never got
 // a commit is an ancestor of HEAD too. Only the branch's own reflog tells the two apart: it holds
-// the creation entry, plus one entry per commit made on the branch.
-function hasOwnCommits(ref: string, cwd: string): boolean {
-  return gitLines(["reflog", "show", "--format=%gs", ref, "--"], { cwd }).some((entry) => !entry.startsWith("branch: Created"));
+// the creation entry, plus one entry per commit made on the branch. A reset, rename or fetch also
+// writes an entry, so only commit-type entries count. A worked branch that the merger merged
+// before its issue was finished is dropped too: the signal cannot tell partial from complete work.
+export function hasOwnCommits(ref: string, cwd: string): boolean {
+  return gitLines(["reflog", "show", "--format=%gs", ref, "--"], { cwd }).some((entry) => /^(commit|merge|cherry-pick|revert)\b/.test(entry));
 }
 
 /**

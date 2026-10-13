@@ -4,6 +4,8 @@ export type Plan = { issues: PlannedIssue[] };
 type Issue = { message: string; path: string[] };
 type Result = { value: Plan } | { issues: Issue[] };
 
+const MAX_TITLE = 200;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -17,8 +19,12 @@ function parseIssue(entry: unknown, index: number): { issue: PlannedIssue } | { 
     .map(([name]) => ({ message: `${name} must be a string`, path: [...at, name] }));
   if (typeof id !== "string" || typeof title !== "string" || typeof branch !== "string") return { problems };
   // The plan comes from a model that read untrusted issue text, and the branch goes into git and gh.
-  if (!/^\d+$/.test(id)) return { problems: [{ message: "id must be an issue number", path: [...at, "id"] }] };
+  if (!/^[1-9]\d*$/.test(id)) return { problems: [{ message: "id must be an issue number", path: [...at, "id"] }] };
   if (branch !== `sandcastle/issue-${id}`) return { problems: [{ message: `branch must be sandcastle/issue-${id}`, path: [...at, "branch"] }] };
+  // The title is substituted into prompts, where Sandcastle expands !`command` inside the sandbox.
+  if (title.trim() === "" || title.length > MAX_TITLE || /[\r\n`]/.test(title)) {
+    return { problems: [{ message: `title must be one non-empty line of at most ${MAX_TITLE} characters with no backtick`, path: [...at, "title"] }] };
+  }
   return { issue: { id, title, branch } };
 }
 
@@ -29,7 +35,10 @@ function parsePlan(value: unknown): Result {
   const parsed = list.map(parseIssue);
   const problems = parsed.flatMap((entry) => ("problems" in entry ? entry.problems : []));
   if (problems.length > 0) return { issues: problems };
-  return { value: { issues: parsed.flatMap((entry) => ("issue" in entry ? [entry.issue] : [])) } };
+  const accepted = parsed.flatMap((entry) => ("issue" in entry ? [entry.issue] : []));
+  const repeated = accepted.findIndex((entry, index) => accepted.findIndex((other) => other.id === entry.id) !== index);
+  if (repeated >= 0) return { issues: [{ message: "an issue appears twice in the plan", path: ["issues", String(repeated), "id"] }] };
+  return { value: { issues: accepted } };
 }
 
 // The Standard Schema (https://standardschema.dev) that Output.object takes, written by hand
