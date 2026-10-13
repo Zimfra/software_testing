@@ -82,10 +82,19 @@ await test("the role-name home agent is allowed, and every other home path is fl
     assert.match(flagged("see /home/" + "agentsmith/x").join(), /home path/, user);
     assert.match(flagged("see /home/" + "agent-smith/x").join(), /home path/, user);
     assert.match(flagged("see /home/" + "alice/x").join(), /home path/, user);
+    assert.match(flagged("see /home/" + "agent.evil/x").join(), /home path/, user);
+    assert.match(flagged("see /home/" + "Agent/x").join(), /home path/, user);
+    assert.deepEqual(flagged("cd /home/" + "agent"), [], user);
     assert.deepEqual(flagged("/home/<user>/workspace"), [], user);
   }
   const agentChecks = redactionChecks({ host: "ci", user: "agent" });
   assert.deepEqual(findSensitive("agent: claude-code", agentChecks), []);
+});
+
+await test("the role-name home does not hide this machine's own login behind a traversal", () => {
+  const checks = redactionChecks({ host: "ci", user: "alice" });
+  const names = findSensitive("ls /home/" + "agent/../alice/notes", checks).map((finding) => finding.name);
+  assert.ok(names.includes("this machine's username"), names.join());
 });
 
 await test("a generic hostname is not checked, and a user with no passwd entry is not an error", () => {

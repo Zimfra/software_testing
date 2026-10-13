@@ -7,11 +7,11 @@ Merge the following branches into the current branch:
 For each branch:
 
 1. Run `git merge <branch> --no-edit`
-2. If there are merge conflicts, resolve them intelligently by reading both sides and choosing the correct resolution
-3. After resolving conflicts, run `npm run typecheck` and `npm run test` to verify everything works
-4. If tests fail, fix the issues before proceeding to the next branch
+2. If there are merge conflicts, keep the lines from both sides and change nothing else (`CHANGELOG.md` conflicts are the common case: keep both entries). Do not rewrite code or text while resolving a conflict.
+3. Run `npm run typecheck` and `npm run test` after each merge.
+4. If they fail, stop. Make any fix in a separate commit after the merge commit, with its own `<type>: <description>` subject, never inside the merge commit.
 
-After all branches are merged, make a single commit summarizing the merge.
+Follow `CLAUDE.md` and `.claude/rules/zeem/`. Never use `--no-verify`. Never push. Never rebase or force-push. Stage files by name.
 
 # COMMENT ON ISSUES
 

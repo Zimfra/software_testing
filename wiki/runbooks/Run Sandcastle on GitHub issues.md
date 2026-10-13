@@ -70,8 +70,9 @@ Use it for small, well-specified issues. Rules the agents follow are in `CLAUDE.
 
 ## Verify
 
-- `git log main..HEAD` shows the agents' commits with `<type>: <description>` subjects and one
-  merge commit per issue branch.
+- `git log main..HEAD` shows the agents' commits with `<type>: <description>` subjects. The merge
+  agent runs `git merge <branch> --no-edit` per branch, so each branch that was not a
+  fast-forward has its own merge commit.
 - `git ls-files .sandcastle` lists no `.env`, `logs/` or `worktrees/` entry.
 - `npm run check` exits 0 on the branch before `npm run pr`.
 
@@ -122,8 +123,15 @@ Sandcastle loop, a real push, and GitHub's review request reaching the owner.
   the full `npm run check`. Reported from the 2026-10-12 run; not re-run here.
 - `.sandcastle/main.ts` names the model `claude-opus-4-8`. Check that id is current before a
   long run; not verified here.
-- `.sandcastle/main.ts` is type-checked by `npm run typecheck` but not linted: ESLint skips
-  dot-directories by default and the file keeps the upstream template's style.
+- `.sandcastle/main.ts` is type-checked by `npm run typecheck` but not linted: the `files` globs
+  in `eslint.config.ts` cover only `scripts/**/*.ts` and `eslint.config.ts` itself, and the
+  file keeps the upstream template's style.
+- The already-done guard drops an issue only when its `sandcastle/issue-<number>` branch is
+  merged into the current branch and has at least one commit of its own (read from the branch
+  reflog). A branch that was created and never committed to stays pending. Two limits follow:
+  a pull request that the owner squash-merges leaves a branch that is never an ancestor, so
+  delete that local branch or close the issue; and a branch whose reflog has expired is
+  planned again, which costs a run and loses nothing.
 
 ## Troubleshooting
 

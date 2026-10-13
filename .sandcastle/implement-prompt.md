@@ -2,7 +2,7 @@
 
 Fix issue {{TASK_ID}}: {{ISSUE_TITLE}}
 
-Pull in the issue using `gh issue view -R Zimfra/software_testing <ID>`. If it has a parent PRD, pull that in too.
+Pull in the issue using `gh issue view -R Zimfra/software_testing <ID>`. If the issue names a parent PRD, pull that in too with the same command and `-R Zimfra/software_testing`, using the parent's number; never run `gh issue view` without `-R`.
 
 Only work on the issue specified.
 
