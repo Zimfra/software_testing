@@ -16,6 +16,7 @@ evidence:
   - "VERIFIED: negative control, removing the filter that drops branches already on origin/main made the selection test fail (1 of 13); making a landing refusal exit 2 instead of 1 made the refusal test fail (1 of 13); restoring the file passed 13 of 13."
   - "VERIFIED: npm run lint and npm run typecheck exit 0 with the wrapper and its test, and node scripts/sandcastle/afk.ts --help prints the usage while an unknown argument exits 2."
   - "VERIFIED: spawnRunner(undefined, 0) from scripts/git/pr-ready.ts runs a command with no timeout and returns its output (sh -c 'echo ok' gave status 0, stdout ok), which is what the loop and the landing step use."
+  - "VERIFIED: npm run check, run on commit ef254a0 before this evidence line was added, exited 0 (lint, typecheck, tests with coverage, evals:test, wiki:lint, skills:lint, governance:check, rules:check, wiki:compliance, changelog:guard and memory:guard)."
   - "UNKNOWN: the real gh (issue comment, the review request reaching the owner), Docker and the Sandcastle loop were not run; the tests replace them with scripted runners."
   - "UNKNOWN: whether pr-ready prints the pull request URL in the form the wrapper matches (https://.../pull/N) under a real gh; the test uses the URL shape from pr-ready's own message and pr-ready.test.ts."
 ---
