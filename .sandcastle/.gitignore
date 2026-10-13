@@ -1,0 +1,4 @@
+.env
+logs/
+worktrees/
+!.env.example
