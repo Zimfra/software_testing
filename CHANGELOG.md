@@ -6,7 +6,7 @@ facts that only exist after the owner merges. `npm run changelog:guard` enforces
 
 ## 2026-10-12
 
-- The wiki privacy scan now treats the account name `agent` as a role name, like `node` or `runner`, instead of a personal username. A checkout validated by a user named `agent` (the Sandcastle sandbox user) no longer fails `wiki:lint` on the `agent:` field of every note; a login that names a person, or a `/home/<user>` path, is still flagged.
+- The wiki privacy scan now treats the account name `agent` as a role name, like `node` or `runner`, instead of a personal username. A checkout validated by a user named `agent` (the Sandcastle sandbox user) no longer fails `wiki:lint` on the `agent:` field of every note; a login that names a person is still flagged, and so is a home-directory path containing a real username, which a new test pins for the `agent` login. The comment above the list now says what counts as a role name and why.
 
 ## 2026-10-11
 
