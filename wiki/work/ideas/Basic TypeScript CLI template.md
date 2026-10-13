@@ -12,7 +12,8 @@ priority: P2
 next_action: Owner decides whether the tests stay on node:test or move to Vitest, then reviews and merges the pull request for issue #1.
 related: []
 evidence:
-  - "VERIFIED: scripts/app/greet.test.ts failed before scripts/app/greet.ts existed (the import of ./greet.ts could not resolve) and passes after; 7 subtests across greet and main cover the name, the empty-name default, and the usage error."
+  - "INFERRED: scripts/app/greet.test.ts was written before scripts/app/greet.ts by the Sandcastle implementer, from its own account; the code and test arrived in one commit, so history shows no red run."
+  - "VERIFIED: on this branch the three new main cases (--help, an argument starting with a dash, a whitespace-only name) failed against the scaffold's main (4 failures counting their suite) and pass after the change: scripts/app/greet.test.ts has 3 tests with 10 subtests, 13 of 13 pass, lint and typecheck are clean (2026-10-13)."
   - "VERIFIED: node scripts/app/greet.ts printed 'Hello, world!' with no argument, 'Hello, Ada!' for one name, and 'usage: greet [name]' with exit 2 for two arguments."
   - "VERIFIED: on a clean branch from main, npm run ci (tsc then node --test with coverage) exits 0 with 588 tests passing (2026-10-13)."
   - "UNKNOWN: whether the owner wants the tests in Vitest. The issue text says \"uses VI test\"; the scaffold uses node:test, which every other test here uses, and Vitest would add a dependency and a second runner."
@@ -30,8 +31,9 @@ existing scripts are governance guards, which mix the CLI shape with their own l
 
 A tiny CLI under `scripts/app/` that follows the repository's `main`/`isEntryPoint` convention
 from `scripts/lib/cli.ts`, has a sibling `node:test` test, type-checks, and is runnable with
-`node scripts/app/greet.ts`. A single `npm run ci` command runs the type check and the tests,
-the same pair the `check` workflow already runs on every pull request.
+`node scripts/app/greet.ts`; `--help` prints usage. A single `npm run ci` command runs the type
+check and the tests, the two steps that `npm run check` (which the `check` workflow runs) also
+includes. It is not the workflow's own command, and `npm ci` is a different, built-in npm command.
 
 ## Next step
 
