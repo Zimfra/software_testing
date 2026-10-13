@@ -73,12 +73,19 @@ await test("a service account is not redacted as a personal identifier", () => {
   assert.equal(hasLoginCheck("alice"), true);
 });
 
-await test("a role-name login does not switch off the home-path check", () => {
+await test("the role-name home agent is allowed, and every other home path is flagged for every login", () => {
+  for (const user of ["agent", "node", "alice"]) {
+    const flagged = (text: string): string[] =>
+      findSensitive(text, redactionChecks({ host: "ci", user })).map((finding) => finding.name);
+    assert.deepEqual(flagged("WORKDIR /home/" + "agent/workspace"), [], user);
+    assert.deepEqual(flagged("PATH=/home/" + "agent/.local/bin"), [], user);
+    assert.match(flagged("see /home/" + "agentsmith/x").join(), /home path/, user);
+    assert.match(flagged("see /home/" + "agent-smith/x").join(), /home path/, user);
+    assert.match(flagged("see /home/" + "alice/x").join(), /home path/, user);
+    assert.deepEqual(flagged("/home/<user>/workspace"), [], user);
+  }
   const agentChecks = redactionChecks({ host: "ci", user: "agent" });
-  const flagged = (text: string): string[] => findSensitive(text, agentChecks).map((finding) => finding.name);
-  assert.match(flagged("see /home/" + "agent/workspace").join(), /home path/);
-  assert.deepEqual(flagged("agent: claude-code"), []);
-  assert.deepEqual(flagged("/home/<user>/workspace"), []);
+  assert.deepEqual(findSensitive("agent: claude-code", agentChecks), []);
 });
 
 await test("a generic hostname is not checked, and a user with no passwd entry is not an error", () => {
