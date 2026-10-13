@@ -9,13 +9,20 @@ export function greet(name: string): string {
   return `Hello, ${name === "" ? "world" : name}!`;
 }
 
-/** greet [name]: prints one greeting. No name greets the world; more than one is a usage error. */
+/**
+ * greet [name]: prints one greeting. No name (or a blank one) greets the world; --help prints
+ * usage; more than one argument, or one that looks like a flag, is a usage error.
+ */
 export function main(args: readonly string[], output: Output = consoleOutput): number {
-  if (args.length > 1) {
+  if (args[0] === "--help") {
+    output.write(USAGE);
+    return EXIT_OK;
+  }
+  if (args.length > 1 || args[0]?.startsWith("-")) {
     output.warn(USAGE);
     return EXIT_ERROR;
   }
-  output.write(greet(args[0] ?? ""));
+  output.write(greet((args[0] ?? "").trim()));
   return EXIT_OK;
 }
 
