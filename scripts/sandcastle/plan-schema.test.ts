@@ -26,10 +26,7 @@ await test("planSchema refuses a plan with the wrong shape, naming where", () =>
     ["a branch that starts with a dash", { issues: [{ id: "1", title: "t", branch: "--all" }] }, "issues.0.branch"],
     ["a branch that names another issue", { issues: [{ id: "1", title: "t", branch: "sandcastle/issue-2" }] }, "issues.0.branch"],
     ["an id with a leading zero", { issues: [{ id: "007", title: "t", branch: "sandcastle/issue-007" }] }, "issues.0.id"],
-    ["a title with a backtick", { issues: [{ id: "1", title: "run !`id`", branch: "sandcastle/issue-1" }] }, "issues.0.title"],
-    ["a multi-line title", { issues: [{ id: "1", title: "a\nb", branch: "sandcastle/issue-1" }] }, "issues.0.title"],
     ["an empty title", { issues: [{ id: "1", title: "  ", branch: "sandcastle/issue-1" }] }, "issues.0.title"],
-    ["an over-long title", { issues: [{ id: "1", title: "x".repeat(201), branch: "sandcastle/issue-1" }] }, "issues.0.title"],
     ["the same issue twice", { issues: [{ id: "1", title: "t", branch: "sandcastle/issue-1" }, { id: "1", title: "u", branch: "sandcastle/issue-1" }] }, "issues.1.id"],
     ["a branch with a path suffix", { issues: [{ id: "1", title: "t", branch: "sandcastle/issue-1/../x" }] }, "issues.0.branch"],
   ];
@@ -38,6 +35,17 @@ await test("planSchema refuses a plan with the wrong shape, naming where", () =>
     assert.ok("issues" in result && result.issues.length > 0, name);
     assert.equal("issues" in result ? result.issues[0]?.path.join(".") : undefined, path, name);
   }
+});
+
+await test("planSchema normalises a title instead of refusing the plan", () => {
+  const titled = (title: string): unknown => {
+    const result = validate({ issues: [{ id: "3", title, branch: "sandcastle/issue-3" }] });
+    return "value" in result ? result.value.issues[0]?.title : result;
+  };
+  assert.equal(titled("Fix `foo` crash"), "Fix 'foo' crash");
+  assert.equal(titled("  two\nlines\r\n here "), "two lines here");
+  assert.equal(titled("bell\u0007 and \u001b[31mred"), "bell and [31mred");
+  assert.equal(titled("x".repeat(250)), "x".repeat(200));
 });
 
 // Sandcastle's extractObject (dist/index.js, 0.12.0) treats a truthy `issues` on the result as

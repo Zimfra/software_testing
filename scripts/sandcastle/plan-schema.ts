@@ -21,11 +21,12 @@ function parseIssue(entry: unknown, index: number): { issue: PlannedIssue } | { 
   // The plan comes from a model that read untrusted issue text, and the branch goes into git and gh.
   if (!/^[1-9]\d*$/.test(id)) return { problems: [{ message: "id must be an issue number", path: [...at, "id"] }] };
   if (branch !== `sandcastle/issue-${id}`) return { problems: [{ message: `branch must be sandcastle/issue-${id}`, path: [...at, "branch"] }] };
-  // The title is substituted into prompts, where Sandcastle expands !`command` inside the sandbox.
-  if (title.trim() === "" || title.length > MAX_TITLE || /[\r\n`]/.test(title)) {
-    return { problems: [{ message: `title must be one non-empty line of at most ${MAX_TITLE} characters with no backtick`, path: [...at, "title"] }] };
-  }
-  return { issue: { id, title, branch } };
+  // The title is shown to agents and logged to a terminal. Backticks, control characters and line
+  // breaks are replaced rather than refused, because a code span in a title is ordinary and a
+  // refusal would abort the whole loop.
+  const clean = title.replace(/`/g, "'").replace(/[\p{Cc}\p{Zl}\p{Zp}]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, MAX_TITLE).trim();
+  if (clean === "") return { problems: [{ message: "title must not be empty", path: [...at, "title"] }] };
+  return { issue: { id, title: clean, branch } };
 }
 
 function parsePlan(value: unknown): Result {
