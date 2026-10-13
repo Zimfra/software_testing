@@ -82,19 +82,22 @@ Use it for small, well-specified issues. Rules the agents follow are in `CLAUDE.
 you can leave. It runs on the host, from the feature branch checked out, and takes no arguments.
 In order:
 
-1. Refuses, saying why and exiting 1, when the branch is `main`, HEAD is detached or the tree
-   has uncommitted changes (reported together), and when `gh repo view` fails, which means `gh`
-   is not logged in or cannot see the repository. Nothing has run yet. A login that is the
+1. Refuses, saying why and exiting 1, when the branch is `main`, HEAD is detached, the tree has
+   uncommitted changes, or `gh repo view` fails (`gh` not logged in, or the repository is not
+   visible). All of these are reported together. Nothing has run yet. A login that is the
    repository owner is refused by step 4, after the loop; the work then stays merged on the
    branch.
 2. Runs `node .sandcastle/main.ts`. If that exits non-zero the wrapper stops with exit 2 and
-   nothing is pushed or commented.
+   nothing is pushed or commented. It also stops with exit 2 when HEAD is no longer on the
+   starting branch afterwards, because the merger is an agent with a shell on this checkout.
 3. Runs `git fetch origin main`, then lists the local branches named `sandcastle/issue-<N>` that
-   this run merged into `HEAD` and that are not on `origin/main` and hold a commit of their own
-   (the branch reflog, as in the already-done guard). The list comes from git, not from the log.
-   A branch that was already merged before the run started is not announced, so an issue whose
-   pull request never opened must be landed with `npm run pr` by hand. If there are none it says
-   so and exits 0 without opening anything.
+   this run merged into `HEAD`, that are not on `origin/main` and that hold a commit of their
+   own (the branch reflog, as in the already-done guard). The list comes from git, not from the
+   log. A branch merged before the run started is named in a warning and not announced, and the
+   pull request this run opens still carries its work, so land such an issue's announcement by
+   hand. If there is nothing to announce and HEAD did not move it says so and exits 0; if HEAD
+   moved with nothing announceable it exits 2, because commits reached the branch by a path the
+   reflog signal does not recognise.
 4. Runs `node scripts/git/pr-ready.ts`, the tool behind `npm run pr`, with its output streamed to
    the terminal: it runs `npm run check`, refuses a `gh` login that is the repository owner,
    pushes the branch and opens or reports the pull request. Its refusal (exit 1) or failure
@@ -102,9 +105,10 @@ In order:
    commented. It then asks `gh pr view <branch> --json url` for the pull request URL; no URL is
    exit 2.
 5. Comments on each listed issue with `gh issue comment <N> -R <repository gh reported>`, giving
-   the pull request URL and saying it waits for the owner's review. A comment that fails does
-   not stop the others; the wrapper then exits 2 and names the issues. The merge prompt also
-   comments on each issue it merged, so an issue can carry two comments.
+   the pull request URL, saying the work may be incomplete and that it waits for the owner's
+   review. A comment that fails does not stop the others; the wrapper then exits 2 and names the
+   issues, and nothing retries it. The merge prompt also comments on each issue it merged, so an
+   issue can carry two comments.
 
 What notifies the owner: GitHub's review request on the pull request (the owner is the code
 owner) and the comment on each issue. There is no other channel. What it deliberately does not
