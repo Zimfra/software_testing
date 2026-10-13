@@ -4,17 +4,18 @@ title: Basic TypeScript CLI template
 summary: A minimal, tested TypeScript CLI under scripts/app/ to copy when starting a new script application, with an npm run ci script for type checking and tests.
 tags: [area/typescript, tool/node]
 created: 2026-10-12
-updated: 2026-10-12
+updated: 2026-10-13
 agent: claude-code
 status: in-progress
 owner: claude-code
 priority: P2
-next_action: Owner reviews and merges the pull request for issue #1.
+next_action: Owner decides whether the tests stay on node:test or move to Vitest, then reviews and merges the pull request for issue #1.
 related: []
 evidence:
   - "VERIFIED: scripts/app/greet.test.ts failed before scripts/app/greet.ts existed (the import of ./greet.ts could not resolve) and passes after; 7 subtests across greet and main cover the name, the empty-name default, and the usage error."
   - "VERIFIED: node scripts/app/greet.ts printed 'Hello, world!' with no argument, 'Hello, Ada!' for one name, and 'usage: greet [name]' with exit 2 for two arguments."
-  - "VERIFIED: npm run ci (tsc then node --test with coverage) exits 0 with 587 tests passing; greet.ts covers 100% of lines, its one uncovered function is the entry-point lambda, and the overall gate holds (lines 99.63%, functions 96.45%, branches 92.53%)."
+  - "VERIFIED: on a clean branch from main, npm run ci (tsc then node --test with coverage) exits 0 with 588 tests passing (2026-10-13)."
+  - "UNKNOWN: whether the owner wants the tests in Vitest. The issue text says \"uses VI test\"; the scaffold uses node:test, which every other test here uses, and Vitest would add a dependency and a second runner."
 ---
 
 Delivers GitHub issue #1: scaffold a basic TypeScript template with a very simple CLI, tests
