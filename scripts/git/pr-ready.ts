@@ -56,6 +56,17 @@ function readiness(run: Run): { branch: string } | { refusal: string } {
   return { branch };
 }
 
+/** Lower-case user logins named in origin/main's .github/CODEOWNERS; none when the file is missing. */
+function codeOwners(run: Run): string[] {
+  const file = run("git", ["show", "refs/remotes/origin/main:.github/CODEOWNERS"]);
+  if (file.status !== 0) return [];
+  return file.stdout.split("\n")
+    .filter((line) => !line.trim().startsWith("#"))
+    .flatMap((line) => line.trim().split(/\s+/).slice(1))
+    .filter((entry) => /^@[^/\s]+$/.test(entry))
+    .map((entry) => entry.slice(1).toLowerCase());
+}
+
 // gh is checked before the push, so a missing login never leaves a branch published with no PR.
 // The pre-push hook would rerun npm run check; it skips that for the commit just checked here.
 function publish(run: Run, branch: string): string | { refusal: string } {
@@ -65,9 +76,17 @@ function publish(run: Run, branch: string): string | { refusal: string } {
   // owner's login an agent could approve and merge, so that login is refused (ADR-0025).
   const user = must(run, "gh", ["api", "user", "--jq", ".login"]);
   const owner = must(run, "gh", ["repo", "view", "--json", "owner", "--jq", ".owner.login"]);
+  // A repository owned by an organisation has the organisation as its owner login, so the human
+  // owner is found among the code owners instead. Read from origin/main: a branch cannot edit
+  // its own way past this. Team entries (@org/team) are not logins and are skipped.
+  const refusals: string[] = [];
   if (user === owner) {
-    return { refusal: `gh is logged in as the repository owner (${owner}). Agents push as the machine account: log gh in as it and remove the owner's login from this machine (wiki/reference/Merge gate contract.md).` };
+    refusals.push(`gh is logged in as the repository owner (${owner}). Agents push as the machine account: log gh in as it and remove the owner's login from this machine (wiki/reference/Merge gate contract.md).`);
   }
+  if (codeOwners(run).includes(user.toLowerCase())) {
+    refusals.push(`gh is logged in as a code owner (${user}) named in .github/CODEOWNERS. Agents push as the machine account: log gh in as it and remove the owner's login from this machine (wiki/reference/Merge gate contract.md).`);
+  }
+  if (refusals.length > 0) return { refusal: refusals.join("\npr-ready: ") };
   const head = must(run, "git", ["rev-parse", "HEAD"]);
   must(run, "git", ["push", "--set-upstream", "origin", branch], { env: { PR_READY_CHECKED: head } });
   const view = run("gh", ["pr", "view", branch, "--json", "url,state"]);

@@ -10,11 +10,12 @@ import { execFileSync, spawnSync } from "node:child_process";
 
 type Call = { command: string; args: readonly string[] };
 
-function fixture(t: TestContext): RepoFixture {
+function fixture(t: TestContext, codeowners?: string): RepoFixture {
   const repo = createRepo("pr-ready-");
   const remote = mkdtempSync(join(tmpdir(), "pr-ready-remote-"));
   t.after(() => { repo.cleanup(); rmSync(remote, { recursive: true, force: true }); });
   execFileSync("git", ["init", "--quiet", "--bare", remote], { env: cleanGitEnv });
+  if (codeowners !== undefined) repo.write(".github/CODEOWNERS", codeowners);
   repo.commit("base");
   repo.git(["remote", "add", "origin", remote]);
   repo.git(["push", "--quiet", "origin", "main"]);
@@ -103,6 +104,51 @@ await test("gh logged in as the repository owner is refused before anything is p
   assert.match(result.err, /machine account/);
   assert.ok(!calls.some((call) => call.args[0] === "push"), "nothing is pushed under the owner's login");
   assert.ok(!calls.some((call) => call.command === "gh" && call.args[1] === "create"));
+});
+
+await test("gh logged in as a code owner named in CODEOWNERS is refused before anything is pushed", async (t) => {
+  const owners = "# only the owner approves\n* @Human-Owner @org/reviewers someone@example.invalid\n/docs/ @second-owner\n";
+  for (const user of ["human-owner", "Second-Owner"]) {
+    await t.test(user, (t) => {
+      const repo = fixture(t, owners);
+      const { run, calls } = runner(repo, { ghUser: user });
+      const result = go(repo, run);
+      assert.equal(result.code, EXIT_REFUSED);
+      assert.match(result.err, /code owner/);
+      assert.match(result.err, /machine account/);
+      assert.ok(!calls.some((call) => call.args[0] === "push"), "nothing is pushed under a code owner's login");
+      assert.ok(!calls.some((call) => call.command === "gh" && call.args[1] === "create"));
+    });
+  }
+  await t.test("a branch cannot edit CODEOWNERS to get past the refusal", (t) => {
+    const repo = fixture(t, owners);
+    repo.write(".github/CODEOWNERS", "* @someone-else\n");
+    repo.commit("chore: edit owners");
+    assert.equal(go(repo, runner(repo, { ghUser: "human-owner" }).run).code, EXIT_REFUSED);
+  });
+  await t.test("a user who is both the repository owner and a code owner gets both reasons", (t) => {
+    const repo = fixture(t, "* @repo-owner\n");
+    const both = go(repo, runner(repo, { ghUser: "repo-owner" }).run);
+    assert.equal(both.code, EXIT_REFUSED);
+    assert.match(both.err, /repository owner/);
+    assert.match(both.err, /code owner/);
+  });
+});
+
+await test("a login that is not a code owner, or no usable CODEOWNERS, is not refused", async (t) => {
+  const cases: [string, string | undefined][] = [
+    ["a different login", "* @human-owner\n"],
+    ["no CODEOWNERS file", undefined],
+    ["only comments, a team and an email", "# nothing\n* @org/team me@example.invalid\n"],
+    ["a login that only contains an owner's name", "* @machine\n"],
+  ];
+  for (const [name, codeowners] of cases) {
+    await t.test(name, (t) => {
+      const repo = fixture(t, codeowners);
+      const result = go(repo, runner(repo, { ghUser: "machine-bot" }).run);
+      assert.equal(result.code, EXIT_OK, result.err);
+    });
+  }
 });
 
 await test("--dry-run checks but does not push or open a PR", (t) => {
