@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createRepo } from "../test-support/repo-fixture.ts";
-import { pendingIssues } from "./already-done.ts";
+import { rmSync } from "node:fs";
+import { join } from "node:path";
+import { aheadIssues, pendingIssues } from "./already-done.ts";
 
 const issue = (id: string): { id: string; title: string; branch: string } =>
   ({ id, title: `Issue ${id}`, branch: `sandcastle/issue-${id}` });
@@ -120,6 +122,80 @@ await test("pendingIssues drops a branch whose commits were fast-forwarded into 
     repo.git(["switch", "--quiet", "main"]);
     repo.git(["merge", "--quiet", "--ff-only", "sandcastle/issue-9"]);
     assert.deepEqual(pendingIssues([issue("9")], repo.dir), []);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("pendingIssues keeps a branch an agent reset back to where it started", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-13"]);
+    repo.write("thirteen.txt", "13");
+    repo.commit("feat: thirteen");
+    repo.git(["reset", "--quiet", "--hard", "main"]);
+    repo.git(["switch", "--quiet", "main"]);
+    assert.deepEqual(pendingIssues([issue("13")], repo.dir), [issue("13")]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("pendingIssues counts cherry-picked and reverted commits as the branch's own", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "elsewhere"]);
+    repo.write("picked.txt", "p");
+    const picked = repo.commit("feat: picked");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-14"]);
+    repo.git(["cherry-pick", picked]);
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-15", "main"]);
+    repo.git(["cherry-pick", picked]);
+    repo.git(["revert", "--no-edit", "HEAD"]);
+    repo.git(["switch", "--quiet", "main"]);
+    repo.git(["merge", "--quiet", "--no-ff", "--no-edit", "sandcastle/issue-14"]);
+    repo.git(["merge", "--quiet", "--no-ff", "--no-edit", "sandcastle/issue-15"]);
+    assert.deepEqual(pendingIssues([issue("14"), issue("15")], repo.dir), []);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("pendingIssues keeps a branch whose reflog is gone", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-16"]);
+    repo.write("sixteen.txt", "16");
+    repo.commit("feat: sixteen");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.git(["merge", "--quiet", "--ff-only", "sandcastle/issue-16"]);
+    rmSync(join(repo.dir, ".git", "logs", "refs", "heads", "sandcastle", "issue-16"));
+    assert.deepEqual(pendingIssues([issue("16")], repo.dir), [issue("16")]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("aheadIssues lists the planned branches that hold commits of their own not yet in HEAD", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-17"]);
+    repo.write("seventeen.txt", "17");
+    repo.commit("feat: seventeen");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.git(["branch", "sandcastle/issue-18"]);
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-19"]);
+    repo.write("nineteen.txt", "19");
+    repo.commit("feat: nineteen");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.git(["merge", "--quiet", "--no-ff", "--no-edit", "sandcastle/issue-19"]);
+    const planned = [issue("17"), issue("18"), issue("19"), issue("20")];
+    assert.deepEqual(aheadIssues(planned, repo.dir).map((entry) => entry.id), ["17"]);
   } finally {
     repo.cleanup();
   }
