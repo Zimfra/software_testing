@@ -4,6 +4,11 @@ Every branch adds its own entry here, under a `## YYYY-MM-DD` heading dated betw
 started and the day it lands (UTC). Entries describe the change; they never cite
 facts that only exist after the owner merges. `npm run changelog:guard` enforces this.
 
+## 2026-10-13
+
+- Sandcastle (`@ai-hero/sandcastle` 0.12.0, a Docker-sandboxed Claude agent loop over GitHub issues labelled `Sandcastle`) is now tracked under `.sandcastle/` and run with `npm run sandcastle`. `.env`, `logs/` and `worktrees/` stay ignored, and `.env.example` lists the variable names without values. The implementer prompt now asks for `<type>: <description>` commits staged by name, test first, with a changelog entry and work record, and never `--no-verify` or a push; the merge prompt comments on an issue instead of closing it; every `gh issue` command passes `-R Zimfra/software_testing`. A re-run skips a planned issue whose `sandcastle/issue-N` branch is already merged into the current branch (`scripts/sandcastle/already-done.ts`). The planner output is validated by a hand-written Standard Schema, so `zod` is not a dependency, and `tsconfig.json` now type-checks `.sandcastle/main.ts`.
+- The wiki privacy scan allows a path under `/home/agent`, the home of the role-name sandbox user, the same way it allows `/home/linuxbrew`. A home directory that merely starts with `agent` (the names agentsmith and agent-smith, say) and every other home path are still flagged. This reverses the earlier test that asserted a path under `/home/agent` is flagged.
+
 ## 2026-10-12
 
 - The wiki privacy scan now treats the account name `agent` as a role name, like `node` or `runner`, instead of a personal username. A checkout validated by a user named `agent` (the Sandcastle sandbox user) no longer fails `wiki:lint` on the `agent:` field of every note; a login that names a person is still flagged, and so is a home-directory path containing a real username, which a new test pins for the `agent` login. The comment above the list now says what counts as a role name and why.
