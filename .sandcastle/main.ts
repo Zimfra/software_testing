@@ -21,7 +21,8 @@
 
 import * as sandcastle from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
-import { pendingIssues } from "../scripts/sandcastle/already-done.ts";
+import { aheadIssues, pendingIssues } from "../scripts/sandcastle/already-done.ts";
+import { branchRefusal } from "../scripts/sandcastle/branch-guard.ts";
 import { planSchema } from "../scripts/sandcastle/plan-schema.ts";
 
 // The planner emits its plan as JSON inside <plan> tags; Output.object extracts
@@ -50,6 +51,13 @@ const copyToWorktree = ["node_modules"];
 // ---------------------------------------------------------------------------
 // Main loop
 // ---------------------------------------------------------------------------
+
+// The merger commits into the checked-out branch, so a run on main is refused before anything starts.
+const refusal = branchRefusal(process.cwd());
+if (refusal !== undefined) {
+  console.error(refusal);
+  process.exit(1);
+}
 
 for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   console.log(`\n=== Iteration ${iteration}/${MAX_ITERATIONS} ===\n`);
@@ -172,7 +180,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
 
   // Only pass branches that actually produced commits to the merge phase.
   // An agent that ran successfully but made no commits has nothing to merge.
-  const completedIssues = settled
+  const producedIssues = settled
     .map((outcome, i) => ({ outcome, issue: issues[i]! }))
     .filter(
       (entry) =>
@@ -180,6 +188,12 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
         entry.outcome.value.commits.length > 0,
     )
     .map((entry) => entry.issue);
+  // A branch that still holds commits HEAD lacks (a reviewer that threw, a merge that was
+  // aborted) is merged too, even when the implementer added nothing this round.
+  const leftOver = aheadIssues(issues, process.cwd()).filter(
+    (issue) => !producedIssues.includes(issue),
+  );
+  const completedIssues = [...producedIssues, ...leftOver];
 
   const completedBranches = completedIssues.map((i) => i.branch);
 

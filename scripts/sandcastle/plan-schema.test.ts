@@ -46,6 +46,8 @@ await test("planSchema normalises a title instead of refusing the plan", () => {
   assert.equal(titled("  two\nlines\r\n here "), "two lines here");
   assert.equal(titled("bell\u0007 and \u001b[31mred"), "bell and [31mred");
   assert.equal(titled("x".repeat(250)), "x".repeat(200));
+  assert.equal(titled("a\u202Eb\u200Bc"), "abc", "bidi and zero-width format characters are removed");
+  assert.equal(titled("\u{1F600}".repeat(250)), "\u{1F600}".repeat(200), "cut by code point, never inside a surrogate pair");
 });
 
 // Sandcastle's extractObject (dist/index.js, 0.12.0) treats a truthy `issues` on the result as

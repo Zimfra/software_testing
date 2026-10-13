@@ -24,7 +24,8 @@ function parseIssue(entry: unknown, index: number): { issue: PlannedIssue } | { 
   // The title is shown to agents and logged to a terminal. Backticks, control characters and line
   // breaks are replaced rather than refused, because a code span in a title is ordinary and a
   // refusal would abort the whole loop.
-  const clean = title.replace(/`/g, "'").replace(/[\p{Cc}\p{Zl}\p{Zp}]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, MAX_TITLE).trim();
+  const cleaned = title.replace(/`/g, "'").replace(/[\p{Cc}\p{Zl}\p{Zp}]+/gu, " ").replace(/\p{Cf}+/gu, "").replace(/\s+/g, " ").trim();
+  const clean = Array.from(cleaned).slice(0, MAX_TITLE).join("").trim();
   if (clean === "") return { problems: [{ message: "title must not be empty", path: [...at, "title"] }] };
   return { issue: { id, title: clean, branch } };
 }
