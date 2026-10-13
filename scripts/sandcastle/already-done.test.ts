@@ -53,7 +53,7 @@ await test("pendingIssues keeps a branch that is ahead of HEAD or diverged from 
   }
 });
 
-await test("pendingIssues does not read a branch name that looks like an option as one", () => {
+await test("pendingIssues keeps an issue whose branch name looks like an option, without reading it as one", () => {
   const repo = createRepo();
   try {
     repo.commit("chore: base");

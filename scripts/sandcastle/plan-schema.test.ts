@@ -33,3 +33,17 @@ await test("planSchema refuses a plan with the wrong shape, naming where", () =>
     assert.equal("issues" in result ? result.issues[0]?.path.join(".") : undefined, path, name);
   }
 });
+
+// Sandcastle's extractObject (dist/index.js, 0.12.0) treats a truthy `issues` on the result as
+// a validation failure and otherwise returns `value`; extractStructuredOutput is not exported, so
+// the test applies that same contract to the schema's results.
+await test("planSchema results follow the contract Sandcastle's Output.object reads", () => {
+  const plan = { issues: [{ id: "7", title: "t", branch: "sandcastle/issue-7" }] };
+  const accepted = validate(plan);
+  assert.ok("value" in accepted && !("issues" in accepted), "a plan must not carry a top-level issues key on success");
+  assert.deepEqual(accepted.value, plan);
+  for (const bad of [{ issues: [{ id: "x", title: "t", branch: "sandcastle/issue-x" }] }, { issues: 3 }, null]) {
+    const refused = validate(bad);
+    assert.ok("issues" in refused && refused.issues.length > 0 && !("value" in refused));
+  }
+});
