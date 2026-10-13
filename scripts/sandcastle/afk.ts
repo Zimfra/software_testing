@@ -26,14 +26,19 @@ function git(run: Run, args: readonly string[]): string {
   return result.stdout;
 }
 
-/** The current branch (empty on a detached HEAD) and the reasons this checkout cannot run the loop. */
-function readiness(run: Run): { branch: string; refused: string[] } {
+/** The current branch (empty on a detached HEAD), the repository gh reports, and every reason not to run the loop. */
+function readiness(run: Run): { branch: string; repo: string; refused: string[] } {
   const head = run("git", ["symbolic-ref", "--quiet", "--short", "HEAD"]);
   const branch = head.status === 0 ? head.stdout.trim() : "";
   const refused: string[] = [];
   if (branch === "" || branch === "main") refused.push("Run this on a feature branch, not main or a detached HEAD.");
   if (git(run, ["status", "--porcelain"]).trim() !== "") refused.push("The tree has uncommitted changes. Commit or stash them first.");
-  return { branch, refused };
+  // One cheap call before the loop spends minutes: it fails when gh is not logged in or cannot
+  // see the repository. The owner-login refusal stays with pr-ready.ts, after the loop.
+  const view = run("gh", ["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]);
+  const repo = view.stdout.trim();
+  if (view.status !== 0 || repo === "") refused.push("gh cannot resolve this repository. Run gh auth login (as the machine account), then rerun.");
+  return { branch, repo, refused };
 }
 
 const branchesMerged = (run: Run, flag: string, ref: string): string[] =>
@@ -50,7 +55,7 @@ function mergedBranches(run: Run, cwd: string | undefined): string[] {
 const issueNumber = (ref: string): string => ISSUE_BRANCH.exec(ref)?.[1] ?? ref;
 
 function comment(run: Run, repo: string, issue: string, url: string): boolean {
-  const body = `Sandcastle merged this issue into a branch and opened ${url}. It is waiting for the owner's review. This issue stays open until the owner merges that pull request.`;
+  const body = `Sandcastle merged a branch for this issue into the branch of ${url}, which is waiting for the owner's review. The work may be incomplete: read the pull request before merging it. This issue stays open until the owner merges that pull request.`;
   return run("gh", ["issue", "comment", issue, "-R", repo, "--body", body]).status === 0;
 }
 
@@ -65,26 +70,35 @@ export function main(args: readonly string[], options: Options = {}): number {
     return EXIT_ERROR;
   }
   const run = options.run ?? defaultRunner(options.cwd);
-  const { branch, refused } = readiness(run);
+  const { branch, repo, refused } = readiness(run);
   for (const reason of refused) output.warn(`afk: ${reason}`);
   if (refused.length > 0) return EXIT_REFUSED;
-  // One cheap call before the loop spends minutes: it fails when gh is not logged in or cannot
-  // see the repository. The owner-login refusal stays with pr-ready.ts, after the loop.
-  const repoView = run("gh", ["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]);
-  const repo = repoView.stdout.trim();
-  if (repoView.status !== 0 || repo === "") {
-    output.warn("afk: gh cannot resolve this repository. Run gh auth login (as the machine account), then rerun.");
-    return EXIT_REFUSED;
-  }
   const before = new Set(mergedBranches(run, options.cwd));
+  const headBefore = git(run, ["rev-parse", "HEAD"]).trim();
 
   output.write("afk: step 1 of 3, running the Sandcastle loop (node .sandcastle/main.ts).");
   if (run("node", [".sandcastle/main.ts"], { inherit: true }).status !== 0) {
     output.warn("afk: the Sandcastle loop failed (output above). Nothing was pushed or commented.");
     return EXIT_ERROR;
   }
-  const issues = mergedBranches(run, options.cwd).filter((ref) => !before.has(ref)).map(issueNumber).sort((a, b) => Number(a) - Number(b));
+  // The merger is an agent with a shell on this checkout: the pull request must be the one for
+  // the branch the run started on, and a moved HEAD must not end as a silent "nothing to land".
+  const now = run("git", ["symbolic-ref", "--quiet", "--short", "HEAD"]);
+  if (now.stdout.trim() !== branch) {
+    output.warn(`afk: HEAD is no longer on ${branch} after the loop. Nothing was pushed or commented; check the checkout.`);
+    return EXIT_ERROR;
+  }
+  const merged = mergedBranches(run, options.cwd);
+  const issues = merged.filter((ref) => !before.has(ref)).map(issueNumber).sort((a, b) => Number(a) - Number(b));
+  const earlier = merged.filter((ref) => before.has(ref)).map(issueNumber);
+  if (earlier.length > 0) {
+    output.warn(`afk: issue ${earlier.join(", ")} was merged here by an earlier run and is not announced; land it with npm run pr if it has no pull request.`);
+  }
   if (issues.length === 0) {
+    if (git(run, ["rev-parse", "HEAD"]).trim() !== headBefore) {
+      output.warn("afk: HEAD moved during the loop but no issue branch with commits was merged, so nothing was announced. Check the branch before landing it by hand.");
+      return EXIT_ERROR;
+    }
     output.write("afk: no Sandcastle issue branch was merged into this branch by this run; nothing to land.");
     return EXIT_OK;
   }

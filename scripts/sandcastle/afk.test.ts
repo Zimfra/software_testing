@@ -78,7 +78,8 @@ function go(repo: RepoFixture, run: Run, args: string[] = []): { code: number; o
 }
 
 const comments = (calls: string[]): string[] => calls.filter((call) => call.startsWith("gh issue comment"));
-const sawAnything = (calls: string[]): boolean => calls.some((call) => !call.startsWith("git "));
+const GH_REPO = "gh repo view --json nameWithOwner --jq .nameWithOwner";
+const sawAnything = (calls: string[]): boolean => calls.some((call) => !call.startsWith("git ") && call !== GH_REPO);
 
 await test("the issues this run merged are announced on a pull request and commented on, and nothing merges", (t) => {
   const repo = fixture(t);
@@ -115,6 +116,7 @@ await test("the issues this run merged are announced on a pull request and comme
   assert.match(first ?? "", /^gh issue comment 4 -R Zimfra\/software_testing --body /);
   assert.match(second ?? "", /^gh issue comment 12 -R Zimfra\/software_testing --body /);
   assert.ok(first?.includes(PR_URL) && first.includes("waiting for the owner's review"));
+  assert.ok(first?.includes("may be incomplete") === true && !/\bopened\b/.test(first ?? ""), "does not claim to have opened the pull request or that the work is finished");
   assert.ok(!calls.some((call) => /push|--no-verify|\.env|issue close|pr merge|pr review|--admin/.test(call.replace(PR_URL, ""))), "no push, no bypass, no .env, no close or merge");
 });
 
@@ -204,6 +206,7 @@ await test("only issue branches with commits of their own, merged by this run, a
   const result = go(repo, run);
   assert.equal(result.code, EXIT_OK, result.err);
   assert.deepEqual(comments(calls).map((call) => call.split(" ")[3]), ["4"]);
+  assert.match(result.err, /issue 8/, "an issue merged by an earlier run is named as not announced");
 });
 
 await test("a repository gh cannot resolve is refused before the loop runs", (t) => {
@@ -271,6 +274,16 @@ await test("refusals come before anything runs, and are reported together", asyn
     assert.match(result.err, /uncommitted/);
     assert.ok(!sawAnything(calls));
   });
+  await t.test("gh that cannot resolve the repository is reported with the other refusals", (t) => {
+    const repo = fixture(t);
+    repo.write("dirty.md", "x\n");
+    const { run, calls } = runner(repo, { ghRepo: { status: 1, stdout: "" } });
+    const result = go(repo, run);
+    assert.equal(result.code, EXIT_REFUSED);
+    assert.match(result.err, /uncommitted/);
+    assert.match(result.err, /gh cannot resolve/);
+    assert.ok(!calls.includes("node .sandcastle/main.ts"));
+  });
   await t.test("both at once", (t) => {
     const repo = fixture(t);
     repo.git(["switch", "--quiet", "main"]);
@@ -278,6 +291,69 @@ await test("refusals come before anything runs, and are reported together", asyn
     const result = go(repo, runner(repo).run);
     assert.match(result.err, /feature branch/);
     assert.match(result.err, /uncommitted/);
+  });
+});
+
+await test("a branch switch during the loop stops the run before landing or commenting", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-4");
+  const { run, calls } = runner(repo, {
+    loop: () => {
+      mergeInto(repo, "feat/afk-work", "sandcastle/issue-4");
+      repo.git(["switch", "--quiet", "-c", "feat/elsewhere"]);
+      return 0;
+    },
+  });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.match(result.err, /feat\/afk-work/);
+  assert.ok(!calls.some((call) => call.includes("pr-ready") || call.startsWith("gh issue") || call.startsWith("gh pr")));
+});
+
+await test("a HEAD that moved with no announceable branch is a warning exit, not a silent success", (t) => {
+  const repo = fixture(t);
+  const { run, calls } = runner(repo, {
+    loop: () => {
+      repo.write("moved.md", "m\n");
+      repo.commit("feat: moved");
+      repo.git(["update-ref", "refs/heads/sandcastle/issue-5", "HEAD"]); // no commit entry in its reflog
+      return 0;
+    },
+  });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.match(result.err, /HEAD moved/);
+  assert.ok(!calls.some((call) => call.includes("pr-ready") || call.startsWith("gh issue")));
+});
+
+await test("a branch with a leading zero in its number is not an issue branch", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-07");
+  const { run, calls } = runner(repo, { loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-07"); return 0; } });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR, "HEAD moved but nothing is announceable");
+  assert.equal(comments(calls).length, 0);
+});
+
+await test("a failing git status or a failing fetch after the loop stops the run with an error", async (t) => {
+  await t.test("git status fails", (t) => {
+    const repo = fixture(t);
+    const base = runner(repo);
+    const run: Run = (command, args, options) =>
+      command === "git" && args[0] === "status" ? { status: 128, stdout: "" } : base.run(command, args, options);
+    assert.throws(() => go(repo, run), /git status/);
+    assert.ok(!base.calls.includes("node .sandcastle/main.ts"));
+  });
+  await t.test("the fetch after the loop fails", (t) => {
+    const repo = fixture(t);
+    const base = runner(repo);
+    let fetches = 0;
+    const run: Run = (command, args, options) => {
+      if (command === "git" && args[0] === "fetch" && ++fetches === 2) return { status: 128, stdout: "" };
+      return base.run(command, args, options);
+    };
+    assert.throws(() => go(repo, run), /git fetch/);
+    assert.ok(!base.calls.some((call) => call.includes("pr-ready") || call.startsWith("gh issue")));
   });
 });
 
