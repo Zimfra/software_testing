@@ -56,12 +56,15 @@ function readiness(run: Run): { branch: string } | { refusal: string } {
   return { branch };
 }
 
-/** Lower-case user logins named in origin/main's .github/CODEOWNERS; none when the file is missing. */
+/**
+ * Lower-case user logins named in origin/main's .github/CODEOWNERS. A file that is absent from
+ * the tree means no code owners; a tree that cannot be read throws, so the refusal never fails open.
+ */
 function codeOwners(run: Run): string[] {
-  const file = run("git", ["show", "refs/remotes/origin/main:.github/CODEOWNERS"]);
-  if (file.status !== 0) return [];
-  return file.stdout.split("\n")
-    .filter((line) => !line.trim().startsWith("#"))
+  const listed = must(run, "git", ["ls-tree", "--name-only", "refs/remotes/origin/main", "--", ".github/CODEOWNERS"]);
+  if (listed === "") return [];
+  return must(run, "git", ["show", "refs/remotes/origin/main:.github/CODEOWNERS"]).split("\n")
+    .map((line) => line.split("#")[0] ?? "")
     .flatMap((line) => line.trim().split(/\s+/).slice(1))
     .filter((entry) => /^@[^/\s]+$/.test(entry))
     .map((entry) => entry.slice(1).toLowerCase());

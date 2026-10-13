@@ -6,7 +6,7 @@ facts that only exist after the owner merges. `npm run changelog:guard` enforces
 
 ## 2026-10-13
 
-- `npm run pr` now also refuses to run when `gh` is logged in as a user named in `.github/CODEOWNERS` (matched case-insensitively, read from `origin/main`), not only as the repository owner. On an organisation-owned repository the owner login is the organisation, so the human owner's own account was not refused. Team and email entries are skipped, and a missing CODEOWNERS file changes nothing. The Merge gate contract states the new refusal.
+- `npm run pr` now also refuses to run when `gh` is logged in as a user named in `.github/CODEOWNERS` (matched case-insensitively, read from `origin/main`), not only as the repository owner. On an organisation-owned repository the owner login is the organisation, so the human owner's own account was not refused. Team and email entries are skipped, text after a `#` is a comment, and a CODEOWNERS file that is absent changes nothing; a tree that cannot be read stops the run instead of skipping the check. The Merge gate contract states the new refusal.
 
 ## 2026-10-12
 

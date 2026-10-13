@@ -141,6 +141,8 @@ await test("a login that is not a code owner, or no usable CODEOWNERS, is not re
     ["no CODEOWNERS file", undefined],
     ["only comments, a team and an email", "# nothing\n* @org/team me@example.invalid\n"],
     ["a login that only contains an owner's name", "* @machine\n"],
+    ["a comment line that names the login", "# ping @machine-bot\n* @human-owner\n"],
+    ["an inline comment that names the login", "* @human-owner # cc @machine-bot\n"],
   ];
   for (const [name, codeowners] of cases) {
     await t.test(name, (t) => {
@@ -149,6 +151,15 @@ await test("a login that is not a code owner, or no usable CODEOWNERS, is not re
       assert.equal(result.code, EXIT_OK, result.err);
     });
   }
+});
+
+await test("a CODEOWNERS file that cannot be read fails closed instead of skipping the refusal", (t) => {
+  const repo = fixture(t, "* @human-owner\n");
+  const base = runner(repo, { ghUser: "human-owner" });
+  const run: Run = (command, args, options) =>
+    command === "git" && args[0] === "ls-tree" ? { status: 128, stdout: "" } : base.run(command, args, options);
+  assert.throws(() => go(repo, run), /ls-tree/);
+  assert.ok(!base.calls.some((call) => call.args[0] === "push"), "nothing is pushed when the owners cannot be read");
 });
 
 await test("--dry-run checks but does not push or open a PR", (t) => {
