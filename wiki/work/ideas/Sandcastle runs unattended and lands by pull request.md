@@ -17,8 +17,10 @@ evidence:
   - "VERIFIED: npm run lint and npm run typecheck exit 0 with the wrapper and its test, and node scripts/sandcastle/afk.ts --help prints the usage while an unknown argument exits 2."
   - "VERIFIED: spawnRunner(undefined, 0) from scripts/git/pr-ready.ts runs a command with no timeout and returns its output (sh -c 'echo ok' gave status 0, stdout ok), which is what the loop and the landing step use."
   - "VERIFIED: npm run check, run on commit ef254a0 before this evidence line was added, exited 0 (lint, typecheck, tests with coverage, evals:test, wiki:lint, skills:lint, governance:check, rules:check, wiki:compliance, changelog:guard and memory:guard)."
+  - "VERIFIED: after independent review of the first head (finder and verifier, separate contexts; the verifier passed npm run check and three mutation controls), the finder's findings were fixed test first at 51a32b8: afk.test.ts went from 13 to 28 sandcastle tests in total with 7 of its cases red before the change (an empty branch created during the run was announced, an earlier run's merge was announced, the URL was matched from the landing tool's text, the repository name was fixed, and gh was not checked before the loop) and all pass after it."
+  - "VERIFIED: npm run check at 51a32b8 exited 0 with 610 of 610 tests passing (2026-10-13), after merging the integration branch at 993348c."
   - "UNKNOWN: the real gh (issue comment, the review request reaching the owner), Docker and the Sandcastle loop were not run; the tests replace them with scripted runners."
-  - "UNKNOWN: whether pr-ready prints the pull request URL in the form the wrapper matches (https://.../pull/N) under a real gh; the test uses the URL shape from pr-ready's own message and pr-ready.test.ts."
+  - "UNKNOWN: whether gh pr view <branch> --json url --jq .url returns the URL for a branch pushed by pr-ready under a real gh; the test replaces gh with a scripted runner."
 ---
 
 ## Problem
@@ -36,11 +38,15 @@ review and a comment on each issue naming it, with every merge still the owner's
 
 Owner points, none decided here:
 
-1. Whether the wrapper should refuse early when the branch does not contain `origin/main`, so a
-   long run is not spent before `pr-ready` refuses. It currently refuses only at the landing step.
+1. Whether the wrapper should refuse early when the branch does not contain `origin/main`, or
+   when the `gh` login is the owner's, so a long run is not spent before `pr-ready` refuses. It
+   now refuses early only when `gh` cannot resolve the repository; the other two checks stay in
+   `pr-ready.ts`, which is a different branch's file.
 2. Whether a notification channel beyond GitHub is wanted. The brief said none, so none exists.
-3. Whether an issue merged by an earlier run whose pull request never opened should be
-   announced again (it is, because selection is "merged here, not on origin/main").
+3. Which of the two comments an issue gets (the merge prompt's and the wrapper's, which names
+   the pull request) should stay. Both exist now.
+4. An issue merged by an earlier run whose pull request never opened is no longer announced
+   again; it needs `npm run pr` by hand.
 
 ## Observations
 

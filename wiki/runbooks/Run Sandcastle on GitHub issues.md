@@ -83,21 +83,28 @@ you can leave. It runs on the host, from the feature branch checked out, and tak
 In order:
 
 1. Refuses, saying why and exiting 1, when the branch is `main`, HEAD is detached or the tree
-   has uncommitted changes. Both refusals are reported together. Nothing has run yet.
+   has uncommitted changes (reported together), and when `gh repo view` fails, which means `gh`
+   is not logged in or cannot see the repository. Nothing has run yet. A login that is the
+   repository owner is refused by step 4, after the loop; the work then stays merged on the
+   branch.
 2. Runs `node .sandcastle/main.ts`. If that exits non-zero the wrapper stops with exit 2 and
    nothing is pushed or commented.
 3. Runs `git fetch origin main`, then lists the local branches named `sandcastle/issue-<N>` that
-   are merged into `HEAD` and not into `origin/main`. This comes from git, not from the log. If
-   there are none it says so and exits 0 without opening anything. A branch left merged by an
-   earlier run whose pull request never opened is listed again.
-4. Runs `node scripts/git/pr-ready.ts`, the tool behind `npm run pr`: it runs `npm run check`,
-   refuses a `gh` login that is the repository owner, pushes the branch and opens or reports the
-   pull request. Its refusal (exit 1) or failure (exit 2) is passed on with its message, and
-   the wrapper says the landing step stopped and that nothing was commented. It then takes the
-   pull request URL from the tool's output; no URL is exit 2.
-5. Comments on each listed issue with `gh issue comment <N> -R Zimfra/software_testing`, giving
+   this run merged into `HEAD` and that are not on `origin/main` and hold a commit of their own
+   (the branch reflog, as in the already-done guard). The list comes from git, not from the log.
+   A branch that was already merged before the run started is not announced, so an issue whose
+   pull request never opened must be landed with `npm run pr` by hand. If there are none it says
+   so and exits 0 without opening anything.
+4. Runs `node scripts/git/pr-ready.ts`, the tool behind `npm run pr`, with its output streamed to
+   the terminal: it runs `npm run check`, refuses a `gh` login that is the repository owner,
+   pushes the branch and opens or reports the pull request. Its refusal (exit 1) or failure
+   (exit 2) is passed on, and the wrapper says the landing step stopped and that nothing was
+   commented. It then asks `gh pr view <branch> --json url` for the pull request URL; no URL is
+   exit 2.
+5. Comments on each listed issue with `gh issue comment <N> -R <repository gh reported>`, giving
    the pull request URL and saying it waits for the owner's review. A comment that fails does
-   not stop the others; the wrapper then exits 2 and names the issues.
+   not stop the others; the wrapper then exits 2 and names the issues. The merge prompt also
+   comments on each issue it merged, so an issue can carry two comments.
 
 What notifies the owner: GitHub's review request on the pull request (the owner is the code
 owner) and the comment on each issue. There is no other channel. What it deliberately does not
@@ -112,8 +119,9 @@ the branch contains `origin/main` when step 4 runs, or `npm run pr`'s tool refus
 
 Verified 2026-10-13 by `scripts/sandcastle/afk.test.ts` against real temporary git repositories
 with the loop, `pr-ready`, `gh` and `npm` replaced by scripted runners: the order of the steps,
-which branches are selected (merged here, not on `origin/main`, correctly named), each refusal,
-both exit codes of the landing step, a missing URL, a failing comment, and that no call pushes,
+which branches are selected (merged by this run, not on `origin/main`, correctly named, with a
+commit of their own), each refusal including an unresolvable repository, both exit codes of the
+landing step, a URL taken from `gh` and not from the tool's text, a failing comment, and that no call pushes,
 merges, closes, bypasses a hook or names `.env`. Not exercised: the real `gh`, Docker, the
 Sandcastle loop, a real push, and GitHub's review request reaching the owner.
 
