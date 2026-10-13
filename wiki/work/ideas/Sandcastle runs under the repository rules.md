@@ -18,6 +18,7 @@ evidence:
   - "VERIFIED: adding a third argument to the pendingIssues call in .sandcastle/main.ts fails npm run typecheck with TS2554, so tsconfig.json really covers the file; restoring it passes."
   - "VERIFIED: node_modules/@ai-hero/sandcastle/package.json lists zod only under devDependencies and its Output.object takes a StandardSchemaV1, so zod is not needed by main.ts; the plan schema is written by hand instead."
   - "VERIFIED: eslint on .sandcastle/main.ts reports 'File ignored because no matching configuration was supplied', so lint skips the file; eslint.config.ts was not changed."
+  - "VERIFIED: npm run check, run on the branch head before this evidence line was added, exited 0 (lint, typecheck, tests with coverage, evals:test, wiki:lint, skills:lint, governance:check, rules:check, wiki:compliance, changelog:guard and memory:guard)."
   - "UNKNOWN: whether the prompt changes make the agents follow the commit, staging and no-push rules; no agent was run in this work, and the Docker image was not built."
   - "UNKNOWN: whether gh in the sandbox resolves the fork correctly without -R; the prompts pass -R Zimfra/software_testing and that was not exercised."
   - "UNKNOWN: whether the model id claude-opus-4-8 in .sandcastle/main.ts is current."
