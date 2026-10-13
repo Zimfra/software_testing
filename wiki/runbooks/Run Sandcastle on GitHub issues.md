@@ -143,9 +143,20 @@ Sandcastle loop, a real push, and GitHub's review request reaching the owner.
   issue's work, once merged, is dropped on the next round, so the implementer is told to say in
   the issue comment when a task is incomplete and the owner reads that comment before merging.
 - The planner's output is validated before anything runs: `id` is a positive number without
-  leading zeros, `branch` is `sandcastle/issue-<id>`, `title` is one line of at most 200
-  characters with no backtick (Sandcastle expands a backticked command after substituting
-  prompt arguments), and an issue appears once.
+  leading zeros, `branch` is `sandcastle/issue-<id>`, an issue appears once, and `title` is
+  non-empty after it is normalised to one line of at most 200 characters with backticks and
+  control characters replaced. The title is cleaned, not refused, because a code span in an issue
+  title is ordinary and a refusal aborts the loop. Sandcastle 0.12.0 marks a prompt's own
+  backticked commands before it substitutes arguments, so a title cannot become one; the
+  cleaning keeps titles readable in logs and prompts. The schema is not a prompt-injection
+  control: the agents have a shell and read the issue text.
+- A merged branch whose typecheck or tests still fail after the merger's fix attempt is not
+  undone, and the next round drops it as done; read the integration branch's checks before
+  landing it. A branch that holds commits which were never merged (a reviewer that threw, a
+  reset merge) can stall: the merger only receives branches that gained commits in the same
+  round, so the implementer is planned again for it up to the iteration limit.
+- The review prompt runs `git diff <current branch>...` in a shell, so run the loop from a
+  branch whose name is plain (letters, digits, `-`, `/`).
 - `main.ts` does not refuse to run on `main`; run it on a feature branch. The AFK wrapper refuses
   on `main`.
 

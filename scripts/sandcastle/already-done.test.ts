@@ -92,6 +92,24 @@ await test("pendingIssues keeps a branch whose only reflog entries are a reset, 
   }
 });
 
+await test("pendingIssues keeps an empty branch that only fast-forwarded to a later HEAD or was renamed", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["branch", "sandcastle/issue-11"]);
+    repo.write("later.txt", "l");
+    repo.commit("chore: HEAD moves on");
+    repo.git(["switch", "--quiet", "sandcastle/issue-11"]);
+    repo.git(["merge", "--quiet", "--ff-only", "main"]);
+    repo.git(["switch", "--quiet", "main"]);
+    assert.deepEqual(pendingIssues([issue("11")], repo.dir), [issue("11")], "a fast-forward merge is not work");
+    repo.git(["branch", "--move", "sandcastle/issue-11", "sandcastle/issue-12"]);
+    assert.deepEqual(pendingIssues([issue("12")], repo.dir), [issue("12")], "a rename is not work");
+  } finally {
+    repo.cleanup();
+  }
+});
+
 await test("pendingIssues drops a branch whose commits were fast-forwarded into HEAD", () => {
   const repo = createRepo();
   try {
