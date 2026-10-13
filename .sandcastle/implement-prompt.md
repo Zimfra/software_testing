@@ -26,9 +26,9 @@ Pay extra attention to test files that touch the relevant parts of the code.
 
 # EXECUTION
 
-If applicable, use RGR to complete the task.
+Test first is mandatory. Use red, green, refactor:
 
-1. RED: write one test
+1. RED: write one test and run it to see it fail
 2. GREEN: write the implementation to pass that test
 3. REPEAT until done
 4. REFACTOR the code
@@ -52,7 +52,7 @@ State in the body the task completed, key decisions, and blockers or notes for t
 
 # THE ISSUE
 
-If the task is not complete, leave a comment on the issue (`gh issue comment -R Zimfra/software_testing <ID> --body ...`) with what was done.
+Commit only work you believe is complete. If the task is not complete, say so in the issue comment and in the final commit body, so a person does not mistake the branch for finished work. Leave a comment on the issue (`gh issue comment -R Zimfra/software_testing <ID> --body ...`) with what was done.
 
 Do not close the issue - this will be done later.
 

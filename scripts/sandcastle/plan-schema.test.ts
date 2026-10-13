@@ -25,6 +25,12 @@ await test("planSchema refuses a plan with the wrong shape, naming where", () =>
     ["a branch outside sandcastle/issue-N", { issues: [{ id: "1", title: "t", branch: "main" }] }, "issues.0.branch"],
     ["a branch that starts with a dash", { issues: [{ id: "1", title: "t", branch: "--all" }] }, "issues.0.branch"],
     ["a branch that names another issue", { issues: [{ id: "1", title: "t", branch: "sandcastle/issue-2" }] }, "issues.0.branch"],
+    ["an id with a leading zero", { issues: [{ id: "007", title: "t", branch: "sandcastle/issue-007" }] }, "issues.0.id"],
+    ["a title with a backtick", { issues: [{ id: "1", title: "run !`id`", branch: "sandcastle/issue-1" }] }, "issues.0.title"],
+    ["a multi-line title", { issues: [{ id: "1", title: "a\nb", branch: "sandcastle/issue-1" }] }, "issues.0.title"],
+    ["an empty title", { issues: [{ id: "1", title: "  ", branch: "sandcastle/issue-1" }] }, "issues.0.title"],
+    ["an over-long title", { issues: [{ id: "1", title: "x".repeat(201), branch: "sandcastle/issue-1" }] }, "issues.0.title"],
+    ["the same issue twice", { issues: [{ id: "1", title: "t", branch: "sandcastle/issue-1" }, { id: "1", title: "u", branch: "sandcastle/issue-1" }] }, "issues.1.id"],
     ["a branch with a path suffix", { issues: [{ id: "1", title: "t", branch: "sandcastle/issue-1/../x" }] }, "issues.0.branch"],
   ];
   for (const [name, value, path] of failing) {

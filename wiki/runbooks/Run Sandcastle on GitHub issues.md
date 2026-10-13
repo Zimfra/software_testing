@@ -127,11 +127,19 @@ Sandcastle loop, a real push, and GitHub's review request reaching the owner.
   in `eslint.config.ts` cover only `scripts/**/*.ts` and `eslint.config.ts` itself, and the
   file keeps the upstream template's style.
 - The already-done guard drops an issue only when its `sandcastle/issue-<number>` branch is
-  merged into the current branch and has at least one commit of its own (read from the branch
-  reflog). A branch that was created and never committed to stays pending. Two limits follow:
-  a pull request that the owner squash-merges leaves a branch that is never an ancestor, so
-  delete that local branch or close the issue; and a branch whose reflog has expired is
-  planned again, which costs a run and loses nothing.
+  merged into the current branch and its reflog holds a commit entry (a commit made on the
+  branch). A branch that was created, reset or renamed and never committed to stays pending.
+  Three limits follow: a pull request that the owner squash-merges leaves a branch that is never
+  an ancestor, so delete that local branch or close the issue; a branch whose reflog has expired
+  is planned again, which costs a run and loses nothing; and a branch that holds only part of an
+  issue's work, once merged, is dropped on the next round, so the implementer is told to say in
+  the issue comment when a task is incomplete and the owner reads that comment before merging.
+- The planner's output is validated before anything runs: `id` is a positive number without
+  leading zeros, `branch` is `sandcastle/issue-<id>`, `title` is one line of at most 200
+  characters with no backtick (Sandcastle expands a backticked command after substituting
+  prompt arguments), and an issue appears once.
+- `main.ts` does not refuse to run on `main`; run it on a feature branch. The AFK wrapper refuses
+  on `main`.
 
 ## Troubleshooting
 
