@@ -33,8 +33,9 @@ phases, at most 10 rounds:
 3. **Merge.** One agent merges every branch that produced commits into the branch you ran from,
    runs `npm run typecheck` and `npm run test`, and comments on each issue.
 
-What it does not do: it never pushes, opens a pull request or notifies anyone, and its prompts
-tell it not to close issues. An issue is done when the owner merges its pull request
+What it does not do: it never pushes or opens a pull request, and its prompts tell it not to
+close issues. It does post a comment on each issue it merged, which notifies that issue's
+subscribers; that is the only notification, and its prompts, not the code, keep it to that. An issue is done when the owner merges its pull request
 (see [[Land a change]]), so a person pushes the integration branch and runs `npm run pr`.
 
 Use it for small, well-specified issues. Rules the agents follow are in `CLAUDE.md` and
@@ -102,13 +103,20 @@ Use it for small, well-specified issues. Rules the agents follow are in `CLAUDE.
   control: the agents have a shell and read the issue text.
 - A merged branch whose typecheck or tests still fail after the merger's fix attempt is not
   undone, and the next round drops it as done; read the integration branch's checks before
-  landing it. A branch that holds commits which were never merged (a reviewer that threw, a
-  reset merge) can stall: the merger only receives branches that gained commits in the same
-  round, so the implementer is planned again for it up to the iteration limit.
+  landing it.
+- A planned branch that still holds commits HEAD lacks (a reviewer that threw, an aborted merge)
+  is passed to the merger in the next round even when the implementer adds nothing, so it no
+  longer stalls the loop. A branch an agent reset back to where it started stays pending; one
+  it reset part of the way back is judged by its tip and counts as worked.
 - The review prompt runs `git diff <current branch>...` in a shell, so run the loop from a
   branch whose name is plain (letters, digits, `-`, `/`).
-- `main.ts` does not refuse to run on `main`; run it on a feature branch. The AFK wrapper refuses
-  on `main`.
+- `main.ts` refuses to start on `main` or a detached HEAD, because the merger commits into the
+  checked-out branch. The refusal is `branchRefusal` in `scripts/sandcastle/branch-guard.ts`,
+  which is tested; the call in `main.ts` is not, because that file is a top-level loop.
+- The sandbox image is on Node 22 while `.nvmrc` says 24, so a typecheck or test failure inside
+  the sandbox can be environmental. The merger is told not to comment when they fail.
+- With `core.logAllRefUpdates=false` a branch has no reflog, so the guard keeps every issue
+  pending and a rerun plans it again.
 
 ## Troubleshooting
 
