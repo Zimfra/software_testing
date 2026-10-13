@@ -41,27 +41,33 @@ function mergeInto(repo: RepoFixture, target: string, name: string): void {
 type Script = {
   loop?: () => number;
   pr?: { status: number; stdout: string };
+  view?: { status: number; stdout: string };
+  ghRepo?: { status: number; stdout: string };
   failComments?: string[];
 };
 
 // git runs for real; the Sandcastle loop, pr-ready, gh and npm are scripted and recorded.
-function runner(repo: RepoFixture, script: Script = {}): { run: Run; calls: string[] } {
+function runner(repo: RepoFixture, script: Script = {}): { run: Run; calls: string[]; inherited: string[] } {
   const calls: string[] = [];
-  const run: Run = (command, args) => {
+  const inherited: string[] = [];
+  const run: Run = (command, args, options) => {
     const line = `${command} ${args.join(" ")}`;
     calls.push(line);
+    if (options?.inherit === true) inherited.push(line);
     if (command === "git") {
       const result = spawnSync("git", args, { cwd: repo.dir, env: cleanGitEnv, encoding: "utf8" });
       return { status: result.status, stdout: result.stdout };
     }
     if (line === "node .sandcastle/main.ts") return { status: script.loop?.() ?? 0, stdout: "" };
     if (line === "node scripts/git/pr-ready.ts") return script.pr ?? { status: 0, stdout: `pr-ready: pull request ${PR_URL} is open.\n` };
+    if (line === "gh repo view --json nameWithOwner --jq .nameWithOwner") return script.ghRepo ?? { status: 0, stdout: "Zimfra/software_testing\n" };
+    if (command === "gh" && args[0] === "pr" && args[1] === "view") return script.view ?? { status: 0, stdout: `${PR_URL}\n` };
     if (command === "gh" && args[0] === "issue" && args[1] === "comment") {
       return { status: script.failComments?.includes(args[2] ?? "") === true ? 1 : 0, stdout: "" };
     }
     throw new Error(`unexpected ${line}`);
   };
-  return { run, calls };
+  return { run, calls, inherited };
 }
 
 function go(repo: RepoFixture, run: Run, args: string[] = []): { code: number; out: string; err: string } {
@@ -100,9 +106,11 @@ await test("the issues this run merged are announced on a pull request and comme
   assert.equal(result.code, EXIT_OK, result.err);
   assert.match(result.out, new RegExp(PR_URL));
   const nonGit = calls.filter((call) => !call.startsWith("git "));
-  assert.deepEqual(nonGit.slice(0, 2), ["node .sandcastle/main.ts", "node scripts/git/pr-ready.ts"], "loop first, then the landing tool");
+  assert.deepEqual(nonGit.slice(0, 4), [
+    "gh repo view --json nameWithOwner --jq .nameWithOwner", "node .sandcastle/main.ts", "node scripts/git/pr-ready.ts", "gh pr view feat/afk-work --json url --jq .url",
+  ], "repository and login first, then the loop, then the landing tool, then the pull request it opened");
   assert.equal(comments(calls).length, 2, "one comment per merged issue branch, and no other");
-  assert.equal(nonGit.length, 4);
+  assert.equal(nonGit.length, 6);
   const [first, second] = comments(calls);
   assert.match(first ?? "", /^gh issue comment 4 -R Zimfra\/software_testing --body /);
   assert.match(second ?? "", /^gh issue comment 12 -R Zimfra\/software_testing --body /);
@@ -117,7 +125,7 @@ await test("nothing merged by this run opens nothing and exits 0", (t) => {
   const result = go(repo, run);
   assert.equal(result.code, EXIT_OK, result.err);
   assert.match(result.out, /no Sandcastle issue branch was merged/i);
-  assert.deepEqual(calls.filter((call) => !call.startsWith("git ")), ["node .sandcastle/main.ts"]);
+  assert.deepEqual(calls.filter((call) => !call.startsWith("git ")), ["gh repo view --json nameWithOwner --jq .nameWithOwner", "node .sandcastle/main.ts"]);
 });
 
 await test("a failing Sandcastle loop stops the run with exit 2", (t) => {
@@ -126,7 +134,7 @@ await test("a failing Sandcastle loop stops the run with exit 2", (t) => {
   const result = go(repo, run);
   assert.equal(result.code, EXIT_ERROR);
   assert.match(result.err, /Sandcastle loop failed/);
-  assert.ok(!calls.some((call) => call.includes("pr-ready") || call.startsWith("gh ")));
+  assert.ok(!calls.some((call) => call.includes("pr-ready") || call.startsWith("gh issue") || call.startsWith("gh pr")));
 });
 
 await test("a refusal from the landing tool is propagated and names the step, and nothing is commented", (t) => {
@@ -154,17 +162,68 @@ await test("a landing tool that broke exits 2 and nothing is commented", (t) => 
   assert.equal(comments(calls).length, 0);
 });
 
-await test("a landing tool that prints no pull request URL is an error, not a silent success", (t) => {
+await test("the pull request URL comes from gh, not from a URL in the landing tool's text", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-4");
+  const { run, calls, inherited } = runner(repo, {
+    loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-4"); return 0; },
+    pr: { status: 0, stdout: "pr-ready: see https://github.com/other/repo/pull/99 first\npr-ready: pull request https://github.com/other/repo/pull/98 is open.\n" },
+  });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_OK, result.err);
+  assert.ok(comments(calls)[0]?.includes(PR_URL), "comment carries the URL gh reports for the branch");
+  assert.ok(!comments(calls).some((call) => call.includes("/pull/99") || call.includes("/pull/98")));
+  assert.ok(inherited.includes("node scripts/git/pr-ready.ts"), "the landing tool streams its check output to the terminal");
+});
+
+await test("a pull request gh cannot find after landing is an error and nothing is commented", (t) => {
   const repo = fixture(t);
   issueBranch(repo, "sandcastle/issue-4");
   const { run, calls } = runner(repo, {
     loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-4"); return 0; },
-    pr: { status: 0, stdout: "pr-ready: done\n" },
+    view: { status: 1, stdout: "" },
   });
   const result = go(repo, run);
   assert.equal(result.code, EXIT_ERROR);
   assert.match(result.err, /pull request URL/);
   assert.equal(comments(calls).length, 0);
+});
+
+await test("only issue branches with commits of their own, merged by this run, are announced", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-8");
+  issueBranch(repo, "sandcastle/issue-4");
+  mergeInto(repo, "feat/afk-work", "sandcastle/issue-8"); // merged by an earlier run, still not on main
+  const { run, calls } = runner(repo, {
+    loop: () => {
+      mergeInto(repo, "feat/afk-work", "sandcastle/issue-4");
+      repo.git(["branch", "sandcastle/issue-6"]); // created at HEAD, the agent committed nothing
+      return 0;
+    },
+  });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_OK, result.err);
+  assert.deepEqual(comments(calls).map((call) => call.split(" ")[3]), ["4"]);
+});
+
+await test("a repository gh cannot resolve is refused before the loop runs", (t) => {
+  const repo = fixture(t);
+  const { run, calls } = runner(repo, { ghRepo: { status: 1, stdout: "" } });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_REFUSED);
+  assert.match(result.err, /gh/);
+  assert.ok(!calls.includes("node .sandcastle/main.ts"));
+});
+
+await test("comments go to the repository gh reports, not a fixed name", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-4");
+  const { run, calls } = runner(repo, {
+    loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-4"); return 0; },
+    ghRepo: { status: 0, stdout: "some-org/other-repo\n" },
+  });
+  assert.equal(go(repo, run).code, EXIT_OK);
+  assert.match(comments(calls)[0] ?? "", /-R some-org\/other-repo /);
 });
 
 await test("a comment that fails does not stop the others, and the run reports it", (t) => {
