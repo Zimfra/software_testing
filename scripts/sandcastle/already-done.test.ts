@@ -64,6 +64,35 @@ await test("pendingIssues does not read a branch name that looks like an option 
   }
 });
 
+await test("pendingIssues keeps a branch that was created at HEAD and never got a commit", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["branch", "sandcastle/issue-8"]);
+    assert.deepEqual(pendingIssues([issue("8")], repo.dir), [issue("8")], "same commit as HEAD");
+    repo.write("later.txt", "l");
+    repo.commit("chore: HEAD moves on");
+    assert.deepEqual(pendingIssues([issue("8")], repo.dir), [issue("8")], "an ancestor of HEAD");
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("pendingIssues drops a branch whose commits were fast-forwarded into HEAD", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-9"]);
+    repo.write("nine.txt", "9");
+    repo.commit("feat: nine");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.git(["merge", "--quiet", "--ff-only", "sandcastle/issue-9"]);
+    assert.deepEqual(pendingIssues([issue("9")], repo.dir), []);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 await test("pendingIssues refuses when the directory is not a repository", () => {
   const repo = createRepo();
   repo.cleanup();

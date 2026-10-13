@@ -16,6 +16,9 @@ function parseIssue(entry: unknown, index: number): { issue: PlannedIssue } | { 
     .filter(([, field]) => typeof field !== "string")
     .map(([name]) => ({ message: `${name} must be a string`, path: [...at, name] }));
   if (typeof id !== "string" || typeof title !== "string" || typeof branch !== "string") return { problems };
+  // The plan comes from a model that read untrusted issue text, and the branch goes into git and gh.
+  if (!/^\d+$/.test(id)) return { problems: [{ message: "id must be an issue number", path: [...at, "id"] }] };
+  if (branch !== `sandcastle/issue-${id}`) return { problems: [{ message: `branch must be sandcastle/issue-${id}`, path: [...at, "branch"] }] };
   return { issue: { id, title, branch } };
 }
 
