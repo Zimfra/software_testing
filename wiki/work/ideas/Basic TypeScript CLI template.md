@@ -15,7 +15,7 @@ evidence:
   - "INFERRED: scripts/app/greet.test.ts was written before scripts/app/greet.ts by the Sandcastle implementer, from its own account; the code and test arrived in one commit, so history shows no red run."
   - "VERIFIED: on this branch the three new main cases (--help, an argument starting with a dash, a whitespace-only name) failed against the scaffold's main (4 failures counting their suite) and pass after the change: scripts/app/greet.test.ts has 3 tests with 10 subtests, 13 of 13 pass, lint and typecheck are clean (2026-10-13)."
   - "VERIFIED: node scripts/app/greet.ts printed 'Hello, world!' with no argument, 'Hello, Ada!' for one name, and 'usage: greet [name]' with exit 2 for two arguments."
-  - "VERIFIED: on a clean branch from main, npm run ci (tsc then node --test with coverage) exits 0 with 588 tests passing (2026-10-13)."
+  - "VERIFIED: on this branch, npm run check exits 0 with 594 tests passing, and npm run ci (tsc then node --test with coverage) runs the same type check and tests (2026-10-13). An earlier head failed repository test fixture-env.test.ts because the spawned-process tests did not pass env: cleanGitEnv; the full suite caught it, and a run of only greet.test.ts had not."
   - "UNKNOWN: whether the owner wants the tests in Vitest. The issue text says \"uses VI test\"; the scaffold uses node:test, which every other test here uses, and Vitest would add a dependency and a second runner."
 ---
 
