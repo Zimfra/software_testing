@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { test } from "node:test";
 import { EXIT_ERROR, EXIT_OK, type Output } from "../lib/cli.ts";
+import { cleanGitEnv } from "../test-support/repo-fixture.ts";
 import { greet, main } from "./greet.ts";
 
 const SCRIPT = new URL("./greet.ts", import.meta.url).pathname;
@@ -68,14 +69,14 @@ await test("main", async (t) => {
 
 await test("run as a script", async (t) => {
   await t.test("exits 2 with usage on stderr when called with two arguments", () => {
-    const result = spawnSync(process.execPath, [SCRIPT, "a", "b"], { encoding: "utf8" });
+    const result = spawnSync(process.execPath, [SCRIPT, "a", "b"], { env: cleanGitEnv, encoding: "utf8" });
     assert.equal(result.status, EXIT_ERROR);
     assert.equal(result.stdout, "");
     assert.equal(result.stderr.trim(), "usage: greet [name]");
   });
 
   await t.test("prints the greeting and exits 0 for one name", () => {
-    const result = spawnSync(process.execPath, [SCRIPT, "Ada"], { encoding: "utf8" });
+    const result = spawnSync(process.execPath, [SCRIPT, "Ada"], { env: cleanGitEnv, encoding: "utf8" });
     assert.equal(result.status, EXIT_OK);
     assert.equal(result.stdout.trim(), "Hello, Ada!");
   });
