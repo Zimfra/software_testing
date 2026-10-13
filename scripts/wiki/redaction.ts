@@ -20,12 +20,15 @@ export function currentIdentity(readUser: () => { username: string } = userInfo)
   }
 }
 
-// Account names that identify a role rather than a person. A checkout validated by a user
-// named `node` would otherwise fail every note that mentions Node.
+// Account names that identify a role rather than a person: a container image's default user, a
+// CI runner, a service. A checkout validated by a user named `node` would otherwise fail every
+// note that mentions Node, and one validated by `agent`, the Sandcastle sandbox user, would fail
+// the `agent:` field of every note. Only the bare-word login check skips these names; a
+// home-directory path with a username is still flagged whatever the login is.
 const SERVICE_ACCOUNTS = new Set([
   "node", "root", "ubuntu", "debian", "alpine", "admin", "administrator", "user", "users", "app",
   "web", "www-data", "nobody", "daemon", "deploy", "docker", "runner", "build", "builder", "ci",
-  "test", "guest", "service", "nginx", "apache", "postgres", "mysql", "redis", "container",
+  "test", "guest", "service", "nginx", "apache", "postgres", "mysql", "redis", "container", "agent",
 ]);
 
 // Hostnames that name a role or a default, not this machine: CI runners and containers use them.

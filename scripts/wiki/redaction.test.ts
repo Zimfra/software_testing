@@ -60,12 +60,25 @@ await test("findSensitive leaves allowed placeholders and public addresses alone
 });
 
 await test("a service account is not redacted as a personal identifier", () => {
-  for (const account of ["node", "root", "ubuntu", "deploy", "www-data", "runner"]) {
+  for (const account of ["node", "root", "ubuntu", "deploy", "www-data", "runner", "agent"]) {
     assert.equal(isPersonalAccount(account), false, account);
   }
   assert.equal(isPersonalAccount("alice"), true);
   assert.equal(isPersonalAccount("bob"), false, "names under four characters are too common to match");
   assert.equal(redactionChecks({ host: "ci", user: "node" }).some((check) => /machine/.test(check.name)), false);
+  const hasLoginCheck = (user: string): boolean =>
+    redactionChecks({ host: "ci", user }).some((check) => check.name === "this machine's username");
+  assert.equal(hasLoginCheck("agent"), false);
+  assert.equal(hasLoginCheck("AGENT"), false);
+  assert.equal(hasLoginCheck("alice"), true);
+});
+
+await test("a role-name login does not switch off the home-path check", () => {
+  const agentChecks = redactionChecks({ host: "ci", user: "agent" });
+  const flagged = (text: string): string[] => findSensitive(text, agentChecks).map((finding) => finding.name);
+  assert.match(flagged("see /home/" + "agent/workspace").join(), /home path/);
+  assert.deepEqual(flagged("agent: claude-code"), []);
+  assert.deepEqual(flagged("/home/<user>/workspace"), []);
 });
 
 await test("a generic hostname is not checked, and a user with no passwd entry is not an error", () => {
