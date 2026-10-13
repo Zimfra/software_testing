@@ -35,7 +35,8 @@ phases, at most 10 rounds:
 
 What it does not do: it never pushes, opens a pull request or notifies anyone, and its prompts
 tell it not to close issues. An issue is done when the owner merges its pull request
-(see [[Land a change]]), so a person pushes the integration branch and runs `npm run pr`.
+(see [[Land a change]]), so a person pushes the integration branch and runs `npm run pr`, or
+runs the loop through `npm run sandcastle:afk` (below), which does that landing step.
 
 Use it for small, well-specified issues. Rules the agents follow are in `CLAUDE.md` and
 `.claude/rules/zeem/`; the prompts point there instead of restating them.
@@ -73,6 +74,47 @@ Use it for small, well-specified issues. Rules the agents follow are in `CLAUDE.
   merge commit per issue branch.
 - `git ls-files .sandcastle` lists no `.env`, `logs/` or `worktrees/` entry.
 - `npm run check` exits 0 on the branch before `npm run pr`.
+
+## Unattended run with `npm run sandcastle:afk`
+
+`npm run sandcastle:afk` (`scripts/sandcastle/afk.ts`) runs the loop and then lands its work, so
+you can leave. It runs on the host, from the feature branch checked out, and takes no arguments.
+In order:
+
+1. Refuses, saying why and exiting 1, when the branch is `main`, HEAD is detached or the tree
+   has uncommitted changes. Both refusals are reported together. Nothing has run yet.
+2. Runs `node .sandcastle/main.ts`. If that exits non-zero the wrapper stops with exit 2 and
+   nothing is pushed or commented.
+3. Runs `git fetch origin main`, then lists the local branches named `sandcastle/issue-<N>` that
+   are merged into `HEAD` and not into `origin/main`. This comes from git, not from the log. If
+   there are none it says so and exits 0 without opening anything. A branch left merged by an
+   earlier run whose pull request never opened is listed again.
+4. Runs `node scripts/git/pr-ready.ts`, the tool behind `npm run pr`: it runs `npm run check`,
+   refuses a `gh` login that is the repository owner, pushes the branch and opens or reports the
+   pull request. Its refusal (exit 1) or failure (exit 2) is passed on with its message, and
+   the wrapper says the landing step stopped and that nothing was commented. It then takes the
+   pull request URL from the tool's output; no URL is exit 2.
+5. Comments on each listed issue with `gh issue comment <N> -R Zimfra/software_testing`, giving
+   the pull request URL and saying it waits for the owner's review. A comment that fails does
+   not stop the others; the wrapper then exits 2 and names the issues.
+
+What notifies the owner: GitHub's review request on the pull request (the owner is the code
+owner) and the comment on each issue. There is no other channel. What it deliberately does not
+do: push or merge `main`, merge or approve a pull request, close an issue, skip a hook with
+`--no-verify`, change a repository setting or read `.sandcastle/.env`. The pull request stays
+open until the owner merges it in the browser.
+
+Requirements on top of the prerequisites above: the host `gh` is logged in as the machine
+account, not the owner ([[ADR-0025 Agents use a machine account and the owner approves]]), and
+the branch contains `origin/main` when step 4 runs, or `npm run pr`'s tool refuses and you merge
+`main` into the branch yourself.
+
+Verified 2026-10-13 by `scripts/sandcastle/afk.test.ts` against real temporary git repositories
+with the loop, `pr-ready`, `gh` and `npm` replaced by scripted runners: the order of the steps,
+which branches are selected (merged here, not on `origin/main`, correctly named), each refusal,
+both exit codes of the landing step, a missing URL, a failing comment, and that no call pushes,
+merges, closes, bypasses a hook or names `.env`. Not exercised: the real `gh`, Docker, the
+Sandcastle loop, a real push, and GitHub's review request reaching the owner.
 
 ## Known notes
 
