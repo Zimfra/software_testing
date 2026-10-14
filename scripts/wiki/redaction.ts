@@ -24,7 +24,8 @@ export function currentIdentity(readUser: () => { username: string } = userInfo)
 // CI runner, a service. A checkout validated by a user named `node` would otherwise fail every
 // note that mentions Node, and one validated by `agent`, the Sandcastle sandbox user, would fail
 // the `agent:` field of every note. Only the bare-word login check skips these names; a
-// home-directory path with a username is still flagged whatever the login is.
+// home-directory path with a username is still flagged whatever the login is, except under the
+// home of the role name `agent` (see the home-path pattern), which identifies no person.
 const SERVICE_ACCOUNTS = new Set([
   "node", "root", "ubuntu", "debian", "alpine", "admin", "administrator", "user", "users", "app",
   "web", "www-data", "nobody", "daemon", "deploy", "docker", "runner", "build", "builder", "ci",
@@ -74,7 +75,7 @@ const FIXED_CHECKS: readonly RedactionCheck[] = [
   pattern("JWT", /\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]*/),
   pattern("private key", /BEGIN [A-Z ]*PRIVATE KEY/),
   pattern("SSH public key", /\b(ssh-(ed25519|rsa|dss)|ecdsa-sha2-nistp\d+) AAAA[A-Za-z0-9+/]{20,}/),
-  pattern("home path with username (use ~ or /home/<user>)", /\/home\/(?!<user>|linuxbrew\b)[A-Za-z0-9_.-]+/),
+  pattern("home path with username (use ~ or /home/<user>)", /\/home\/(?!<user>|linuxbrew\b|agent(?![A-Za-z0-9_.-]))[A-Za-z0-9_.-]+/),
   pattern("macOS home path with username (use ~ or /Users/<user>)", /(?<![A-Za-z]:)(?<![\w/\\])\/Users\/(?!<user>|Shared\b)[A-Za-z0-9]/),
   pattern("Windows user path (use <windows-user>)", /(\/mnt\/c\/Users\/|[A-Z]:(\\+|\/)Users(\\+|\/))(?!<windows-user>)[A-Za-z0-9]/i),
 ];
