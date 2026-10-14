@@ -109,11 +109,16 @@ In order:
    on `origin/<branch>` yet (judged by those branches' own tips, so a later local commit does
    not matter), or earlier work is pushed but `gh pr view` finds no open pull request for the
    branch; each of those exits 2.
-   Before landing it checks what the run changed: if the diff from the starting HEAD touches
-   `scripts/git/pr-ready.ts`, `scripts/claude/`, the `.claude` settings files, `.githooks/`,
-   `package.json` or its lockfile, or `.github/`, it exits 2 without running anything, because
-   an agent edited what the landing step runs or enforces. Review that diff, then land with
-   `npm run pr`. An issue branch the loop deleted is named and exits 2 as well.
+   Before landing it compares the branch with `origin/main`, so an edit left by an earlier
+   refused run still counts. If the diff touches code or configuration that `npm run check`
+   executes (`scripts/`, `evals/`, `config/`, `.claude/`, `.githooks/`, `.github/`,
+   `.sandcastle/`, `package.json` and its lockfile, `tsconfig*.json`, `eslint.config.*`,
+   `.npmrc`, `.nvmrc`) it exits 2 without running anything, names the paths, and says to review
+   the diff and land with `npm run pr`. A moved or renamed file counts at both its old and new
+   path. Documentation (`wiki/`, `CHANGELOG.md`, other Markdown) lands unattended. The reason:
+   landing runs `npm run check` on this machine as you, with no person present, and that
+   executes whatever the agents changed. Setting `SANDCASTLE_AFK_LAND_CODE=1` in your own shell
+   lifts the refusal and accepts that risk. An issue branch the loop deleted is named and exits 2.
 4. Runs `node scripts/git/pr-ready.ts`, the tool behind `npm run pr`, with its output streamed to
    the terminal: it runs `npm run check`, refuses a `gh` login that is the repository owner,
    pushes the branch and opens or reports the pull request. Its refusal (exit 1) is passed on with "nothing was pushed or commented"; its failure

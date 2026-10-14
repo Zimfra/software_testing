@@ -34,6 +34,8 @@ evidence:
   - "UNKNOWN: a comment that failed after the pull request opened is not visible to a rerun, so a rerun exits 0 when earlier work is pushed and has an open pull request; the failed comment is never retried."
   - "VERIFIED: after the review of 9a88b5a (a finder and a verifier in separate contexts; the verifier reproduced 655 of 655 and passed nine mutation controls), the finder's MEDIUM finding that agents can edit what the landing step runs was fixed test first at 19452c8: a loop that changes scripts/git/pr-ready.ts, a .claude settings file, a .githooks file or package.json is not landed (4 red subtests before the change), a deleted issue branch exits 2 (1 red), and the stranded-plus-landing and origin/main-filter cases passed already and stay as guards; npm run check at 17ecc43, which merges integration a94d14d, exited 0 with 667 of 667 tests passing and afk.test.ts has 56 entries (2026-10-13)."
   - "UNKNOWN: patch equivalence is not checked: a branch the loop rebased onto HEAD is classed unrecognised and, when its tip is not held by HEAD, exits 2 as stranded even if HEAD holds the same patches; the prompts forbid rebasing."
+  - "VERIFIED: after the review of 13eb37a (a finder and a verifier in separate contexts; the verifier reproduced 667 of 667 and passed eleven mutation controls on named tests), the finder's two HIGH findings were fixed test first at 770dcef: the guard was a denylist that missed code the landing check executes (scripts/lib, config, eslint.config.ts, .npmrc and others) and compared against the run's starting HEAD, so a rerun landed an edit left by a refused run; it now compares with origin/main, uses -z --no-renames, covers the executed paths and takes an owner opt-in; 21 entries were red before the change, the documentation-lands cases passed already, afk.test.ts has 75 entries, and npm run check at 770dcef exited 0 with 689 of 689 tests passing (2026-10-13)."
+  - "UNKNOWN: the guard is a path list, not a proof; code that npm run check executes from outside the listed paths (a gitignored file, node_modules) is not seen by a tracked diff."
   - "UNKNOWN: the real gh (issue comment, the review request reaching the owner), Docker and the Sandcastle loop were not run; the tests replace them with scripted runners."
   - "UNKNOWN: whether gh pr view <branch> --json url --jq .url returns the URL for a branch pushed by pr-ready under a real gh; the test replaces gh with a scripted runner."
 ---
@@ -66,6 +68,11 @@ Owner points, none decided here:
    should instead land and announce it is the owner's call.
 5. `.sandcastle/main.ts` ends with "All done." and exit 0 even when every agent failed, so a
    total failure looks like an empty queue to this wrapper.
+6. Whether unattended landing may run agent-written code on this machine. It does today only
+   with `SANDCASTLE_AFK_LAND_CODE=1`: `npm run check` executes the repository's scripts, tests
+   and configuration as the owner, outside the sandbox, with no person present. Options: (a) keep
+   docs-only unattended landing as the default (current); (b) set the variable and accept it;
+   (c) run `npm run check` inside the Docker sandbox, which is not built. Awaiting the owner.
 
 ## Observations
 
