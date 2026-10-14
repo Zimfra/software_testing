@@ -114,6 +114,12 @@ Use it for small, well-specified issues. Rules the agents follow are in `CLAUDE.
   "ahead" of the integration branch forever, so it is passed to the merger each round until
   the issue is closed or the local branch deleted. Detecting "same patch as HEAD" needs a
   patch-id comparison, which is follow-up work.
+- Two conservative cases that lose nothing but replan: a branch whose only entry is a merge of
+  another issue's branch (a `commit (merge)` entry, which has no content of its own) stays
+  "unrecognised" and is planned again each round; and a branch pointed with `branch -f` or
+  `switch -C` at a commit made on another ref, which later lands in HEAD, is "empty" and is
+  planned again although its work is already there. Both cost implementer runs up to
+  `MAX_ITERATIONS`.
 - UNKNOWN until the first real run: whether Sandcastle writes `commit:` entries into the host
   branch reflog. After the first run, `git reflog show sandcastle/issue-<number>` should list
   them. If it lists only `fetch` or `update-ref` entries, every branch is "unrecognised", the
