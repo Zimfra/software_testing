@@ -412,6 +412,61 @@ await test("a pruned entry beside a reachable commit entry leaves the branch wor
   }
 });
 
+await test("a fast-forward cherry-pick of a commit HEAD already holds is not work", () => {
+  const repo = createRepo();
+  try {
+    repo.write("a.txt", "a");
+    repo.commit("chore: base");
+    repo.git(["branch", "sandcastle/issue-60"]);
+    repo.git(["switch", "--quiet", "-c", "other"]);
+    repo.write("b.txt", "b");
+    repo.commit("feat: other work");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.git(["merge", "--quiet", "--ff-only", "other"]);
+    repo.git(["switch", "--quiet", "sandcastle/issue-60"]);
+    repo.git(["cherry-pick", "--ff", "other"]);
+    repo.git(["switch", "--quiet", "main"]);
+    assert.equal(branchWork("refs/heads/sandcastle/issue-60", repo.dir), "empty");
+    assert.deepEqual(pendingIssues([issue("60")], repo.dir).map((entry) => entry.id), ["60"]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("a branch reset only part of the way back keeps its reachable commits and counts as worked", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-61"]);
+    repo.write("one.txt", "1");
+    repo.commit("feat: sixty-one part one");
+    repo.write("two.txt", "2");
+    repo.commit("feat: sixty-one part two");
+    repo.git(["reset", "--quiet", "--hard", "HEAD~1"]);
+    repo.git(["switch", "--quiet", "main"]);
+    assert.equal(branchWork("refs/heads/sandcastle/issue-61", repo.dir), "worked");
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("an ahead branch whose reflog is gone is still passed to the merger", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-62"]);
+    repo.write("sixty-two.txt", "62");
+    repo.commit("feat: sixty-two");
+    repo.git(["switch", "--quiet", "main"]);
+    rmSync(join(repo.dir, ".git", "logs", "refs", "heads", "sandcastle", "issue-62"));
+    assert.equal(branchWork("refs/heads/sandcastle/issue-62", repo.dir), "unrecognised");
+    assert.deepEqual(aheadIssues([issue("62")], repo.dir).map((entry) => entry.id), ["62"]);
+    assert.deepEqual(pendingIssues([issue("62")], repo.dir).map((entry) => entry.id), ["62"]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 await test("pendingIssues refuses when the directory is not a repository", () => {
   const repo = createRepo();
   repo.cleanup();

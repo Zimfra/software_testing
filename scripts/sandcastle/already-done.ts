@@ -1,4 +1,4 @@
-import { isAncestor, refExists, tryGit } from "../lib/git.ts";
+import { GitError, isAncestor, refExists, tryGit } from "../lib/git.ts";
 
 export type PlannedIssue = { id: string; title: string; branch: string };
 
@@ -13,28 +13,32 @@ export type PlannedIssue = { id: string; title: string; branch: string };
 // makes a branch worked. A commit reachable from the tip is the branch's own work that is part of
 // its history, so no reset or rebase order can make discarded work count as done. The price is
 // that a rebased branch (its commits are rewritten) is not recognised: it stays pending and is
-// planned again, which costs a round and loses nothing, and the prompts forbid rebasing.
+// planned again every round until MAX_ITERATIONS, which costs implementer runs and loses
+// nothing, and the prompts forbid rebasing.
 export type BranchWork = "worked" | "empty" | "unrecognised";
 
-// A reflog entry can name a commit that was pruned; that is "not reachable", never a failure.
+// A reflog entry can name a commit that was pruned; that is "not reachable". Only a git refusal is
+// read that way: failing to run git at all is an error, never an answer (lib/git.ts).
 function reachable(sha: string, ref: string, cwd: string): boolean {
   try {
     return isAncestor(sha, ref, { cwd });
-  } catch {
-    return false;
+  } catch (error) {
+    if (error instanceof GitError) return false;
+    throw error;
   }
 }
 
 // Subjects of reflog entries that move a branch tip without making work of the branch's own.
-const TIP_MOVES = /^(rebase \(finish\)|merge |branch: Reset|Branch: renamed|reset:)/;
-const COMMIT_ENTRY = /^(commit|cherry-pick|revert)(?=[ :(]|$)/;
+const TIP_MOVES = /^(rebase \(finish\)|merge |cherry-pick: fast-forward|branch: Reset|Branch: renamed|reset:)/;
+// `cherry-pick: fast-forward` moves the tip onto an existing commit and makes none of the branch's own.
+const COMMIT_ENTRY = /^(commit|cherry-pick(?!: fast-forward)|revert)(?=[ :(]|$)/;
 
 /**
  * "worked": a commit entry's commit is still reachable from the tip. "empty": the branch is
  * missing, its tip is still where it was created, or its tip is held by HEAD and nothing but
  * resets, renames and other tip moves (or commits that were reset away) explain it.
  * "unrecognised": anything else, including every tip that HEAD does not hold, so a caller that
- * must not lose work (aheadIssues) or must not stay silent (the AFK wrapper) can see it.
+ * must not lose work (aheadIssues) or must not stay silent (the AFK wrapper, a stacked branch that consumes this) can see it.
  */
 export function branchWork(ref: string, cwd: string): BranchWork {
   if (!refExists(ref, { cwd })) return "empty";
