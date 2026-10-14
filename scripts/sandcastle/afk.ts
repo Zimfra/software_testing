@@ -78,12 +78,13 @@ function comment(run: Run, repo: string, issue: string, url: string): boolean {
   }
 }
 
-// A gh call that times out throws (spawnRunner); it means "no URL", not a crash.
+// A gh call that times out throws (spawnRunner); it means "no open pull request", not a crash. A
+// closed or merged pull request for the branch name is not the one that holds this work.
 function pullRequestUrl(run: Run, branch: string): string {
   try {
-    const view = run("gh", ["pr", "view", branch, "--json", "url", "--jq", ".url"]);
-    const url = view.status === 0 ? view.stdout.trim() : "";
-    return /^https:\/\/\S+\/pull\/\d+$/.test(url) ? url : "";
+    const view = run("gh", ["pr", "view", branch, "--json", "state,url", "--jq", "[.state,.url]|@tsv"]);
+    const match = /^OPEN\t(https:\/\/\S+\/pull\/\d+)$/.exec(view.status === 0 ? view.stdout.trim() : "");
+    return match?.[1] ?? "";
   } catch {
     return "";
   }
@@ -92,6 +93,28 @@ function pullRequestUrl(run: Run, branch: string): string {
 /** True when origin already holds every one of these branch tips under this branch's name (pr-ready pushed them). */
 function isPushed(run: Run, branch: string, refs: readonly string[]): boolean {
   return refs.every((ref) => run("git", ["merge-base", "--is-ancestor", ref, `refs/remotes/origin/${branch}`]).status === 0);
+}
+
+/** Every local sandcastle/issue-<N> branch tip, by full ref name. */
+function issueTips(run: Run): Map<string, string> {
+  const lines = git(run, ["for-each-ref", "--format=%(refname) %(objectname)", "refs/heads/sandcastle/"]).split("\n");
+  const tips = new Map<string, string>();
+  for (const line of lines) {
+    const [ref, sha] = line.split(" ");
+    if (ref !== undefined && sha !== undefined && ISSUE_BRANCH.test(ref)) tips.set(ref, sha);
+  }
+  return tips;
+}
+
+/** Issue branches this run moved or created, with work, that neither HEAD nor origin/main holds. */
+function strandedIssues(run: Run, cwd: string | undefined, before: ReadonlyMap<string, string>): string[] {
+  const held = (ref: string, into: string): boolean => run("git", ["merge-base", "--is-ancestor", ref, into]).status === 0;
+  return [...issueTips(run)]
+    .filter(([ref, sha]) => before.get(ref) !== sha)
+    .filter(([ref]) => !held(ref, "HEAD") && !held(ref, "refs/remotes/origin/main"))
+    .filter(([ref]) => branchWork(ref, cwd ?? process.cwd()) !== "empty")
+    .map(([ref]) => issueNumber(ref))
+    .sort(byNumber);
 }
 
 type Landing = { repo: string; branch: string; issues: string[] };
@@ -138,9 +161,10 @@ export function main(args: readonly string[], options: Options = {}): number {
   const { branch, repo, refused } = readiness(run);
   for (const reason of refused) output.warn(`afk: ${reason}`);
   if (refused.length > 0) return EXIT_REFUSED;
-  // Only branches that already held work are "earlier": an empty leftover that this run works and
-  // merges is this run's to announce.
-  const before = new Set(mergedBranches(run, options.cwd).filter((entry) => entry.work === "worked").map((entry) => entry.ref));
+  // "Earlier" work is a branch that was already merged here with its tip unchanged by the loop.
+  // A branch whose tip the loop moved is this run's, even when it was merged or empty before.
+  const tipsBefore = issueTips(run);
+  const mergedBefore = new Set(mergedBranches(run, options.cwd).map((entry) => entry.ref));
   const headBefore = git(run, ["rev-parse", "HEAD"]).trim();
 
   output.write("afk: step 1 of 3, running the Sandcastle loop (node .sandcastle/main.ts).");
@@ -159,25 +183,43 @@ export function main(args: readonly string[], options: Options = {}): number {
     output.warn(`afk: the loop left the tree ${leftover}. Nothing was pushed or commented; finish or abort that by hand.`);
     return EXIT_ERROR;
   }
-  const merged = mergedBranches(run, options.cwd);
-  const fresh = merged.filter((entry) => !before.has(entry.ref));
-  const issues = fresh.filter((entry) => entry.work === "worked").map((entry) => issueNumber(entry.ref)).sort(byNumber);
-  const unannounced = fresh.filter((entry) => entry.work === "unrecognised").map((entry) => issueNumber(entry.ref)).sort(byNumber);
-  const earlierRefs = merged.filter((entry) => before.has(entry.ref) && entry.work === "worked").map((entry) => entry.ref);
-  const earlier = earlierRefs.map(issueNumber).sort(byNumber);
+  const { issues, unannounced, earlier, earlierRefs, stranded } = classify(run, options.cwd, tipsBefore, mergedBefore);
   if (earlier.length > 0) {
     output.warn(`afk: issue ${earlier.join(", ")} was merged on this branch by an earlier run and is not commented on by this run; the pull request carries its work.`);
   }
   if (unannounced.length > 0) {
     output.warn(`afk: issue ${unannounced.join(", ")} was merged by this run but its branch has no commit entry in its reflog, so it is not commented on; the pull request still carries its work.`);
   }
-  if (issues.length === 0) return nothingToAnnounce(run, output, { branch, headBefore, earlier, earlierRefs, unannounced });
+  if (stranded.length > 0) {
+    output.warn(`afk: issue ${stranded.join(", ")} has work on its branch that this run did not merge, and origin/main does not hold it. The run exits 2; rerun, or merge it by hand.`);
+  }
+  const incomplete = unannounced.length > 0 || stranded.length > 0;
+  if (issues.length === 0) return nothingToAnnounce(run, output, { branch, headBefore, earlier, earlierRefs, incomplete });
 
   const code = land(run, output, { repo, branch, issues });
-  return code === EXIT_OK && unannounced.length > 0 ? EXIT_ERROR : code;
+  return code === EXIT_OK && incomplete ? EXIT_ERROR : code;
 }
 
-type Quiet = { branch: string; headBefore: string; earlier: string[]; earlierRefs: string[]; unannounced: string[] };
+type Classified = { issues: string[]; unannounced: string[]; earlier: string[]; earlierRefs: string[]; stranded: string[] };
+
+/** Sort the issue branches after the loop into announced, earlier, unrecognised and stranded work. */
+function classify(run: Run, cwd: string | undefined, tipsBefore: ReadonlyMap<string, string>, mergedBefore: ReadonlySet<string>): Classified {
+  const merged = mergedBranches(run, cwd);
+  const tipsAfter = issueTips(run);
+  const isEarlier = (ref: string): boolean => mergedBefore.has(ref) && tipsBefore.get(ref) === tipsAfter.get(ref);
+  const fresh = merged.filter((entry) => !isEarlier(entry.ref));
+  const numbers = (refs: string[]): string[] => refs.map(issueNumber).sort(byNumber);
+  const earlierRefs = merged.filter((entry) => isEarlier(entry.ref) && entry.work === "worked").map((entry) => entry.ref);
+  return {
+    issues: numbers(fresh.filter((entry) => entry.work === "worked").map((entry) => entry.ref)),
+    unannounced: numbers(fresh.filter((entry) => entry.work === "unrecognised").map((entry) => entry.ref)),
+    earlier: numbers(earlierRefs),
+    earlierRefs,
+    stranded: strandedIssues(run, cwd, tipsBefore),
+  };
+}
+
+type Quiet = { branch: string; headBefore: string; earlier: string[]; earlierRefs: string[]; incomplete: boolean };
 
 /** "dirty" or "mid-merge" when the loop left the tree unfinished, undefined when it is clean. */
 function unfinishedTree(run: Run): string | undefined {
@@ -188,8 +230,8 @@ function unfinishedTree(run: Run): string | undefined {
 /** Nothing was announceable: decide whether that is a quiet success or work left unlanded. */
 function nothingToAnnounce(run: Run, output: Output, state: Quiet): number {
   const moved = git(run, ["rev-parse", "HEAD"]).trim() !== state.headBefore;
-  if (state.unannounced.length > 0 || moved) {
-    output.warn("afk: HEAD moved during the loop but no issue branch with commits was merged, so nothing was announced. Check the branch before landing it by hand.");
+  if (state.incomplete || moved) {
+    output.warn("afk: nothing was announced, but HEAD moved during the loop or issue work was left unmerged or unrecognised (see above). Check the branch before landing it by hand.");
     return EXIT_ERROR;
   }
   if (state.earlier.length > 0 && !isPushed(run, state.branch, state.earlierRefs)) {
@@ -197,10 +239,11 @@ function nothingToAnnounce(run: Run, output: Output, state: Quiet): number {
     return EXIT_ERROR;
   }
   if (state.earlier.length > 0) {
-    // Pushed work with no pull request means an earlier run stopped between the push and the
-    // pull request or its comments; exit 0 would hide that.
+    // Pushed work with no open pull request means an earlier run stopped between the push and the
+    // pull request; exit 0 would hide that. A comment that failed after the pull request opened
+    // is not visible from here and is not retried.
     if (pullRequestUrl(run, state.branch) === "") {
-      output.warn("afk: the work an earlier run merged is pushed but gh finds no pull request for this branch. Open it with npm run pr, then comment on the issues by hand.");
+      output.warn("afk: the work an earlier run merged is pushed but gh finds no open pull request for this branch. Open it with npm run pr, then comment on the issues by hand.");
       return EXIT_ERROR;
     }
     output.write("afk: nothing new to announce; the work an earlier run merged is already pushed and has a pull request.");
