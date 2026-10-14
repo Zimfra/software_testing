@@ -276,9 +276,36 @@ await test("a failing git status or a failing fetch after the loop stops the run
       if (command === "git" && args[0] === "fetch" && ++fetches === 2) return { status: 128, stdout: "" };
       return base.run(command, args, options);
     };
-    assert.throws(() => go(repo, run), /git fetch .* failed \(exit 128\)/);
+    const result = go(repo, run);
+    assert.equal(fetches, 2, "one fetch before the loop and one after, never two before");
+    assert.equal(result.code, EXIT_ERROR);
+    assert.match(result.err, /loop ran/);
+    assert.match(result.err, /Nothing was pushed or commented/);
+    assert.ok(base.calls.includes("node .sandcastle/main.ts"), "the loop did run");
     assert.ok(!base.calls.some((call) => call.includes("pr-ready") || call.startsWith("gh issue")));
   });
+});
+
+await test("an unreachable origin is reported with the other refusals before the loop, not as a bare crash", (t) => {
+  const repo = fixture(t);
+  repo.write("dirty.md", "x\n");
+  const base = runner(repo);
+  const run: Run = (command, args, options) =>
+    command === "git" && args[0] === "fetch" ? { status: 128, stdout: "" } : base.run(command, args, options);
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_REFUSED);
+  assert.match(result.err, /fetch/);
+  assert.match(result.err, /uncommitted/);
+  assert.ok(!base.calls.includes("node .sandcastle/main.ts"));
+});
+
+await test("a merge-base that fails for a reason other than no common history is an error, not that refusal", (t) => {
+  const repo = fixture(t);
+  const base = runner(repo);
+  const run: Run = (command, args, options) =>
+    command === "git" && args[0] === "merge-base" ? { status: 128, stdout: "" } : base.run(command, args, options);
+  assert.throws(() => go(repo, run), /merge-base/);
+  assert.ok(!base.calls.includes("node .sandcastle/main.ts"));
 });
 
 await test("a landing step that failed says a push may already have happened", (t) => {

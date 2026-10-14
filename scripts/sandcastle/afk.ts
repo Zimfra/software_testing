@@ -52,7 +52,8 @@ function readiness(run: Run, env: NodeJS.ProcessEnv): { branch: string; repo: st
   const branch = head.status === 0 ? head.stdout.trim() : "";
   const refused: string[] = [];
   // A tracking ref that is behind makes the comparison below name code the owner never wrote.
-  git(run, ["fetch", "--quiet", "origin", "main"]);
+  const fetched = run("git", ["fetch", "--quiet", "origin", "main"]).status === 0;
+  if (!fetched) refused.push("git fetch origin main failed: check the network and the origin remote, then rerun.");
   if (branch === "" || branch === "main") refused.push("Run this on a feature branch, not main or a detached HEAD.");
   if (git(run, ["status", "--porcelain"]).trim() !== "") refused.push("The tree has uncommitted changes. Commit or stash them first.");
   // One cheap call before the loop spends minutes: it fails when gh is not logged in or cannot
@@ -61,7 +62,7 @@ function readiness(run: Run, env: NodeJS.ProcessEnv): { branch: string; repo: st
   if (repo === "") refused.push("gh cannot resolve this repository. Run gh auth login (as the machine account), then rerun.");
   else if (repo !== PROMPT_REPO) refused.push(`gh resolves ${repo}, but the Sandcastle prompts read and comment on issues of ${PROMPT_REPO}.`);
   // A branch that already carries code would be refused after a paid loop; say so before it runs.
-  if (!landCode(env) && branch !== "" && branch !== "main") {
+  if (!landCode(env) && fetched && branch !== "" && branch !== "main") {
     const code = guardedChanges(run);
     if (code === undefined) refused.push("This branch has no history in common with origin/main. Merge origin/main into it, then rerun.");
     else if (code.length > 0) refused.push(codeMessage(code));
@@ -74,7 +75,6 @@ const branchesMerged = (run: Run, flag: string, ref: string): string[] =>
 
 /** Refs of sandcastle/issue-<N> branches merged into HEAD but not into origin/main, with whether each holds a commit of its own. */
 function mergedBranches(run: Run, cwd: string | undefined): { ref: string; work: BranchWork }[] {
-  git(run, ["fetch", "--quiet", "origin", "main"]);
   const onMain = new Set(branchesMerged(run, "--merged", "refs/remotes/origin/main"));
   return branchesMerged(run, "--merged", "HEAD")
     .filter((name) => !onMain.has(name) && ISSUE_BRANCH.test(name))
@@ -139,7 +139,8 @@ function strandedIssues(run: Run, cwd: string | undefined, before: ReadonlyMap<s
  */
 function guardedChanges(run: Run): string[] | undefined {
   const base = run("git", ["merge-base", "HEAD", "refs/remotes/origin/main"]);
-  if (base.status !== 0) return undefined;
+  if (base.status === 1) return undefined; // exit 1 is "no common ancestor"; anything else is a failure
+  if (base.status !== 0) throw new Error(`git merge-base HEAD refs/remotes/origin/main failed (exit ${String(base.status)})`);
   return git(run, ["diff", "--name-only", "-z", "--no-renames", base.stdout.trim(), "HEAD"]).split("\0")
     .filter((path) => path !== "" && !DOCUMENTATION.some((pattern) => pattern.test(path)));
 }
@@ -251,6 +252,10 @@ export function main(args: readonly string[], options: Options = {}): number {
   const leftover = unfinishedTree(run);
   if (leftover !== undefined) {
     output.warn(`afk: the loop left the tree ${leftover}. Nothing was pushed or commented; finish or abort that by hand.`);
+    return EXIT_ERROR;
+  }
+  if (run("git", ["fetch", "--quiet", "origin", "main"]).status !== 0) {
+    output.warn("afk: the loop ran and may have merged issue branches into this branch, but git fetch origin main failed afterwards, so the result cannot be classified. Nothing was pushed or commented; check the network, then rerun.");
     return EXIT_ERROR;
   }
   const { issues, unannounced, earlier, earlierRefs, stranded, deleted } = classify(run, options.cwd, tipsBefore, mergedBefore);
