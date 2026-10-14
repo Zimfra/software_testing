@@ -142,7 +142,7 @@ await test("pendingIssues keeps a branch an agent reset back to where it started
   }
 });
 
-await test("pendingIssues counts cherry-picked and reverted commits as the branch's own", () => {
+await test("pendingIssues counts a cherry-picked commit as the branch's own, and a cherry-pick then revert as nothing", () => {
   const repo = createRepo();
   try {
     repo.commit("chore: base");
@@ -158,7 +158,7 @@ await test("pendingIssues counts cherry-picked and reverted commits as the branc
     repo.git(["switch", "--quiet", "main"]);
     repo.git(["merge", "--quiet", "--no-ff", "--no-edit", "sandcastle/issue-14"]);
     repo.git(["merge", "--quiet", "--no-ff", "--no-edit", "sandcastle/issue-15"]);
-    assert.deepEqual(pendingIssues([issue("14"), issue("15")], repo.dir), []);
+    assert.deepEqual(pendingIssues([issue("14"), issue("15")], repo.dir).map((entry) => entry.id), ["15"]);
   } finally {
     repo.cleanup();
   }
@@ -462,6 +462,45 @@ await test("an ahead branch whose reflog is gone is still passed to the merger",
     assert.equal(branchWork("refs/heads/sandcastle/issue-62", repo.dir), "unrecognised");
     assert.deepEqual(aheadIssues([issue("62")], repo.dir).map((entry) => entry.id), ["62"]);
     assert.deepEqual(pendingIssues([issue("62")], repo.dir).map((entry) => entry.id), ["62"]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("an empty commit is not work, so the issue is not dropped", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-70"]);
+    repo.git(["commit", "--quiet", "--allow-empty", "-m", "chore: not done, see the issue"]);
+    repo.git(["switch", "--quiet", "main"]);
+    repo.git(["merge", "--quiet", "--no-ff", "--no-edit", "sandcastle/issue-70"]);
+    assert.equal(branchWork("refs/heads/sandcastle/issue-70", repo.dir), "empty");
+    assert.deepEqual(pendingIssues([issue("70")], repo.dir).map((entry) => entry.id), ["70"]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("a conflict resolved with git commit logs commit (merge) and the branch counts as worked", () => {
+  const repo = createRepo();
+  try {
+    repo.write("shared.txt", "base\n");
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-71"]);
+    repo.write("shared.txt", "branch\n");
+    repo.commit("feat: change shared on the branch");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.write("shared.txt", "main\n");
+    repo.commit("chore: change shared on main");
+    repo.git(["switch", "--quiet", "sandcastle/issue-71"]);
+    try { repo.git(["merge", "--no-edit", "main"]); } catch { /* the conflict is the point */ }
+    repo.write("shared.txt", "resolved\n");
+    repo.commit("fix: resolve");
+    repo.git(["switch", "--quiet", "main"]);
+    const subjects = repo.git(["reflog", "show", "--format=%gs", "refs/heads/sandcastle/issue-71", "--"]);
+    assert.match(subjects, /^commit \(merge\)/m);
+    assert.equal(branchWork("refs/heads/sandcastle/issue-71", repo.dir), "worked");
   } finally {
     repo.cleanup();
   }

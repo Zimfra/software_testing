@@ -52,7 +52,7 @@ State in the body the task completed, key decisions, and blockers or notes for t
 
 # THE ISSUE
 
-Commit only work you believe is complete. If the task is not complete, say so in the issue comment and in the final commit body, so a person does not mistake the branch for finished work. Leave a comment on the issue (`gh issue comment -R Zimfra/software_testing <ID> --body ...`) with what was done.
+Commit only work you believe is complete. If the task is not complete, say so in the issue comment and in the body of a commit that changes something, so a person does not mistake the branch for finished work. Never make an empty commit to carry that note. Leave a comment on the issue (`gh issue comment -R Zimfra/software_testing <ID> --body ...`) with what was done.
 
 Do not close the issue - this will be done later.
 

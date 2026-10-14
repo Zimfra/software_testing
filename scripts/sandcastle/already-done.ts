@@ -9,7 +9,8 @@ export type PlannedIssue = { id: string; title: string; branch: string };
 // conflict resolved with `git commit` logs `commit (merge)`, which counts, as does
 // `commit (amend)`; a conflict-free merge of another branch logs `merge ...` and does not).
 //
-// "worked" needs one such entry whose commit is still reachable from the tip, and nothing else
+// "worked" needs one such entry whose commit is still reachable from the tip and a tip whose
+// content differs from the tree the branch was created at, and nothing else
 // makes a branch worked. A commit reachable from the tip is the branch's own work that is part of
 // its history, so no reset or rebase order can make discarded work count as done. The price is
 // that a rebased branch (its commits are rewritten) is not recognised: it stays pending and is
@@ -23,9 +24,19 @@ function reachable(sha: string, ref: string, cwd: string): boolean {
   try {
     return isAncestor(sha, ref, { cwd });
   } catch (error) {
-    if (error instanceof GitError) return false;
+    if (error instanceof GitError && error.status !== null) return false;
     throw error;
   }
+}
+
+// A commit that changes no content (git commit --allow-empty, which the implementer prompt's
+// "say so in the commit" can lead to) is not work: the branch must differ from the tree it was
+// created at. Without a creation entry there is no baseline and the commit entry stands.
+function contentChanged(created: string | undefined, ref: string, cwd: string): BranchWork {
+  if (created === undefined) return "worked";
+  const changed = tryGit(["diff", "--name-only", created, ref, "--"], { cwd });
+  if (changed === null) return "unrecognised";
+  return changed.trim() === "" ? "empty" : "worked";
 }
 
 // Subjects of reflog entries that move a branch tip without making work of the branch's own.
@@ -50,7 +61,7 @@ export function branchWork(ref: string, cwd: string): BranchWork {
   const created = entries.find((entry) => entry.subject.startsWith("branch: Created"));
   if (created !== undefined && created.sha === entries[0]?.sha) return "empty";
   const commits = entries.filter((entry) => COMMIT_ENTRY.test(entry.subject));
-  if (commits.some((entry) => reachable(entry.sha, ref, cwd))) return "worked";
+  if (commits.some((entry) => reachable(entry.sha, ref, cwd))) return contentChanged(created?.sha, ref, cwd);
   if (!isAncestor(ref, "HEAD", { cwd })) return "unrecognised";
   if (commits.length > 0) return "empty";
   const others = entries.filter((entry) => entry !== created);
