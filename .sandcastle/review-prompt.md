@@ -48,7 +48,7 @@ If you find improvements to make:
 
 1. Make the changes directly on this branch
 2. Run tests and type checking to ensure nothing is broken
-3. Commit describing the refinements. Follow `CLAUDE.md` and `.claude/rules/zeem/`: subject `<type>: <description>`, stage files by name (never `git add -A`), never `--no-verify`, never push, and keep wiki files in their own `docs(wiki): ...` commit.
+3. Commit describing the refinements. Follow `CLAUDE.md` and `.claude/rules/zeem/`: subject `<type>: <description>`, stage files by name (never `git add -A`), never `--no-verify`, never push, never rebase or reset away commits, and keep wiki files in their own `docs(wiki): ...` commit.
 
 If the code is already clean and well-structured, do nothing.
 

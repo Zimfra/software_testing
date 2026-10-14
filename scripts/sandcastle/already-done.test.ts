@@ -242,25 +242,88 @@ await test("branchWork tells worked, untouched and unrecognised branches apart",
   }
 });
 
-await test("a rebased or amended branch still counts as worked", () => {
+await test("an amended branch still counts as worked", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-41", "main"]);
+    repo.write("forty-one.txt", "41");
+    repo.commit("feat: forty-one");
+    repo.git(["commit", "--quiet", "--amend", "-m", "feat: forty-one, reworded"]);
+    repo.git(["switch", "--quiet", "main"]);
+    assert.equal(branchWork("refs/heads/sandcastle/issue-41", repo.dir), "worked");
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("a rebased branch is not recognised as worked, but it is kept pending and surfaced to the merger", () => {
   const repo = createRepo();
   try {
     repo.commit("chore: base");
     repo.git(["switch", "--quiet", "-c", "sandcastle/issue-40"]);
     repo.write("forty.txt", "40");
     repo.commit("feat: forty");
-    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-41", "main"]);
-    repo.write("forty-one.txt", "41");
-    repo.commit("feat: forty-one");
-    repo.git(["commit", "--quiet", "--amend", "-m", "feat: forty-one, reworded"]);
     repo.git(["switch", "--quiet", "main"]);
     repo.write("later.txt", "l");
     repo.commit("chore: HEAD moves on");
     repo.git(["switch", "--quiet", "sandcastle/issue-40"]);
     repo.git(["rebase", "--quiet", "main"]);
     repo.git(["switch", "--quiet", "main"]);
-    assert.equal(branchWork("refs/heads/sandcastle/issue-40", repo.dir), "worked", "rebased onto a moved main");
-    assert.equal(branchWork("refs/heads/sandcastle/issue-41", repo.dir), "worked", "amended");
+    assert.equal(branchWork("refs/heads/sandcastle/issue-40", repo.dir), "unrecognised");
+    assert.deepEqual(pendingIssues([issue("40")], repo.dir).map((entry) => entry.id), ["40"]);
+    assert.deepEqual(aheadIssues([issue("40")], repo.dir).map((entry) => entry.id), ["40"]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("a reset and a rebase in either order never make discarded work count", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-44"]);
+    repo.write("forty-four.txt", "44");
+    repo.commit("feat: forty-four");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.write("later.txt", "l");
+    repo.commit("chore: HEAD moves on");
+    repo.git(["branch", "sandcastle/issue-45", "sandcastle/issue-44"]);
+    // A: commit, rebase onto the moved main, then reset to main
+    repo.git(["switch", "--quiet", "sandcastle/issue-44"]);
+    repo.git(["rebase", "--quiet", "main"]);
+    repo.git(["reset", "--quiet", "--hard", "main"]);
+    // B: commit, reset to main, then a fast-forward rebase onto main
+    repo.git(["switch", "--quiet", "sandcastle/issue-45"]);
+    repo.git(["reset", "--quiet", "--hard", "main"]);
+    repo.git(["rebase", "--quiet", "main"]);
+    repo.git(["switch", "--quiet", "main"]);
+    assert.deepEqual(pendingIssues([issue("44"), issue("45")], repo.dir).map((entry) => entry.id), ["44", "45"]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("a branch ahead of HEAD whose own commits are unreachable, or that merged another branch, is surfaced", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "elsewhere"]);
+    repo.write("elsewhere.txt", "e");
+    const ahead = repo.commit("feat: real work not in HEAD");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-46"]);
+    repo.write("forty-six.txt", "46");
+    repo.commit("feat: forty-six");
+    repo.git(["reset", "--quiet", "--hard", ahead]);
+    repo.git(["switch", "--quiet", "main"]);
+    repo.git(["branch", "sandcastle/issue-47"]);
+    repo.git(["switch", "--quiet", "sandcastle/issue-47"]);
+    repo.git(["merge", "--quiet", "--no-ff", "--no-edit", "elsewhere"]);
+    repo.git(["switch", "--quiet", "main"]);
+    const ids = aheadIssues([issue("46"), issue("47")], repo.dir).map((entry) => entry.id);
+    assert.deepEqual(ids, ["46", "47"]);
+    assert.deepEqual(pendingIssues([issue("46"), issue("47")], repo.dir).map((entry) => entry.id), ["46", "47"]);
   } finally {
     repo.cleanup();
   }
