@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createRepo } from "../test-support/repo-fixture.ts";
-import { rmSync } from "node:fs";
+import { appendFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { aheadIssues, branchWork, pendingIssues } from "./already-done.ts";
 
@@ -237,6 +237,63 @@ await test("branchWork tells worked, untouched and unrecognised branches apart",
     assert.equal(branchWork("refs/heads/sandcastle/issue-31", repo.dir), "worked");
     assert.equal(branchWork("refs/heads/sandcastle/issue-32", repo.dir), "unrecognised");
     assert.equal(branchWork("refs/heads/sandcastle/issue-99", repo.dir), "empty", "a missing branch has no work");
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("a rebased or amended branch still counts as worked", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-40"]);
+    repo.write("forty.txt", "40");
+    repo.commit("feat: forty");
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-41", "main"]);
+    repo.write("forty-one.txt", "41");
+    repo.commit("feat: forty-one");
+    repo.git(["commit", "--quiet", "--amend", "--no-edit", "--allow-empty"]);
+    repo.git(["switch", "--quiet", "main"]);
+    repo.write("later.txt", "l");
+    repo.commit("chore: HEAD moves on");
+    repo.git(["switch", "--quiet", "sandcastle/issue-40"]);
+    repo.git(["rebase", "--quiet", "main"]);
+    repo.git(["switch", "--quiet", "main"]);
+    assert.equal(branchWork("refs/heads/sandcastle/issue-40", repo.dir), "worked", "rebased onto a moved main");
+    assert.equal(branchWork("refs/heads/sandcastle/issue-41", repo.dir), "worked", "amended");
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("a reflog entry whose commit object is gone does not abort the planner", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["branch", "sandcastle/issue-42"]);
+    const base = repo.git(["rev-parse", "HEAD"]);
+    const missing = "1".repeat(40);
+    appendFileSync(join(repo.dir, ".git", "logs", "refs", "heads", "sandcastle", "issue-42"),
+      `${base} ${missing} Fixture <fixture@example.invalid> 1700000000 +0000\tcommit: a pruned commit\n`);
+    assert.doesNotThrow(() => pendingIssues([issue("42")], repo.dir));
+    assert.doesNotThrow(() => aheadIssues([issue("42")], repo.dir));
+    assert.notEqual(branchWork("refs/heads/sandcastle/issue-42", repo.dir), "worked");
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("aheadIssues also lists an unrecognised branch whose tip is ahead of HEAD", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "elsewhere"]);
+    repo.write("ahead.txt", "a");
+    const ahead = repo.commit("feat: ahead");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.git(["update-ref", "refs/heads/sandcastle/issue-43", ahead]);
+    assert.deepEqual(aheadIssues([issue("43")], repo.dir).map((entry) => entry.id), ["43"]);
+    assert.deepEqual(pendingIssues([issue("43")], repo.dir).map((entry) => entry.id), ["43"], "still pending, never dropped");
   } finally {
     repo.cleanup();
   }
