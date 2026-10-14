@@ -78,6 +78,17 @@ function comment(run: Run, repo: string, issue: string, url: string): boolean {
   }
 }
 
+// A gh call that times out throws (spawnRunner); it means "no URL", not a crash.
+function pullRequestUrl(run: Run, branch: string): string {
+  try {
+    const view = run("gh", ["pr", "view", branch, "--json", "url", "--jq", ".url"]);
+    const url = view.status === 0 ? view.stdout.trim() : "";
+    return /^https:\/\/\S+\/pull\/\d+$/.test(url) ? url : "";
+  } catch {
+    return "";
+  }
+}
+
 /** True when origin already holds every one of these branch tips under this branch's name (pr-ready pushed them). */
 function isPushed(run: Run, branch: string, refs: readonly string[]): boolean {
   return refs.every((ref) => run("git", ["merge-base", "--is-ancestor", ref, `refs/remotes/origin/${branch}`]).status === 0);
@@ -97,14 +108,8 @@ function land(run: Run, output: Output, { repo, branch, issues }: Landing): numb
     output.warn(`afk: the landing step failed (exit ${String(landing.status)}, reason above). A push may already have happened: check origin before rerunning. Nothing was commented, and the work stays merged on this branch.`);
     return EXIT_ERROR;
   }
-  let url = "";
-  try {
-    const view = run("gh", ["pr", "view", branch, "--json", "url", "--jq", ".url"]);
-    url = view.status === 0 ? view.stdout.trim() : "";
-  } catch {
-    url = "";
-  }
-  if (!/^https:\/\/\S+\/pull\/\d+$/.test(url)) {
+  const url = pullRequestUrl(run, branch);
+  if (url === "") {
     output.warn("afk: the landing step succeeded but gh reports no pull request URL for this branch, so no issue was commented. Find the pull request on GitHub.");
     return EXIT_ERROR;
   }
@@ -133,7 +138,9 @@ export function main(args: readonly string[], options: Options = {}): number {
   const { branch, repo, refused } = readiness(run);
   for (const reason of refused) output.warn(`afk: ${reason}`);
   if (refused.length > 0) return EXIT_REFUSED;
-  const before = new Set(mergedBranches(run, options.cwd).map((entry) => entry.ref));
+  // Only branches that already held work are "earlier": an empty leftover that this run works and
+  // merges is this run's to announce.
+  const before = new Set(mergedBranches(run, options.cwd).filter((entry) => entry.work === "worked").map((entry) => entry.ref));
   const headBefore = git(run, ["rev-parse", "HEAD"]).trim();
 
   output.write("afk: step 1 of 3, running the Sandcastle loop (node .sandcastle/main.ts).");
@@ -190,7 +197,13 @@ function nothingToAnnounce(run: Run, output: Output, state: Quiet): number {
     return EXIT_ERROR;
   }
   if (state.earlier.length > 0) {
-    output.write("afk: nothing new to announce; the work an earlier run merged is already pushed.");
+    // Pushed work with no pull request means an earlier run stopped between the push and the
+    // pull request or its comments; exit 0 would hide that.
+    if (pullRequestUrl(run, state.branch) === "") {
+      output.warn("afk: the work an earlier run merged is pushed but gh finds no pull request for this branch. Open it with npm run pr, then comment on the issues by hand.");
+      return EXIT_ERROR;
+    }
+    output.write("afk: nothing new to announce; the work an earlier run merged is already pushed and has a pull request.");
     return EXIT_OK;
   }
   output.write("afk: no Sandcastle issue branch was merged into this branch by this run; nothing to land.");

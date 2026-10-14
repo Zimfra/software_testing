@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, type TestContext } from "node:test";
@@ -502,14 +502,65 @@ await test("a gh that throws when resolving the repository is a refusal, not a c
   assert.ok(!base.calls.includes("node .sandcastle/main.ts"));
 });
 
-await test("every -R repository in the Sandcastle prompts is the one the wrapper requires", () => {
+await test("every repository named in the Sandcastle prompts is the one the wrapper requires", () => {
+  const dir = new URL("../../.sandcastle/", import.meta.url);
+  const files = readdirSync(dir).filter((name) => name.endsWith(".md"));
+  assert.ok(files.length >= 4, "the prompt files are found");
   const found: string[] = [];
-  for (const file of ["plan-prompt.md", "implement-prompt.md", "merge-prompt.md", "review-prompt.md"]) {
-    const text = readFileSync(new URL(`../../.sandcastle/${file}`, import.meta.url), "utf8");
-    found.push(...[...text.matchAll(/-R ([\w.-]+\/[\w.-]+)/g)].map((match) => match[1] ?? ""));
+  for (const file of files) {
+    const text = readFileSync(new URL(file, dir), "utf8");
+    found.push(...[...text.matchAll(/(?:-R|--repo) ([\w.-]+\/[\w.-]+)/g)].map((match) => match[1] ?? ""));
   }
   assert.ok(found.length > 0, "the prompts name the repository");
   assert.deepEqual([...new Set(found)], [PROMPT_REPO]);
+});
+
+await test("an empty leftover branch that the loop then works and merges is announced and landed", (t) => {
+  const repo = fixture(t);
+  repo.write("feature.md", "feature work not on main yet\n");
+  repo.commit("feat: feature work");
+  repo.git(["branch", "sandcastle/issue-6"]); // empty leftover from an earlier run
+  const { run, calls } = runner(repo, {
+    loop: () => {
+      repo.git(["switch", "--quiet", "sandcastle/issue-6"]);
+      repo.write("six.md", "six\n");
+      repo.commit("feat: six");
+      mergeInto(repo, "feat/afk-work", "sandcastle/issue-6");
+      return 0;
+    },
+  });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_OK, result.err);
+  assert.ok(calls.includes("node scripts/git/pr-ready.ts"), "the work is landed");
+  assert.deepEqual(comments(calls).map((call) => call.split(" ")[3]), ["6"]);
+  assert.doesNotMatch(result.err, /earlier run/);
+});
+
+await test("earlier work that is pushed but has no pull request is an error", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-8");
+  mergeInto(repo, "feat/afk-work", "sandcastle/issue-8");
+  repo.git(["push", "--quiet", "origin", "feat/afk-work"]);
+  repo.git(["fetch", "--quiet", "origin"]);
+  const { run, calls } = runner(repo, { view: { status: 1, stdout: "" } });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.match(result.err, /no pull request/);
+  assert.ok(!calls.some((call) => call.startsWith("gh issue")));
+});
+
+await test("a merge left in progress on an otherwise clean tree is an error", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-5");
+  const { run } = runner(repo, {
+    loop: () => {
+      repo.git(["merge", "--no-commit", "--no-ff", "-s", "ours", "sandcastle/issue-5"]);
+      return 0;
+    },
+  });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.match(result.err, /merge/);
 });
 
 await test("arguments", (t) => {
