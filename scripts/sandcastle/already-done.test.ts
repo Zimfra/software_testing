@@ -252,7 +252,7 @@ await test("a rebased or amended branch still counts as worked", () => {
     repo.git(["switch", "--quiet", "-c", "sandcastle/issue-41", "main"]);
     repo.write("forty-one.txt", "41");
     repo.commit("feat: forty-one");
-    repo.git(["commit", "--quiet", "--amend", "--no-edit", "--allow-empty"]);
+    repo.git(["commit", "--quiet", "--amend", "-m", "feat: forty-one, reworded"]);
     repo.git(["switch", "--quiet", "main"]);
     repo.write("later.txt", "l");
     repo.commit("chore: HEAD moves on");
@@ -294,6 +294,56 @@ await test("aheadIssues also lists an unrecognised branch whose tip is ahead of 
     repo.git(["update-ref", "refs/heads/sandcastle/issue-43", ahead]);
     assert.deepEqual(aheadIssues([issue("43")], repo.dir).map((entry) => entry.id), ["43"]);
     assert.deepEqual(pendingIssues([issue("43")], repo.dir).map((entry) => entry.id), ["43"], "still pending, never dropped");
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("a rebase of an empty branch onto a moved main is not work", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["branch", "sandcastle/issue-50"]);
+    repo.write("later.txt", "l");
+    repo.commit("chore: HEAD moves on");
+    repo.git(["switch", "--quiet", "sandcastle/issue-50"]);
+    repo.git(["rebase", "--quiet", "main"]);
+    repo.git(["switch", "--quiet", "main"]);
+    assert.equal(branchWork("refs/heads/sandcastle/issue-50", repo.dir), "empty");
+    assert.deepEqual(pendingIssues([issue("50")], repo.dir).map((entry) => entry.id), ["50"]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("a branch whose only commit is a revert counts as worked", () => {
+  const repo = createRepo();
+  try {
+    repo.write("a.txt", "a");
+    repo.commit("chore: base");
+    repo.write("b.txt", "b");
+    repo.commit("feat: something to revert");
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-51"]);
+    repo.git(["revert", "--no-edit", "HEAD"]);
+    repo.git(["switch", "--quiet", "main"]);
+    assert.equal(branchWork("refs/heads/sandcastle/issue-51", repo.dir), "worked");
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("a pruned entry beside a reachable commit entry leaves the branch worked", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-52"]);
+    repo.write("fifty-two.txt", "52");
+    repo.commit("feat: fifty-two");
+    const tip = repo.git(["rev-parse", "HEAD"]);
+    appendFileSync(join(repo.dir, ".git", "logs", "refs", "heads", "sandcastle", "issue-52"),
+      `${tip} ${"2".repeat(40)} Fixture <fixture@example.invalid> 1700000000 +0000\tcommit: a pruned commit\n`);
+    repo.git(["switch", "--quiet", "main"]);
+    assert.equal(branchWork("refs/heads/sandcastle/issue-52", repo.dir), "worked");
   } finally {
     repo.cleanup();
   }

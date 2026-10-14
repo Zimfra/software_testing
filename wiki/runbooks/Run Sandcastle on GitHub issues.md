@@ -152,8 +152,9 @@ Sandcastle loop, a real push, and GitHub's review request reaching the owner.
   in `eslint.config.ts` cover only `scripts/**/*.ts` and `eslint.config.ts` itself, and the
   file keeps the upstream template's style.
 - The already-done guard drops an issue only when its `sandcastle/issue-<number>` branch is
-  merged into the current branch and its reflog holds a commit, amend or rebase entry whose
-  commit is still reachable from the tip. A branch that was created, reset, renamed or
+  merged into the current branch and its reflog holds a commit, amend or revert entry whose
+  commit is still reachable from the tip, or a rebase that rewrote earlier commit entries (a
+  rebase of an empty branch is not work). A branch that was created, reset, renamed or
   fast-forwarded and never committed to stays pending, as does one whose commits an agent reset
   away. Four limits follow: a pull request that the owner squash-merges leaves a branch that is
   never an ancestor, so delete that local branch or close the issue; a branch with no reflog
