@@ -150,13 +150,20 @@ Sandcastle loop, a real push, and GitHub's review request reaching the owner.
   in `eslint.config.ts` cover only `scripts/**/*.ts` and `eslint.config.ts` itself, and the
   file keeps the upstream template's style.
 - The already-done guard drops an issue only when its `sandcastle/issue-<number>` branch is
-  merged into the current branch and its reflog holds a commit entry (a commit made on the
-  branch). A branch that was created, reset or renamed and never committed to stays pending.
-  Three limits follow: a pull request that the owner squash-merges leaves a branch that is never
-  an ancestor, so delete that local branch or close the issue; a branch whose reflog has expired
-  is planned again, which costs a run and loses nothing; and a branch that holds only part of an
-  issue's work, once merged, is dropped on the next round, so the implementer is told to say in
-  the issue comment when a task is incomplete and the owner reads that comment before merging.
+  merged into the current branch and its reflog holds a commit, amend or rebase entry whose
+  commit is still reachable from the tip. A branch that was created, reset, renamed or
+  fast-forwarded and never committed to stays pending, as does one whose commits an agent reset
+  away. Four limits follow: a pull request that the owner squash-merges leaves a branch that is
+  never an ancestor, so delete that local branch or close the issue; a branch with no reflog
+  (for example after its reflog expired) is "unrecognised", stays pending and is planned again,
+  and when it is ahead of HEAD it is still passed to the merger; a branch that holds only part
+  of an issue's work, once merged, is dropped on the next round, so the implementer is told to
+  say in the issue comment when a task is incomplete and the owner reads that comment before
+  merging; and a reflog entry that names a pruned commit counts as not reachable.
+- UNKNOWN until the first real run: whether Sandcastle writes `commit:` entries into the host
+  branch reflog. After the first run, `git reflog show sandcastle/issue-<number>` should list
+  them. If it lists only `fetch` or `update-ref` entries, every branch is "unrecognised", the
+  guard drops nothing and `npm run sandcastle:afk` exits 2 instead of announcing.
 - The planner's output is validated before anything runs: `id` is a positive number without
   leading zeros, `branch` is `sandcastle/issue-<id>`, an issue appears once, and `title` is
   non-empty after it is normalised to one line of at most 200 characters with backticks and

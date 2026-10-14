@@ -6,13 +6,22 @@ export type PlannedIssue = { id: string; title: string; branch: string };
 // a commit is an ancestor of HEAD too. Only the branch's own reflog tells the two apart: it holds
 // the creation entry, plus one entry per commit made on the branch. A reset, rename, fetch or
 // fast-forward merge also writes an entry, so only entries that create a commit count (a
-// conflict resolved with `git commit` logs `commit (merge)`, which counts; a conflict-free merge
+// conflict resolved with `git commit` logs `commit (merge)`, which counts, as do `commit (amend)` and `rebase (finish)`; a conflict-free merge
 // of another branch logs `merge ...`, which does not, and the implementer's own commits are
 // counted anyway). The commit an entry made must still be reachable from the tip: a branch an
 // agent reset to a commit HEAD already contains has lost its work. A branch with no reflog is
 // "unrecognised" and stays pending, which costs a re-plan and never loses an issue. A worked
 // branch that the merger merged before its issue was finished is dropped too, because the signal
 // cannot tell partial from complete work, and a reset part of the way back is judged by its tip.
+// A reflog entry can name a commit that was pruned; that is "not reachable", never a failure.
+function reachable(sha: string, ref: string, cwd: string): boolean {
+  try {
+    return isAncestor(sha, ref, { cwd });
+  } catch {
+    return false;
+  }
+}
+
 export type BranchWork = "worked" | "empty" | "unrecognised";
 
 /**
@@ -30,9 +39,9 @@ export function branchWork(ref: string, cwd: string): BranchWork {
   });
   const created = entries.find((entry) => entry.subject.startsWith("branch: Created"));
   if (created !== undefined && created.sha === entries[0]?.sha) return "empty";
-  const commits = entries.filter((entry) => /^(commit|cherry-pick|revert)\b/.test(entry.subject));
+  const commits = entries.filter((entry) => /^(commit|cherry-pick|revert|rebase \(finish\))/.test(entry.subject));
   if (commits.length === 0) return "unrecognised";
-  return commits.some((entry) => isAncestor(entry.sha, ref, { cwd })) ? "worked" : "empty";
+  return commits.some((entry) => reachable(entry.sha, ref, cwd)) ? "worked" : "empty";
 }
 
 export const hasOwnCommits = (ref: string, cwd: string): boolean => branchWork(ref, cwd) === "worked";
@@ -51,13 +60,13 @@ export function pendingIssues(issues: readonly PlannedIssue[], cwd: string): Pla
 }
 
 /**
- * The planned issues whose branch holds commits of its own that HEAD does not contain yet, such
- * as work left over from a round whose review failed. The merger must receive these even when
+ * The planned issues whose branch holds commits that HEAD does not contain yet (worked, or a tip
+ * written by update-ref or fetch), such as work left over from a round whose review failed. The merger must receive these even when
  * the implementer adds nothing new in the round.
  */
 export function aheadIssues(issues: readonly PlannedIssue[], cwd: string): PlannedIssue[] {
   return issues.filter((issue) => {
     const ref = `refs/heads/${issue.branch}`;
-    return refExists(ref, { cwd }) && !isAncestor(ref, "HEAD", { cwd }) && hasOwnCommits(ref, cwd);
+    return refExists(ref, { cwd }) && !isAncestor(ref, "HEAD", { cwd }) && branchWork(ref, cwd) !== "empty";
   });
 }
