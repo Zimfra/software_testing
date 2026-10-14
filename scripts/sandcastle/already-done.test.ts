@@ -201,6 +201,26 @@ await test("aheadIssues lists the planned branches that hold commits of their ow
   }
 });
 
+await test("pendingIssues keeps a branch reset to a commit HEAD already contains, after it committed", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-21"]);
+    repo.write("twenty-one.txt", "21");
+    repo.commit("feat: twenty-one");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.write("later.txt", "l");
+    repo.commit("chore: HEAD moves on");
+    repo.git(["switch", "--quiet", "sandcastle/issue-21"]);
+    repo.git(["reset", "--quiet", "--hard", "main"]);
+    repo.git(["switch", "--quiet", "main"]);
+    assert.deepEqual(pendingIssues([issue("21")], repo.dir), [issue("21")]);
+    assert.equal(branchWork("refs/heads/sandcastle/issue-21", repo.dir), "empty");
+  } finally {
+    repo.cleanup();
+  }
+});
+
 await test("branchWork tells worked, untouched and unrecognised branches apart", () => {
   const repo = createRepo();
   try {

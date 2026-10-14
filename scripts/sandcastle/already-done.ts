@@ -5,20 +5,21 @@ export type PlannedIssue = { id: string; title: string; branch: string };
 // Sandcastle creates the branch at HEAD before the implementer runs, so a branch that never got
 // a commit is an ancestor of HEAD too. Only the branch's own reflog tells the two apart: it holds
 // the creation entry, plus one entry per commit made on the branch. A reset, rename, fetch or
-// fast-forward merge also writes an entry, so only entries that create a commit count; a
-// conflict-free merge of another branch into this one logs `merge ...` and does not count, which
-// is safe because the implementer's own commits are counted. A branch whose tip is where it was
-// created again (an agent reset it past its commits) has no work, and a branch with no reflog
-// stays pending: either costs a re-plan and never loses an issue. A worked branch that the
-// merger merged before its issue was finished is dropped too, because the signal cannot tell
-// partial from complete work.
+// fast-forward merge also writes an entry, so only entries that create a commit count (a
+// conflict resolved with `git commit` logs `commit (merge)`, which counts; a conflict-free merge
+// of another branch logs `merge ...`, which does not, and the implementer's own commits are
+// counted anyway). The commit an entry made must still be reachable from the tip: a branch an
+// agent reset to a commit HEAD already contains has lost its work. A branch with no reflog is
+// "unrecognised" and stays pending, which costs a re-plan and never loses an issue. A worked
+// branch that the merger merged before its issue was finished is dropped too, because the signal
+// cannot tell partial from complete work, and a reset part of the way back is judged by its tip.
 export type BranchWork = "worked" | "empty" | "unrecognised";
 
 /**
- * "worked": the reflog holds a commit entry and the tip moved off where the branch was created.
- * "empty": the branch is missing, or its tip is still where it was created. "unrecognised": the
- * tip moved or the reflog is gone, but no entry says a commit was made (a ref written by
- * update-ref or fetch); callers that must not stay silent treat it differently from "empty".
+ * "worked": a commit entry's commit is still reachable from the tip. "empty": the branch is
+ * missing, its tip is still where it was created, or every commit it made was reset away.
+ * "unrecognised": the tip moved or the reflog is gone, but no entry says a commit was made (a ref
+ * written by update-ref or fetch); callers that must not stay silent treat it differently from "empty".
  */
 export function branchWork(ref: string, cwd: string): BranchWork {
   if (!refExists(ref, { cwd })) return "empty";
@@ -28,9 +29,10 @@ export function branchWork(ref: string, cwd: string): BranchWork {
     return { sha: line.slice(0, space), subject: line.slice(space + 1) };
   });
   const created = entries.find((entry) => entry.subject.startsWith("branch: Created"));
-  const tip = entries[0]?.sha;
-  if (created !== undefined && created.sha === tip) return "empty";
-  return entries.some((entry) => /^(commit|cherry-pick|revert)\b/.test(entry.subject)) ? "worked" : "unrecognised";
+  if (created !== undefined && created.sha === entries[0]?.sha) return "empty";
+  const commits = entries.filter((entry) => /^(commit|cherry-pick|revert)\b/.test(entry.subject));
+  if (commits.length === 0) return "unrecognised";
+  return commits.some((entry) => isAncestor(entry.sha, ref, { cwd })) ? "worked" : "empty";
 }
 
 export const hasOwnCommits = (ref: string, cwd: string): boolean => branchWork(ref, cwd) === "worked";
