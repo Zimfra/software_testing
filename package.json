@@ -25,7 +25,8 @@
     "audit": "node scripts/git/landing-audit.ts",
     "worktree:guard": "node scripts/git/worktree-guard.ts",
     "hooks:install": "git config --local core.hooksPath .githooks",
-    "sandcastle": "node .sandcastle/main.ts"
+    "sandcastle": "node .sandcastle/main.ts",
+    "sandcastle:afk": "node scripts/sandcastle/afk.ts"
   },
   "devDependencies": {
     "@ai-hero/sandcastle": "^0.12.0",

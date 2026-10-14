@@ -38,7 +38,8 @@ phases, at most 10 rounds:
 What it does not do: it never pushes or opens a pull request, and its prompts tell it not to
 close issues. It does post a comment on each issue it merged, which notifies that issue's
 subscribers; that is the only notification, and its prompts, not the code, keep it to that. An issue is done when the owner merges its pull request
-(see [[Land a change]]), so a person pushes the integration branch and runs `npm run pr`.
+(see [[Land a change]]), so a person pushes the integration branch and runs `npm run pr`, or
+runs the loop through `npm run sandcastle:afk` (below), which does that landing step.
 
 Use it for small, well-specified issues. Rules the agents follow are in `CLAUDE.md` and
 `.claude/rules/zeem/`; the prompts point there instead of restating them.
@@ -77,6 +78,106 @@ Use it for small, well-specified issues. Rules the agents follow are in `CLAUDE.
   fast-forward has its own merge commit.
 - `git ls-files .sandcastle` lists no `.env`, `logs/` or `worktrees/` entry.
 - `npm run check` exits 0 on the branch before `npm run pr`.
+
+## Unattended run with `npm run sandcastle:afk`
+
+`npm run sandcastle:afk` (`scripts/sandcastle/afk.ts`) runs the loop and then lands its work, so
+you can leave. It runs on the host, from the feature branch checked out, and takes no arguments.
+In order:
+
+1. Refuses, saying why and exiting 1, when the branch is `main`, HEAD is detached, the tree has
+   uncommitted changes, `gh repo view` fails (`gh` not logged in, or the repository is not visible) or
+   names a repository other than `Zimfra/software_testing`, the one the prompts read. All of
+   these are reported together. Nothing has run yet. A login that is the
+   repository owner is refused by step 4, after the loop; the work then stays merged on the
+   branch.
+2. Runs `node .sandcastle/main.ts`. If that exits non-zero the wrapper stops with exit 2 and
+   nothing is pushed or commented. It also stops with exit 2 when HEAD is no longer on the
+   starting branch afterwards, or the tree is left with uncommitted changes or a merge in
+   progress, because the merger is an agent with a shell on this checkout.
+3. Runs `git fetch origin main`, then lists the local branches named `sandcastle/issue-<N>` that
+   are merged into `HEAD` and not on `origin/main`, and compares each branch tip with the tip it
+   had before the loop. A branch with a commit entry in its reflog whose tip the run moved, or
+   that the run merged for the first time, is announced; that includes an empty leftover the run
+   committed to and a branch merged earlier that the run extended. A branch merged earlier whose
+   tip is unchanged ("earlier work") is named in a warning and not commented on; the pull
+   request this run opens still carries its work. A branch the run merged whose reflog holds no
+   commit entry (a ref written by `update-ref` or `fetch`) is named in a warning, not commented
+   on, and makes the run exit 2 after landing the rest. A worked branch the run moved or created
+   that neither `HEAD` nor `origin/main` holds (the merger skipped or aborted it) is named and
+   also exits 2. With nothing to announce it exits 0 unless HEAD moved, or earlier work is not
+   on `origin/<branch>` yet (judged by those branches' own tips, so a later local commit does
+   not matter), or earlier work is pushed but `gh pr view` finds no open pull request for the
+   branch; each of those exits 2.
+   Before landing it compares the branch with `origin/main`, so an edit left by an earlier
+   refused run still counts. Only documentation may land unattended: Markdown under `wiki/` or
+   `docs/`, or at the repository root. Any other changed path (code, tests, configuration, a root
+   `json.py` that `python3 -m unittest` would import, a nested lint config, an upper-case
+   `Scripts/` on a case-insensitive disk) is refused with exit 1 and named. A moved or renamed
+   file counts at both its old and new path. The reason: landing runs `npm run check` on this
+   machine as you, with no person present, and that executes whatever the agents changed. The
+   same check runs before the loop (a branch that already carries code is refused before a paid
+   run) and after it; after the loop each announced issue gets a comment saying the work is
+   merged on the local branch and not landed, so you are not left with silence. Setting
+   `SANDCASTLE_AFK_LAND_CODE=1` in your own shell lifts the refusal and accepts that risk.
+   It fetches `origin/main` before comparing (once before the loop and once after it), so a
+   stale tracking ref cannot name code you never wrote. The fetch uses an explicit destination
+   and the wrapper checks that `origin/main` exists afterwards, so a narrowed refspec cannot leave
+   a stale or absent ref; a fetch that throws (a timeout), fails or leaves no ref before the loop
+   is reported with the other refusals, and one that fails after it exits 2 and says the loop
+   already ran and nothing was pushed. The two exit codes differ on purpose: before the loop
+   nothing has changed, so it is a refusal; after it, issue branches may already be merged here. A branch with no history in common with `origin/main`
+   is a named refusal, and only `git merge-base` exit 1 means that. A branch
+   that already carries code is refused before the loop until you land it with `npm run pr`, so
+   this wrapper is unusable on your own feature branch while it holds code. When a code refusal
+   coincides with stranded or deleted work, or a notice comment could not be posted, the exit is
+   2 and not 1.
+   The wrapper also exits 2 when the loop changed the repository's local git config (compared
+   key by key with `-z`, branch tracking keys excepted), because a tracked diff cannot show `core.hooksPath` or
+   `core.fsmonitor`. It compares the hooks directory the repository is configured to use
+   (`core.hooksPath` is honoured, and it resolves from a linked worktree too) by content, with a
+   SHA-256 of each file, before and after the loop, so a rewrite that keeps size and mtime is
+   seen. The config and hooks comparisons run before any git command that could run a hook
+   (`git status` can rewrite the index and run a `post-index-change` hook), and a changed hook
+   exits 2. A hooks directory that cannot be read, such as one holding a dangling link, is
+   refused before the loop and never compared as empty. It cannot see `node_modules`,
+   `config.worktree` (when `extensions.worktreeConfig` is on), `.git/info/exclude`, the global
+   git config or other ignored files; running the check inside the sandbox would, and is not
+   built. An issue branch the loop deleted is named and exits 2 as well.
+4. Runs `node scripts/git/pr-ready.ts`, the tool behind `npm run pr`, with its output streamed to
+   the terminal: it runs `npm run check`, refuses a `gh` login that is the repository owner,
+   pushes the branch and opens or reports the pull request. Its refusal (exit 1) is passed on with "nothing was pushed or commented"; its failure
+   (exit 2) is passed on with "a push may already have happened", because the tool pushes
+   before it opens the pull request, and nothing is commented. It then asks `gh pr view <branch> --json state,url` for the pull request; only an `OPEN` one
+   counts, and a missing or closed one is exit 2.
+5. Comments on each listed issue with `gh issue comment <N> -R <repository gh reported>`, giving
+   the pull request URL, saying the work may be incomplete and that it waits for the owner's
+   review. A comment that fails or times out does not stop the others; the wrapper then exits 2
+   and names the issues, and nothing retries it. The merge prompt also comments on each issue it merged, so an
+   issue can carry two comments.
+
+What notifies the owner: the comment on each issue, and the review request GitHub sends the
+code owner for the pull request (not exercised here; it depends on CODEOWNERS routing). There
+is no other channel. What it deliberately does not do: push or merge `main`, merge or approve a
+pull request, close an issue, skip a hook with `--no-verify`, change a repository setting or
+read `.sandcastle/.env` itself (the loop it starts reads that file). The pull request stays
+open until the owner merges it in the browser.
+
+Requirements on top of the prerequisites above: the host `gh` is logged in as the machine
+account, not the owner ([[ADR-0025 Agents use a machine account and the owner approves]]), and
+the branch contains `origin/main` when step 4 runs, or `npm run pr`'s tool refuses and you merge
+`main` into the branch yourself.
+
+Verified 2026-10-13 by `scripts/sandcastle/afk.test.ts` against real temporary git repositories
+with the loop, `pr-ready`, `gh` and `npm` replaced by scripted runners: the order of the steps,
+which branches are selected (merged by this run, not on `origin/main`, correctly named, with a
+commit of their own, or named when unrecognised), each refusal including an unresolvable or
+different repository, both exit codes of the landing step and their wording, a URL taken from
+`gh` and not from the tool's text, a failing or timed-out comment, a branch switch, a moved HEAD, a dirty
+or half-merged tree after the loop, earlier work pushed and unpushed, an empty earlier branch, and that none of the wrapper's own
+calls pushes, merges, closes, bypasses a hook or names `.env` (the landing tool is scripted, so
+its push is not exercised). Not exercised: the real `gh`, Docker, the
+Sandcastle loop, a real push, and GitHub's review request reaching the owner.
 
 ## Known notes
 
