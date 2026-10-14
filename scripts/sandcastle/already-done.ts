@@ -9,8 +9,8 @@ export type PlannedIssue = { id: string; title: string; branch: string };
 // conflict resolved with `git commit` logs `commit (merge)`, which counts, as does
 // `commit (amend)`; a conflict-free merge of another branch logs `merge ...` and does not).
 //
-// "worked" needs one such entry whose commit is still reachable from the tip and a tip whose
-// content differs from the tree the branch was created at, and nothing else
+// "worked" needs one such entry whose commit is still reachable from the tip and changes content
+// relative to its own parent, and nothing else
 // makes a branch worked. A commit reachable from the tip is the branch's own work that is part of
 // its history, so no reset or rebase order can make discarded work count as done. The price is
 // that a rebased branch (its commits are rewritten) is not recognised: it stays pending and is
@@ -29,20 +29,20 @@ function reachable(sha: string, ref: string, cwd: string): boolean {
   }
 }
 
-// A commit that changes no content (git commit --allow-empty, which the implementer prompt's
-// "say so in the commit" can lead to) is not work: the branch must differ from the tree it was
-// created at. Without a creation entry there is no baseline and the commit entry stands.
-function contentChanged(created: string | undefined, ref: string, cwd: string): BranchWork {
-  if (created === undefined) return "worked";
-  const changed = tryGit(["diff", "--name-only", created, ref, "--"], { cwd });
-  if (changed === null) return "unrecognised";
-  return changed.trim() === "" ? "empty" : "worked";
+// A commit that changes no content (git commit --allow-empty, which "say so in the commit" can
+// lead to) is not work. The test is the commit's own diff against its first parent, never a
+// comparison of the tip with the tree the branch was created at: that baseline goes stale as soon
+// as main moves or the branch takes up main. A pruned or unreadable commit is not work.
+function changesContent(sha: string, cwd: string): boolean {
+  const changed = tryGit(["diff-tree", "--no-commit-id", "--name-only", "-r", "--root", sha], { cwd });
+  return changed !== null && changed.trim() !== "";
 }
 
 // Subjects of reflog entries that move a branch tip without making work of the branch's own.
 const TIP_MOVES = /^(rebase \(finish\)|merge |cherry-pick: fast-forward|branch: Reset|Branch: renamed|reset:)/;
 // `cherry-pick: fast-forward` moves the tip onto an existing commit and makes none of the branch's own.
-const COMMIT_ENTRY = /^(commit|cherry-pick(?!: fast-forward)|revert)(?=[ :(]|$)/;
+// `commit (merge)` is never the branch's own work: with nothing committed on it there is nothing to conflict.
+const COMMIT_ENTRY = /^(commit(?! \(merge\))|cherry-pick(?!: fast-forward)|revert)(?=[ :(]|$)/;
 
 /**
  * "worked": a commit entry's commit is still reachable from the tip. "empty": the branch is
@@ -61,7 +61,7 @@ export function branchWork(ref: string, cwd: string): BranchWork {
   const created = entries.find((entry) => entry.subject.startsWith("branch: Created"));
   if (created !== undefined && created.sha === entries[0]?.sha) return "empty";
   const commits = entries.filter((entry) => COMMIT_ENTRY.test(entry.subject));
-  if (commits.some((entry) => reachable(entry.sha, ref, cwd))) return contentChanged(created?.sha, ref, cwd);
+  if (commits.some((entry) => reachable(entry.sha, ref, cwd) && changesContent(entry.sha, cwd))) return "worked";
   if (!isAncestor(ref, "HEAD", { cwd })) return "unrecognised";
   if (commits.length > 0) return "empty";
   const others = entries.filter((entry) => entry !== created);

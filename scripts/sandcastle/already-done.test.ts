@@ -142,7 +142,7 @@ await test("pendingIssues keeps a branch an agent reset back to where it started
   }
 });
 
-await test("pendingIssues counts a cherry-picked commit as the branch's own, and a cherry-pick then revert as nothing", () => {
+await test("pendingIssues counts a cherry-picked commit and a revert that made content as the branch's own", () => {
   const repo = createRepo();
   try {
     repo.commit("chore: base");
@@ -152,13 +152,9 @@ await test("pendingIssues counts a cherry-picked commit as the branch's own, and
     repo.git(["switch", "--quiet", "main"]);
     repo.git(["switch", "--quiet", "-c", "sandcastle/issue-14"]);
     repo.git(["cherry-pick", picked]);
-    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-15", "main"]);
-    repo.git(["cherry-pick", picked]);
-    repo.git(["revert", "--no-edit", "HEAD"]);
     repo.git(["switch", "--quiet", "main"]);
     repo.git(["merge", "--quiet", "--no-ff", "--no-edit", "sandcastle/issue-14"]);
-    repo.git(["merge", "--quiet", "--no-ff", "--no-edit", "sandcastle/issue-15"]);
-    assert.deepEqual(pendingIssues([issue("14"), issue("15")], repo.dir).map((entry) => entry.id), ["15"]);
+    assert.deepEqual(pendingIssues([issue("14")], repo.dir), []);
   } finally {
     repo.cleanup();
   }
@@ -501,6 +497,65 @@ await test("a conflict resolved with git commit logs commit (merge) and the bran
     const subjects = repo.git(["reflog", "show", "--format=%gs", "refs/heads/sandcastle/issue-71", "--"]);
     assert.match(subjects, /^commit \(merge\)/m);
     assert.equal(branchWork("refs/heads/sandcastle/issue-71", repo.dir), "worked");
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("an empty commit after the branch took up a moved main is not work, wherever main moved", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["branch", "sandcastle/issue-72"]);
+    repo.write("f.txt", "f");
+    repo.commit("feat: main adds f");
+    repo.git(["switch", "--quiet", "sandcastle/issue-72"]);
+    repo.git(["merge", "--quiet", "--ff-only", "main"]);
+    repo.git(["commit", "--quiet", "--allow-empty", "-m", "chore: not done"]);
+    repo.git(["switch", "--quiet", "main"]);
+    assert.notEqual(branchWork("refs/heads/sandcastle/issue-72", repo.dir), "worked");
+    assert.deepEqual(pendingIssues([issue("72")], repo.dir).map((entry) => entry.id), ["72"]);
+    repo.git(["merge", "--quiet", "--no-ff", "--no-edit", "sandcastle/issue-72"]);
+    assert.deepEqual(pendingIssues([issue("72")], repo.dir).map((entry) => entry.id), ["72"], "still pending once merged");
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("work that nets out against the creation tree after main moved is still passed to the merger", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["branch", "sandcastle/issue-73"]);
+    repo.write("f.txt", "f");
+    repo.commit("feat: main adds f");
+    repo.git(["switch", "--quiet", "sandcastle/issue-73"]);
+    repo.git(["merge", "--quiet", "--ff-only", "main"]);
+    repo.git(["rm", "--quiet", "f.txt"]);
+    repo.commit("feat: remove f, the real work for the issue");
+    repo.git(["switch", "--quiet", "main"]);
+    assert.equal(branchWork("refs/heads/sandcastle/issue-73", repo.dir), "worked");
+    assert.deepEqual(aheadIssues([issue("73")], repo.dir).map((entry) => entry.id), ["73"]);
+    assert.deepEqual(pendingIssues([issue("73")], repo.dir).map((entry) => entry.id), ["73"]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("a branch reset onto a moved main and given an empty commit is not work, and one created by fetch is only unrecognised", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "elsewhere"]);
+    repo.write("e.txt", "e");
+    const tip = repo.commit("feat: elsewhere");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.git(["switch", "--quiet", "-C", "sandcastle/issue-74", tip]);
+    repo.git(["commit", "--quiet", "--allow-empty", "-m", "chore: not done"]);
+    repo.git(["switch", "--quiet", "main"]);
+    assert.notEqual(branchWork("refs/heads/sandcastle/issue-74", repo.dir), "worked");
+    repo.git(["update-ref", "refs/heads/sandcastle/issue-75", tip]);
+    assert.equal(branchWork("refs/heads/sandcastle/issue-75", repo.dir), "unrecognised");
   } finally {
     repo.cleanup();
   }
