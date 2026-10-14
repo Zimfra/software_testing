@@ -23,6 +23,8 @@ evidence:
   - "VERIFIED: npm run check at e1fd25a exited 0 with 619 of 619 tests passing (2026-10-13), after merging the integration branch at c276e10."
   - "UNKNOWN: whether commits reach the host branch under a real Sandcastle run only through reflog commit entries; the wrapper exits 2 when HEAD moves with nothing announceable, so a different path fails loudly instead of reporting success."
   - "UNKNOWN: an owner decision on automatic issue comments; the brief asked for the owner to be told when work is done and no dated quote of that is recorded here."
+  - "VERIFIED: after the review of d207c67 (a finder and a verifier in separate contexts; the verifier passed npm run check at 619 of 619 and six mutation controls on named tests), the findings were fixed test first at 4d3a72a: afk.test.ts now has 31 tests; the new cases (a landing failure that says a push may have happened, a failing loop that says issues may be merged, earlier work unpushed and pushed, an unrecognised branch exiting 2 after landing the rest, a timed-out gh comment, a different repository refused) were red before the change, with 8 failing entries in that run, and a branchWork test pins the empty, worked and unrecognised classes in already-done.test.ts."
+  - "VERIFIED: npm run check at 4d3a72a exited 0 with 632 of 632 tests passing (2026-10-13); the first run failed only the known flaky evals test test_netproxy (a 503 not seen from a socket), and the rerun passed."
   - "UNKNOWN: the real gh (issue comment, the review request reaching the owner), Docker and the Sandcastle loop were not run; the tests replace them with scripted runners."
   - "UNKNOWN: whether gh pr view <branch> --json url --jq .url returns the URL for a branch pushed by pr-ready under a real gh; the test replaces gh with a scripted runner."
 ---
@@ -49,8 +51,10 @@ Owner points, none decided here:
 2. Whether a notification channel beyond GitHub is wanted. None exists.
 3. Which of the two comments an issue gets (the merge prompt's, and the wrapper's, which names
    the pull request) should stay. Both exist now.
-4. An issue merged by an earlier run whose pull request never opened is named in a warning and
-   not announced again; it needs `npm run pr` and a comment by hand.
+4. An issue merged by an earlier run is named in a warning and not commented on again. When
+   nothing new was merged and that earlier work is not on origin, the run exits 2 and says to
+   land it with `npm run pr`; once it is pushed the run exits 0 with a note. Whether a rerun
+   should instead land and announce it is the owner's call.
 5. `.sandcastle/main.ts` ends with "All done." and exit 0 even when every agent failed, so a
    total failure looks like an empty queue to this wrapper.
 
