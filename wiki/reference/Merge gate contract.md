@@ -4,7 +4,7 @@ title: Merge gate contract
 summary: "The merge gate is GitHub: the protect-main ruleset, the required check and guards workflows, the local backstops, and the read-only landing audit."
 tags: [area/git, area/github, kind/convention]
 created: 2026-09-20
-updated: 2026-10-10
+updated: 2026-10-13
 agent: claude-code
 status: active
 related: ["[[Land a change]]", "[[ADR-0025 Agents use a machine account and the owner approves]]"]
@@ -18,7 +18,7 @@ owner, and `.github/CODEOWNERS` names the owner alone, so only the owner's appro
 credential for the owner's account is on the machine agents use: `gh` is logged in as the
 machine account only, and the owner's account has no SSH key registered (both checked
 2026-10-10; re-check with `gh auth status` and `gh api users/<owner>/keys`). `npm run pr`
-refuses to run when `gh` is logged in as the repository owner. The Claude Code deny rules and
+refuses to run when `gh` is logged in as the repository owner or as a user named in `.github/CODEOWNERS` (read from `origin/main`; team entries are skipped). The Claude Code deny rules and
 hook below remain as defence in depth.
 
 ## Ruleset `protect-main` (default branch)
@@ -72,7 +72,7 @@ config-protection read from the plugin's `scripts/hooks/config-protection.js`, v
 
 - `npm run pr` (`scripts/git/pr-ready.ts`) refuses unless the branch is a named feature
   branch, clean, contains `origin/main`, has commits of its own and passes `npm run check`.
-  It then checks `gh auth status`, refuses if `gh` is logged in as the repository owner, pushes the branch and opens or reports its pull request. It
+  It then checks `gh auth status`, refuses if `gh` is logged in as the repository owner or a code owner, pushes the branch and opens or reports its pull request. It
   never merges. `--dry-run` stops before pushing.
 - `npm run audit` (`scripts/git/landing-audit.ts`) fetches origin's main itself, so a stale
   local ref cannot hide a direct push, and changes nothing else; a failed fetch is an error. It
