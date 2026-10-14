@@ -11,13 +11,20 @@ import { EXIT_ERROR, EXIT_OK, EXIT_REFUSED, consoleOutput, isEntryPoint, runCli,
 import { spawnRunner, type Run } from "../git/pr-ready.ts";
 import { branchWork, type BranchWork } from "./already-done.ts";
 
-export type Options = { cwd?: string; output?: Output; run?: Run };
+export type Options = { cwd?: string; output?: Output; run?: Run; env?: NodeJS.ProcessEnv };
 
 // The repository the Sandcastle prompts read issues from and comment on (.sandcastle/*.md).
 export const PROMPT_REPO = "Zimfra/software_testing";
-// Files the landing step runs or the repository's refusals live in. An agent edited them inside the
-// loop, so the wrapper must not run the edited copy unattended with the machine account's login.
-const GUARDED_PATHS = [/^scripts\/git\/pr-ready\.ts$/, /^scripts\/claude\//, /^\.claude\/settings(\.local)?\.json$/, /^\.githooks\//, /^package(-lock)?\.json$/, /^\.github\//];
+// The landing step runs `npm run check` on the host, as the owner and unattended, and that executes
+// the repository's own scripts, tests and configuration, including whatever an agent just changed.
+// A change to any of these paths therefore needs a person to read the diff before it is run, unless
+// the owner opted in to landing code unattended with SANDCASTLE_AFK_LAND_CODE=1. Documentation
+// (wiki/, CHANGELOG.md and other Markdown) is not executed and lands as before.
+const GUARDED_PATHS = [
+  /^scripts\//, /^evals\//, /^config\//, /^\.claude\//, /^\.githooks\//, /^\.github\//, /^\.sandcastle\//,
+  /^package(-lock)?\.json$/, /^tsconfig[^/]*\.json$/, /^eslint\.config\./, /^\.npmrc$/, /^\.nvmrc$/,
+];
+const LAND_CODE_ENV = "SANDCASTLE_AFK_LAND_CODE";
 const ISSUE_BRANCH = /^refs\/heads\/sandcastle\/issue-([1-9]\d*)$/;
 
 const USAGE = `Usage: node scripts/sandcastle/afk.ts
@@ -120,9 +127,10 @@ function strandedIssues(run: Run, cwd: string | undefined, before: ReadonlyMap<s
     .sort(byNumber);
 }
 
-/** Files the run changed that the landing step runs or enforces. */
-function guardedChanges(run: Run, headBefore: string): string[] {
-  return git(run, ["diff", "--name-only", headBefore, "HEAD"]).split("\n")
+/** Paths that differ from origin/main (so earlier unlanded work counts too) and that the landing step would execute. */
+function guardedChanges(run: Run): string[] {
+  const base = git(run, ["merge-base", "HEAD", "refs/remotes/origin/main"]).trim();
+  return git(run, ["diff", "--name-only", "-z", "--no-renames", base, "HEAD"]).split("\0")
     .filter((path) => GUARDED_PATHS.some((pattern) => pattern.test(path)));
 }
 
@@ -197,9 +205,9 @@ export function main(args: readonly string[], options: Options = {}): number {
   const incomplete = unannounced.length > 0 || stranded.length > 0 || deleted.length > 0;
   if (issues.length === 0) return nothingToAnnounce(run, output, { branch, headBefore, earlier, earlierRefs, incomplete });
 
-  const guarded = guardedChanges(run, headBefore);
+  const guarded = (options.env ?? process.env)[LAND_CODE_ENV] === "1" ? [] : guardedChanges(run);
   if (guarded.length > 0) {
-    output.warn(`afk: the loop changed files that the landing step runs or enforces: ${guarded.join(", ")}. Nothing was pushed or commented; review that diff, then land with npm run pr.`);
+    output.warn(`afk: the branch differs from origin/main in files that the landing step would run: ${guarded.join(", ")}. Nothing was pushed or commented. Review that diff and land with npm run pr, or set ${LAND_CODE_ENV}=1 to accept running agent-written code on this machine unattended.`);
     return EXIT_ERROR;
   }
   const code = land(run, output, { repo, branch, issues });

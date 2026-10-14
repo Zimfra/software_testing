@@ -70,11 +70,11 @@ function runner(repo: RepoFixture, script: Script = {}): { run: Run; calls: stri
   return { run, calls, inherited };
 }
 
-function go(repo: RepoFixture, run: Run, args: string[] = []): { code: number; out: string; err: string } {
+function go(repo: RepoFixture, run: Run, args: string[] = [], env: NodeJS.ProcessEnv = {}): { code: number; out: string; err: string } {
   const out: string[] = [];
   const err: string[] = [];
   const output: Output = { write: (line) => out.push(line), warn: (line) => err.push(line) };
-  return { code: main(args, { cwd: repo.dir, output, run }), out: out.join("\n"), err: err.join("\n") };
+  return { code: main(args, { cwd: repo.dir, output, run, env }), out: out.join("\n"), err: err.join("\n") };
 }
 
 const comments = (calls: string[]): string[] => calls.filter((call) => call.startsWith("gh issue comment"));
@@ -633,31 +633,86 @@ await test("a closed or merged pull request for the branch is not an open one", 
   });
 });
 
-await test("a loop that changed the files the landing step runs or enforces is not landed", async (t) => {
-  for (const path of ["scripts/git/pr-ready.ts", ".claude/settings.json", ".githooks/pre-push", "package.json"]) {
+const EXECUTED = [
+  "scripts/git/pr-ready.ts", "scripts/lib/git.ts", "scripts/app/thing.ts", "scripts/claude/block.ts",
+  "evals/compliance/run.py", "config/rules.json", ".claude/settings.json", ".claude/rules/zeem/x.md",
+  ".githooks/pre-push", ".github/workflows/check.yml", ".sandcastle/main.ts",
+  "package.json", "package-lock.json", "tsconfig.json", "eslint.config.ts", ".npmrc", ".nvmrc",
+];
+const DOCS = ["wiki/note.md", "CHANGELOG.md", "README.md"];
+
+function landingLoop(repo: RepoFixture, path: string): { run: Run; calls: string[] } {
+  repo.git(["switch", "--quiet", "-c", "sandcastle/issue-4", "feat/afk-work"]);
+  repo.write(path, "// changed by an agent\n");
+  repo.commit("feat: four");
+  repo.git(["switch", "--quiet", "feat/afk-work"]);
+  return runner(repo, { loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-4"); return 0; } });
+}
+
+await test("a run that changed code or configuration is not landed unattended", async (t) => {
+  for (const path of EXECUTED) {
     await t.test(path, (t) => {
       const repo = fixture(t);
-      repo.git(["switch", "--quiet", "-c", "sandcastle/issue-4", "feat/afk-work"]);
-      repo.write(path, "// changed by an agent\n");
-      repo.commit("feat: four");
-      repo.git(["switch", "--quiet", "feat/afk-work"]);
-      const { run, calls } = runner(repo, { loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-4"); return 0; } });
+      const { run, calls } = landingLoop(repo, path);
       const result = go(repo, run);
       assert.equal(result.code, EXIT_ERROR);
       assert.ok(result.err.includes(path), "names the file");
+      assert.match(result.err, /SANDCASTLE_AFK_LAND_CODE/);
       assert.ok(!calls.some((call) => call.includes("pr-ready") || call.startsWith("gh issue")));
     });
   }
-  await t.test("an ordinary file is landed", (t) => {
+  for (const path of DOCS) {
+    await t.test(`${path} lands`, (t) => {
+      const repo = fixture(t);
+      const { run, calls } = landingLoop(repo, path);
+      assert.equal(go(repo, run).code, EXIT_OK);
+      assert.ok(calls.includes("node scripts/git/pr-ready.ts"));
+    });
+  }
+  await t.test("the owner's opt-in lets code land", (t) => {
     const repo = fixture(t);
-    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-4", "feat/afk-work"]);
-    repo.write("scripts/app/thing.ts", "// ordinary\n");
-    repo.commit("feat: four");
-    repo.git(["switch", "--quiet", "feat/afk-work"]);
-    const { run, calls } = runner(repo, { loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-4"); return 0; } });
-    assert.equal(go(repo, run).code, EXIT_OK);
+    const { run, calls } = landingLoop(repo, "scripts/app/thing.ts");
+    const result = go(repo, run, [], { SANDCASTLE_AFK_LAND_CODE: "1" });
+    assert.equal(result.code, EXIT_OK, result.err);
     assert.ok(calls.includes("node scripts/git/pr-ready.ts"));
   });
+  await t.test("any other value of the opt-in is not an opt-in", (t) => {
+    const repo = fixture(t);
+    const { run } = landingLoop(repo, "scripts/app/thing.ts");
+    assert.equal(go(repo, run, [], { SANDCASTLE_AFK_LAND_CODE: "yes" }).code, EXIT_ERROR);
+  });
+});
+
+await test("a rerun after a refusal still refuses, because the edit is already on the branch", (t) => {
+  const repo = fixture(t);
+  const first = landingLoop(repo, "scripts/git/pr-ready.ts");
+  assert.equal(go(repo, first.run).code, EXIT_ERROR);
+  issueBranch(repo, "sandcastle/issue-5");
+  const second = runner(repo, { loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-5"); return 0; } });
+  const result = go(repo, second.run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.ok(result.err.includes("scripts/git/pr-ready.ts"));
+  assert.ok(!second.calls.some((call) => call.includes("pr-ready")));
+});
+
+await test("moving a guarded file away is seen as a change to it", (t) => {
+  const repo = fixture(t);
+  repo.git(["switch", "--quiet", "main"]);
+  repo.write("scripts/git/pr-ready.ts", "// the landing tool\n");
+  repo.commit("feat: landing tool");
+  repo.git(["push", "--quiet", "origin", "main"]);
+  repo.git(["fetch", "--quiet", "origin"]);
+  repo.git(["switch", "--quiet", "feat/afk-work"]);
+  repo.git(["merge", "--quiet", "--no-edit", "origin/main"]);
+  repo.git(["switch", "--quiet", "-c", "sandcastle/issue-4", "feat/afk-work"]);
+  repo.git(["mv", "scripts/git/pr-ready.ts", "wiki-moved.md"]);
+  repo.commit("feat: move it away");
+  repo.git(["switch", "--quiet", "feat/afk-work"]);
+  const { run, calls } = runner(repo, { loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-4"); return 0; } });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.ok(result.err.includes("scripts/git/pr-ready.ts"));
+  assert.ok(!calls.some((call) => call.includes("pr-ready")));
 });
 
 await test("an issue branch that the loop deleted is an error, not a silent success", (t) => {
