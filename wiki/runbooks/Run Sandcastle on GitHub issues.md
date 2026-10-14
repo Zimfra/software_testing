@@ -121,9 +121,12 @@ In order:
    merged on the local branch and not landed, so you are not left with silence. Setting
    `SANDCASTLE_AFK_LAND_CODE=1` in your own shell lifts the refusal and accepts that risk.
    It fetches `origin/main` before comparing (once before the loop and once after it), so a
-   stale tracking ref cannot name code you never wrote; a fetch that fails before the loop is
-   reported with the other refusals, and one that fails after it exits 2 and says the loop
-   already ran and nothing was pushed. A branch with no history in common with `origin/main`
+   stale tracking ref cannot name code you never wrote. The fetch uses an explicit destination
+   and the wrapper checks that `origin/main` exists afterwards, so a narrowed refspec cannot leave
+   a stale or absent ref; a fetch that throws (a timeout), fails or leaves no ref before the loop
+   is reported with the other refusals, and one that fails after it exits 2 and says the loop
+   already ran and nothing was pushed. The two exit codes differ on purpose: before the loop
+   nothing has changed, so it is a refusal; after it, issue branches may already be merged here. A branch with no history in common with `origin/main`
    is a named refusal, and only `git merge-base` exit 1 means that. A branch
    that already carries code is refused before the loop until you land it with `npm run pr`, so
    this wrapper is unusable on your own feature branch while it holds code. When a code refusal
@@ -131,7 +134,11 @@ In order:
    2 and not 1.
    The wrapper also exits 2 when the loop changed the repository's local git config (compared
    key by key with `-z`, branch tracking keys excepted), because a tracked diff cannot show `core.hooksPath` or
-   `core.fsmonitor`. It cannot see `node_modules`, `.git/hooks`, `config.worktree` (when
+   `core.fsmonitor`. It compares the `.git/hooks` listing (names, sizes, mtimes, resolved from
+   a linked worktree too) before and after the loop, and does so before the post-loop fetch,
+   because a `reference-transaction` hook runs when a fetch updates refs; a changed hook exits 2
+   with no further git command. It cannot see `node_modules`, the contents behind unchanged hook
+   metadata, `config.worktree` (when
    `extensions.worktreeConfig` is on), `.git/info/exclude`, the global git config or other
    ignored files; running
    the check inside the sandbox would, and is not built. An issue branch the loop deleted is
