@@ -30,7 +30,9 @@ phases, at most 10 rounds:
 2. **Implement, then review.** For each planned issue, a sandbox on that branch runs the
    implementer (up to 100 iterations); if it committed, a reviewer then runs once on the same
    branch. Issues run in parallel.
-3. **Merge.** One agent merges every branch that produced commits into the branch you ran from,
+3. **Merge.** One agent merges every branch that produced commits, and every planned branch that
+   still holds commits the branch lacks (left over from an earlier round and not reviewed in this
+   one), into the branch you ran from,
    runs `npm run typecheck` and `npm run test`, and comments on each issue.
 
 What it does not do: it never pushes or opens a pull request, and its prompts tell it not to
@@ -104,10 +106,13 @@ Use it for small, well-specified issues. Rules the agents follow are in `CLAUDE.
 - A merged branch whose typecheck or tests still fail after the merger's fix attempt is not
   undone, and the next round drops it as done; read the integration branch's checks before
   landing it.
-- A planned branch that still holds commits HEAD lacks (a reviewer that threw, an aborted merge)
-  is passed to the merger in the next round even when the implementer adds nothing, so it no
-  longer stalls the loop. A branch an agent reset back to where it started stays pending; one
-  it reset part of the way back is judged by its tip and counts as worked.
+- A planned branch that still holds commits HEAD lacks (a reviewer that threw, an aborted merge,
+  a sandbox that died after the implementer committed) is passed to the merger in the next round
+  even when the implementer adds nothing, so it no longer stalls the loop. It is merged without
+  a review round and may be partial or broken, so read it before landing the integration branch.
+- A branch whose commits an agent reset away (to its creation point or to any commit HEAD already
+  contains) has no work and stays pending. A branch reset only part of the way back keeps the
+  commits that are still reachable from its tip and counts as worked.
 - The review prompt runs `git diff <current branch>...` in a shell, so run the loop from a
   branch whose name is plain (letters, digits, `-`, `/`).
 - `main.ts` refuses to start on `main` or a detached HEAD, because the merger commits into the
