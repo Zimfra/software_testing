@@ -218,15 +218,14 @@ await test("a repository gh cannot resolve is refused before the loop runs", (t)
   assert.ok(!calls.includes("node .sandcastle/main.ts"));
 });
 
-await test("comments go to the repository gh reports, not a fixed name", (t) => {
+await test("a repository other than the one the Sandcastle prompts read is refused before the loop", (t) => {
   const repo = fixture(t);
-  issueBranch(repo, "sandcastle/issue-4");
-  const { run, calls } = runner(repo, {
-    loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-4"); return 0; },
-    ghRepo: { status: 0, stdout: "some-org/other-repo\n" },
-  });
-  assert.equal(go(repo, run).code, EXIT_OK);
-  assert.match(comments(calls)[0] ?? "", /-R some-org\/other-repo /);
+  const { run, calls } = runner(repo, { ghRepo: { status: 0, stdout: "some-org/other-repo\n" } });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_REFUSED);
+  assert.match(result.err, /some-org\/other-repo/);
+  assert.match(result.err, /Zimfra\/software_testing/);
+  assert.ok(!calls.includes("node .sandcastle/main.ts"));
 });
 
 await test("a comment that fails does not stop the others, and the run reports it", (t) => {
@@ -352,9 +351,91 @@ await test("a failing git status or a failing fetch after the loop stops the run
       if (command === "git" && args[0] === "fetch" && ++fetches === 2) return { status: 128, stdout: "" };
       return base.run(command, args, options);
     };
-    assert.throws(() => go(repo, run), /git fetch/);
+    assert.throws(() => go(repo, run), /git fetch .* failed \(exit 128\)/);
     assert.ok(!base.calls.some((call) => call.includes("pr-ready") || call.startsWith("gh issue")));
   });
+});
+
+await test("a landing step that failed says a push may already have happened", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-4");
+  const { run } = runner(repo, {
+    loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-4"); return 0; },
+    pr: { status: 2, stdout: "" },
+  });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.match(result.err, /push may already have happened/);
+  assert.doesNotMatch(result.err, /nothing was pushed/i);
+});
+
+await test("a failing loop says issues may already be merged on the branch", (t) => {
+  const repo = fixture(t);
+  const result = go(repo, runner(repo, { loop: () => 3 }).run);
+  assert.match(result.err, /may already have merged/);
+});
+
+await test("work merged by an earlier run and not pushed is an error, and once pushed it is a note", async (t) => {
+  await t.test("not pushed", (t) => {
+    const repo = fixture(t);
+    issueBranch(repo, "sandcastle/issue-8");
+    mergeInto(repo, "feat/afk-work", "sandcastle/issue-8");
+    const { run, calls } = runner(repo);
+    const result = go(repo, run);
+    assert.equal(result.code, EXIT_ERROR);
+    assert.match(result.err, /not pushed/);
+    assert.ok(!calls.some((call) => call.includes("pr-ready") || call.startsWith("gh issue")));
+  });
+  await t.test("pushed", (t) => {
+    const repo = fixture(t);
+    issueBranch(repo, "sandcastle/issue-8");
+    mergeInto(repo, "feat/afk-work", "sandcastle/issue-8");
+    repo.git(["push", "--quiet", "origin", "feat/afk-work"]);
+    repo.git(["fetch", "--quiet", "origin"]);
+    const result = go(repo, runner(repo).run);
+    assert.equal(result.code, EXIT_OK, result.err);
+    assert.match(result.out, /already pushed/);
+  });
+});
+
+await test("an issue branch the run merged without a commit entry is named and makes the run exit 2 after landing the rest", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-4");
+  const { run, calls } = runner(repo, {
+    loop: () => {
+      mergeInto(repo, "feat/afk-work", "sandcastle/issue-4");
+      repo.write("b.md", "b\n");
+      repo.commit("feat: b");
+      repo.git(["update-ref", "refs/heads/sandcastle/issue-9", "HEAD"]); // merged, but no commit entry
+      return 0;
+    },
+  });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.match(result.err, /issue 9/);
+  assert.equal(comments(calls).length, 1, "issue 4 is still announced");
+});
+
+await test("a gh call that times out is reported as a failed comment and the others still go", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-4");
+  issueBranch(repo, "sandcastle/issue-12");
+  const base = runner(repo, {
+    loop: () => {
+      mergeInto(repo, "feat/afk-work", "sandcastle/issue-4");
+      mergeInto(repo, "feat/afk-work", "sandcastle/issue-12");
+      return 0;
+    },
+  });
+  const run: Run = (command, args, options) => {
+    if (command === "gh" && args[0] === "issue" && args[2] === "4") throw new Error("spawnSync gh ETIMEDOUT");
+    return base.run(command, args, options);
+  };
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.deepEqual(comments(base.calls).map((call) => call.split(" ")[3]), ["12"], "the comment that timed out never reached gh, and issue 12 still went");
+  assert.match(result.err, /issue 4/);
+  assert.match(result.err, new RegExp(PR_URL));
 });
 
 await test("arguments", (t) => {

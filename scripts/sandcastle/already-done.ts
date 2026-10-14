@@ -12,19 +12,28 @@ export type PlannedIssue = { id: string; title: string; branch: string };
 // stays pending: either costs a re-plan and never loses an issue. A worked branch that the
 // merger merged before its issue was finished is dropped too, because the signal cannot tell
 // partial from complete work.
-export function hasOwnCommits(ref: string, cwd: string): boolean {
-  if (!refExists(ref, { cwd })) return false;
+export type BranchWork = "worked" | "empty" | "unrecognised";
+
+/**
+ * "worked": the reflog holds a commit entry and the tip moved off where the branch was created.
+ * "empty": the branch is missing, or its tip is still where it was created. "unrecognised": the
+ * tip moved or the reflog is gone, but no entry says a commit was made (a ref written by
+ * update-ref or fetch); callers that must not stay silent treat it differently from "empty".
+ */
+export function branchWork(ref: string, cwd: string): BranchWork {
+  if (!refExists(ref, { cwd })) return "empty";
   const log = tryGit(["reflog", "show", "--format=%H %gs", ref, "--"], { cwd });
-  if (log === null) return false;
-  const entries = log.split("\n").filter((line) => line !== "").map((line) => {
+  const entries = (log ?? "").split("\n").filter((line) => line !== "").map((line) => {
     const space = line.indexOf(" ");
     return { sha: line.slice(0, space), subject: line.slice(space + 1) };
   });
   const created = entries.find((entry) => entry.subject.startsWith("branch: Created"));
   const tip = entries[0]?.sha;
-  if (created !== undefined && created.sha === tip) return false;
-  return entries.some((entry) => /^(commit|cherry-pick|revert)\b/.test(entry.subject));
+  if (created !== undefined && created.sha === tip) return "empty";
+  return entries.some((entry) => /^(commit|cherry-pick|revert)\b/.test(entry.subject)) ? "worked" : "unrecognised";
 }
+
+export const hasOwnCommits = (ref: string, cwd: string): boolean => branchWork(ref, cwd) === "worked";
 
 /**
  * The planned issues whose branch is not yet merged into the checked-out branch of `cwd`.
