@@ -110,15 +110,21 @@ In order:
    not matter), or earlier work is pushed but `gh pr view` finds no open pull request for the
    branch; each of those exits 2.
    Before landing it compares the branch with `origin/main`, so an edit left by an earlier
-   refused run still counts. If the diff touches code or configuration that `npm run check`
-   executes (`scripts/`, `evals/`, `config/`, `.claude/`, `.githooks/`, `.github/`,
-   `.sandcastle/`, `package.json` and its lockfile, `tsconfig*.json`, `eslint.config.*`,
-   `.npmrc`, `.nvmrc`) it exits 2 without running anything, names the paths, and says to review
-   the diff and land with `npm run pr`. A moved or renamed file counts at both its old and new
-   path. Documentation (`wiki/`, `CHANGELOG.md`, other Markdown) lands unattended. The reason:
-   landing runs `npm run check` on this machine as you, with no person present, and that
-   executes whatever the agents changed. Setting `SANDCASTLE_AFK_LAND_CODE=1` in your own shell
-   lifts the refusal and accepts that risk. An issue branch the loop deleted is named and exits 2.
+   refused run still counts. Only documentation may land unattended: Markdown under `wiki/` or
+   `docs/`, or at the repository root. Any other changed path (code, tests, configuration, a root
+   `json.py` that `python3 -m unittest` would import, a nested lint config, an upper-case
+   `Scripts/` on a case-insensitive disk) is refused with exit 1 and named. A moved or renamed
+   file counts at both its old and new path. The reason: landing runs `npm run check` on this
+   machine as you, with no person present, and that executes whatever the agents changed. The
+   same check runs before the loop (a branch that already carries code is refused before a paid
+   run) and after it; after the loop each announced issue gets a comment saying the work is
+   merged on the local branch and not landed, so you are not left with silence. Setting
+   `SANDCASTLE_AFK_LAND_CODE=1` in your own shell lifts the refusal and accepts that risk.
+   The wrapper also exits 2 when the loop changed the repository's local git config (branch
+   tracking keys excepted), because a tracked diff cannot show `core.hooksPath` or
+   `core.fsmonitor`. It cannot see `node_modules`, `.git/hooks` or other ignored files; running
+   the check inside the sandbox would, and is not built. An issue branch the loop deleted is
+   named and exits 2 as well.
 4. Runs `node scripts/git/pr-ready.ts`, the tool behind `npm run pr`, with its output streamed to
    the terminal: it runs `npm run check`, refuses a `gh` login that is the repository owner,
    pushes the branch and opens or reports the pull request. Its refusal (exit 1) is passed on with "nothing was pushed or commented"; its failure

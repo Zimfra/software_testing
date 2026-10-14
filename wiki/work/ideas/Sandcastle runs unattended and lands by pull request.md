@@ -36,6 +36,8 @@ evidence:
   - "UNKNOWN: patch equivalence is not checked: a branch the loop rebased onto HEAD is classed unrecognised and, when its tip is not held by HEAD, exits 2 as stranded even if HEAD holds the same patches; the prompts forbid rebasing."
   - "VERIFIED: after the review of 13eb37a (a finder and a verifier in separate contexts; the verifier reproduced 667 of 667 and passed eleven mutation controls on named tests), the finder's two HIGH findings were fixed test first at 770dcef: the guard was a denylist that missed code the landing check executes (scripts/lib, config, eslint.config.ts, .npmrc and others) and compared against the run's starting HEAD, so a rerun landed an edit left by a refused run; it now compares with origin/main, uses -z --no-renames, covers the executed paths and takes an owner opt-in; 21 entries were red before the change, the documentation-lands cases passed already, afk.test.ts has 75 entries, and npm run check at 770dcef exited 0 with 689 of 689 tests passing (2026-10-13)."
   - "UNKNOWN: the guard is a path list, not a proof; code that npm run check executes from outside the listed paths (a gitignored file, node_modules) is not seen by a tracked diff."
+  - "VERIFIED: after the review of d5023c9 (a finder and a verifier in separate contexts; the verifier reproduced 689 of 689 and passed fourteen mutation controls), the finder's two HIGH findings and its design recommendation were applied test first at e665554: the guard is now an allowlist of Markdown documentation (a root json.py, a nested eslint config and an upper-case Scripts/ were all unguarded under the denylist), runs before the loop as well as after it, exits 1 as a refusal, comments on each announced issue, and a changed local git config exits 2; 33 entries were red before the change, afk.test.ts has 50 and afk-guard.test.ts 40 entries, and npm run check at e665554 exited 0 with 706 of 706 tests passing (2026-10-13)."
+  - "UNKNOWN: the guard cannot see node_modules, .git/hooks or other ignored files; a tracked diff and the local git config comparison do not cover them, and running npm run check inside the sandbox, which is not built, would."
   - "UNKNOWN: the real gh (issue comment, the review request reaching the owner), Docker and the Sandcastle loop were not run; the tests replace them with scripted runners."
   - "UNKNOWN: whether gh pr view <branch> --json url --jq .url returns the URL for a branch pushed by pr-ready under a real gh; the test replaces gh with a scripted runner."
 ---
@@ -68,11 +70,15 @@ Owner points, none decided here:
    should instead land and announce it is the owner's call.
 5. `.sandcastle/main.ts` ends with "All done." and exit 0 even when every agent failed, so a
    total failure looks like an empty queue to this wrapper.
-6. Whether unattended landing may run agent-written code on this machine. It does today only
-   with `SANDCASTLE_AFK_LAND_CODE=1`: `npm run check` executes the repository's scripts, tests
-   and configuration as the owner, outside the sandbox, with no person present. Options: (a) keep
-   docs-only unattended landing as the default (current); (b) set the variable and accept it;
-   (c) run `npm run check` inside the Docker sandbox, which is not built. Awaiting the owner.
+6. Whether unattended landing may run agent-written code on this machine. Today only
+   documentation lands unattended; anything else is refused unless you set
+   `SANDCASTLE_AFK_LAND_CODE=1` in your own shell, because `npm run check` executes the
+   repository's scripts, tests and configuration as you, outside the sandbox, with no person
+   present. Almost every Sandcastle issue changes code, so by default this wrapper will stop at
+   "merged locally, review and run `npm run pr`" and comment on the issue. Options: (a) keep
+   documentation-only unattended landing as the default (current); (b) set the variable and
+   accept it; (c) run `npm run check` inside the Docker sandbox, which is not built. Awaiting
+   the owner.
 
 ## Observations
 
