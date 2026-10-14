@@ -15,6 +15,9 @@ export type Options = { cwd?: string; output?: Output; run?: Run };
 
 // The repository the Sandcastle prompts read issues from and comment on (.sandcastle/*.md).
 export const PROMPT_REPO = "Zimfra/software_testing";
+// Files the landing step runs or the repository's refusals live in. An agent edited them inside the
+// loop, so the wrapper must not run the edited copy unattended with the machine account's login.
+const GUARDED_PATHS = [/^scripts\/git\/pr-ready\.ts$/, /^scripts\/claude\//, /^\.claude\/settings(\.local)?\.json$/, /^\.githooks\//, /^package(-lock)?\.json$/, /^\.github\//];
 const ISSUE_BRANCH = /^refs\/heads\/sandcastle\/issue-([1-9]\d*)$/;
 
 const USAGE = `Usage: node scripts/sandcastle/afk.ts
@@ -117,6 +120,12 @@ function strandedIssues(run: Run, cwd: string | undefined, before: ReadonlyMap<s
     .sort(byNumber);
 }
 
+/** Files the run changed that the landing step runs or enforces. */
+function guardedChanges(run: Run, headBefore: string): string[] {
+  return git(run, ["diff", "--name-only", headBefore, "HEAD"]).split("\n")
+    .filter((path) => GUARDED_PATHS.some((pattern) => pattern.test(path)));
+}
+
 type Landing = { repo: string; branch: string; issues: string[] };
 
 /** Steps 2 and 3: open the pull request through pr-ready.ts, then comment on each issue. */
@@ -183,24 +192,21 @@ export function main(args: readonly string[], options: Options = {}): number {
     output.warn(`afk: the loop left the tree ${leftover}. Nothing was pushed or commented; finish or abort that by hand.`);
     return EXIT_ERROR;
   }
-  const { issues, unannounced, earlier, earlierRefs, stranded } = classify(run, options.cwd, tipsBefore, mergedBefore);
-  if (earlier.length > 0) {
-    output.warn(`afk: issue ${earlier.join(", ")} was merged on this branch by an earlier run and is not commented on by this run; the pull request carries its work.`);
-  }
-  if (unannounced.length > 0) {
-    output.warn(`afk: issue ${unannounced.join(", ")} was merged by this run but its branch has no commit entry in its reflog, so it is not commented on; the pull request still carries its work.`);
-  }
-  if (stranded.length > 0) {
-    output.warn(`afk: issue ${stranded.join(", ")} has work on its branch that this run did not merge, and origin/main does not hold it. The run exits 2; rerun, or merge it by hand.`);
-  }
-  const incomplete = unannounced.length > 0 || stranded.length > 0;
+  const { issues, unannounced, earlier, earlierRefs, stranded, deleted } = classify(run, options.cwd, tipsBefore, mergedBefore);
+  reportClassification(output, { issues, unannounced, earlier, earlierRefs, stranded, deleted });
+  const incomplete = unannounced.length > 0 || stranded.length > 0 || deleted.length > 0;
   if (issues.length === 0) return nothingToAnnounce(run, output, { branch, headBefore, earlier, earlierRefs, incomplete });
 
+  const guarded = guardedChanges(run, headBefore);
+  if (guarded.length > 0) {
+    output.warn(`afk: the loop changed files that the landing step runs or enforces: ${guarded.join(", ")}. Nothing was pushed or commented; review that diff, then land with npm run pr.`);
+    return EXIT_ERROR;
+  }
   const code = land(run, output, { repo, branch, issues });
   return code === EXIT_OK && incomplete ? EXIT_ERROR : code;
 }
 
-type Classified = { issues: string[]; unannounced: string[]; earlier: string[]; earlierRefs: string[]; stranded: string[] };
+type Classified = { issues: string[]; unannounced: string[]; earlier: string[]; earlierRefs: string[]; stranded: string[]; deleted: string[] };
 
 /** Sort the issue branches after the loop into announced, earlier, unrecognised and stranded work. */
 function classify(run: Run, cwd: string | undefined, tipsBefore: ReadonlyMap<string, string>, mergedBefore: ReadonlySet<string>): Classified {
@@ -216,7 +222,24 @@ function classify(run: Run, cwd: string | undefined, tipsBefore: ReadonlyMap<str
     earlier: numbers(earlierRefs),
     earlierRefs,
     stranded: strandedIssues(run, cwd, tipsBefore),
+    deleted: numbers([...tipsBefore.keys()].filter((ref) => !tipsAfter.has(ref))),
   };
+}
+
+function reportClassification(output: Output, found: Classified): void {
+  const { unannounced, earlier, stranded, deleted } = found;
+  if (earlier.length > 0) {
+    output.warn(`afk: issue ${earlier.join(", ")} was merged on this branch by an earlier run and is not commented on by this run; the pull request carries its work.`);
+  }
+  if (unannounced.length > 0) {
+    output.warn(`afk: issue ${unannounced.join(", ")} was merged by this run but its branch has no commit entry in its reflog, so it is not commented on; the pull request still carries its work.`);
+  }
+  if (stranded.length > 0) {
+    output.warn(`afk: issue ${stranded.join(", ")} has work on its branch that this run did not merge, and origin/main does not hold it. The run exits 2; rerun, or merge it by hand.`);
+  }
+  if (deleted.length > 0) {
+    output.warn(`afk: the branch of issue ${deleted.join(", ")} was deleted during the loop, so its work cannot be classified. Check the repository before landing by hand.`);
+  }
 }
 
 type Quiet = { branch: string; headBefore: string; earlier: string[]; earlierRefs: string[]; incomplete: boolean };

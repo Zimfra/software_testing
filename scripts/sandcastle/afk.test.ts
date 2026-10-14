@@ -633,6 +633,83 @@ await test("a closed or merged pull request for the branch is not an open one", 
   });
 });
 
+await test("a loop that changed the files the landing step runs or enforces is not landed", async (t) => {
+  for (const path of ["scripts/git/pr-ready.ts", ".claude/settings.json", ".githooks/pre-push", "package.json"]) {
+    await t.test(path, (t) => {
+      const repo = fixture(t);
+      repo.git(["switch", "--quiet", "-c", "sandcastle/issue-4", "feat/afk-work"]);
+      repo.write(path, "// changed by an agent\n");
+      repo.commit("feat: four");
+      repo.git(["switch", "--quiet", "feat/afk-work"]);
+      const { run, calls } = runner(repo, { loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-4"); return 0; } });
+      const result = go(repo, run);
+      assert.equal(result.code, EXIT_ERROR);
+      assert.ok(result.err.includes(path), "names the file");
+      assert.ok(!calls.some((call) => call.includes("pr-ready") || call.startsWith("gh issue")));
+    });
+  }
+  await t.test("an ordinary file is landed", (t) => {
+    const repo = fixture(t);
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-4", "feat/afk-work"]);
+    repo.write("scripts/app/thing.ts", "// ordinary\n");
+    repo.commit("feat: four");
+    repo.git(["switch", "--quiet", "feat/afk-work"]);
+    const { run, calls } = runner(repo, { loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-4"); return 0; } });
+    assert.equal(go(repo, run).code, EXIT_OK);
+    assert.ok(calls.includes("node scripts/git/pr-ready.ts"));
+  });
+});
+
+await test("an issue branch that the loop deleted is an error, not a silent success", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-8");
+  mergeInto(repo, "feat/afk-work", "sandcastle/issue-8");
+  const { run, calls } = runner(repo, { loop: () => { repo.git(["branch", "-D", "sandcastle/issue-8"]); return 0; } });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.match(result.err, /issue 8/);
+  assert.match(result.err, /deleted/);
+  assert.ok(!calls.some((call) => call.includes("pr-ready") || call.startsWith("gh issue")));
+});
+
+await test("stranded work is reported and the rest still lands, with exit 2 at the end", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-4");
+  const { run, calls } = runner(repo, {
+    loop: () => {
+      mergeInto(repo, "feat/afk-work", "sandcastle/issue-4");
+      repo.git(["switch", "--quiet", "-c", "sandcastle/issue-7", "feat/afk-work"]);
+      repo.write("seven.md", "7\n");
+      repo.commit("feat: seven");
+      repo.git(["switch", "--quiet", "feat/afk-work"]);
+      return 0;
+    },
+  });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.match(result.err, /issue 7/);
+  assert.ok(calls.includes("node scripts/git/pr-ready.ts"), "issue 4 still lands");
+  assert.deepEqual(comments(calls).map((call) => call.split(" ")[3]), ["4"]);
+});
+
+await test("a branch the loop only pointed at a commit origin/main already holds is not stranded", (t) => {
+  const repo = fixture(t);
+  repo.git(["switch", "--quiet", "main"]);
+  repo.write("on-main.md", "main moved\n");
+  repo.commit("feat: main moves");
+  repo.git(["push", "--quiet", "origin", "main"]);
+  repo.git(["fetch", "--quiet", "origin"]);
+  repo.git(["switch", "--quiet", "feat/afk-work"]);
+  repo.git(["merge", "--quiet", "--no-edit", "origin/main"]);
+  const result = go(repo, runner(repo, {
+    loop: () => {
+      repo.git(["branch", "--force", "sandcastle/issue-3", "origin/main"]);
+      return 0;
+    },
+  }).run);
+  assert.equal(result.code, EXIT_OK, result.err);
+});
+
 await test("arguments", (t) => {
   const repo = fixture(t);
   assert.equal(go(repo, runner(repo).run, ["--bogus"]).code, EXIT_ERROR);
