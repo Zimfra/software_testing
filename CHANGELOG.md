@@ -4,6 +4,10 @@ Every branch adds its own entry here, under a `## YYYY-MM-DD` heading dated betw
 started and the day it lands (UTC). Entries describe the change; they never cite
 facts that only exist after the owner merges. `npm run changelog:guard` enforces this.
 
+## 2026-10-13
+
+- `npm run pr` now also refuses to run when `gh` is logged in as a user named in `.github/CODEOWNERS` (matched case-insensitively, read from `origin/main`), not only as the repository owner. On an organisation-owned repository the owner login is the organisation, so the human owner's own account was not refused. Team and email entries are skipped, text after a `#` is a comment, and a CODEOWNERS file that is absent changes nothing; a tree that cannot be read stops the run instead of skipping the check. The Merge gate contract states the new refusal.
+
 ## 2026-10-12
 
 - The wiki privacy scan now treats the account name `agent` as a role name, like `node` or `runner`, instead of a personal username. A checkout validated by a user named `agent` (the Sandcastle sandbox user) no longer fails `wiki:lint` on the `agent:` field of every note; a login that names a person is still flagged, and so is a home-directory path containing a real username, which a new test pins for the `agent` login. The comment above the list now says what counts as a role name and why.
