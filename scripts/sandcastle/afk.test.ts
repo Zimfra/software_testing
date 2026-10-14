@@ -1,85 +1,10 @@
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { test, type TestContext } from "node:test";
+import { readFileSync, readdirSync } from "node:fs";
+import { PROMPT_REPO } from "./afk.ts";
+import { test } from "node:test";
 import type { Run } from "../git/pr-ready.ts";
-import { EXIT_ERROR, EXIT_OK, EXIT_REFUSED, type Output } from "../lib/cli.ts";
-import { cleanGitEnv, createRepo, type RepoFixture } from "../test-support/repo-fixture.ts";
-import { PROMPT_REPO, main } from "./afk.ts";
-
-const PR_URL = "https://github.com/Zimfra/software_testing/pull/21";
-
-function fixture(t: TestContext): RepoFixture {
-  const repo = createRepo("afk-");
-  const remote = mkdtempSync(join(tmpdir(), "afk-remote-"));
-  t.after(() => { repo.cleanup(); rmSync(remote, { recursive: true, force: true }); });
-  execFileSync("git", ["init", "--quiet", "--bare", remote], { env: cleanGitEnv });
-  repo.commit("base");
-  repo.git(["remote", "add", "origin", remote]);
-  repo.git(["push", "--quiet", "origin", "main"]);
-  repo.git(["fetch", "--quiet", "origin"]);
-  repo.git(["switch", "--quiet", "-c", "feat/afk-work"]);
-  return repo;
-}
-
-// An issue branch with one commit, left unmerged; the caller merges it where it should land.
-function issueBranch(repo: RepoFixture, name: string): void {
-  const from = repo.git(["symbolic-ref", "--short", "HEAD"]);
-  repo.git(["switch", "--quiet", "-c", name, from]);
-  repo.write(`${name.replaceAll("/", "-")}.md`, "work\n");
-  repo.commit(`feat: ${name}`);
-  repo.git(["switch", "--quiet", from]);
-}
-
-function mergeInto(repo: RepoFixture, target: string, name: string): void {
-  repo.git(["switch", "--quiet", target]);
-  repo.git(["merge", "--quiet", "--no-ff", "-m", `Merge ${name}`, name]);
-}
-
-type Script = {
-  loop?: () => number;
-  pr?: { status: number; stdout: string };
-  view?: { status: number; stdout: string };
-  ghRepo?: { status: number; stdout: string };
-  failComments?: string[];
-};
-
-// git runs for real; the Sandcastle loop, pr-ready, gh and npm are scripted and recorded.
-function runner(repo: RepoFixture, script: Script = {}): { run: Run; calls: string[]; inherited: string[] } {
-  const calls: string[] = [];
-  const inherited: string[] = [];
-  const run: Run = (command, args, options) => {
-    const line = `${command} ${args.join(" ")}`;
-    calls.push(line);
-    if (options?.inherit === true) inherited.push(line);
-    if (command === "git") {
-      const result = spawnSync("git", args, { cwd: repo.dir, env: cleanGitEnv, encoding: "utf8" });
-      return { status: result.status, stdout: result.stdout };
-    }
-    if (line === "node .sandcastle/main.ts") return { status: script.loop?.() ?? 0, stdout: "" };
-    if (line === "node scripts/git/pr-ready.ts") return script.pr ?? { status: 0, stdout: `pr-ready: pull request ${PR_URL} is open.\n` };
-    if (line === "gh repo view --json nameWithOwner --jq .nameWithOwner") return script.ghRepo ?? { status: 0, stdout: "Zimfra/software_testing\n" };
-    if (command === "gh" && args[0] === "pr" && args[1] === "view") return script.view ?? { status: 0, stdout: `OPEN\t${PR_URL}\n` };
-    if (command === "gh" && args[0] === "issue" && args[1] === "comment") {
-      return { status: script.failComments?.includes(args[2] ?? "") === true ? 1 : 0, stdout: "" };
-    }
-    throw new Error(`unexpected ${line}`);
-  };
-  return { run, calls, inherited };
-}
-
-function go(repo: RepoFixture, run: Run, args: string[] = [], env: NodeJS.ProcessEnv = {}): { code: number; out: string; err: string } {
-  const out: string[] = [];
-  const err: string[] = [];
-  const output: Output = { write: (line) => out.push(line), warn: (line) => err.push(line) };
-  return { code: main(args, { cwd: repo.dir, output, run, env }), out: out.join("\n"), err: err.join("\n") };
-}
-
-const comments = (calls: string[]): string[] => calls.filter((call) => call.startsWith("gh issue comment"));
-const GH_REPO = "gh repo view --json nameWithOwner --jq .nameWithOwner";
-const sawAnything = (calls: string[]): boolean => calls.some((call) => !call.startsWith("git ") && call !== GH_REPO);
+import { EXIT_ERROR, EXIT_OK, EXIT_REFUSED } from "../lib/cli.ts";
+import { PR_URL, comments, fixture, go, issueBranch, mergeInto, runner, sawAnything } from "../test-support/afk-harness.ts";
 
 await test("the issues this run merged are announced on a pull request and commented on, and nothing merges", (t) => {
   const repo = fixture(t);
@@ -631,88 +556,6 @@ await test("a closed or merged pull request for the branch is not an open one", 
     assert.equal(go(repo, run).code, EXIT_ERROR);
     assert.equal(comments(calls).length, 0);
   });
-});
-
-const EXECUTED = [
-  "scripts/git/pr-ready.ts", "scripts/lib/git.ts", "scripts/app/thing.ts", "scripts/claude/block.ts",
-  "evals/compliance/run.py", "config/rules.json", ".claude/settings.json", ".claude/rules/zeem/x.md",
-  ".githooks/pre-push", ".github/workflows/check.yml", ".sandcastle/main.ts",
-  "package.json", "package-lock.json", "tsconfig.json", "eslint.config.ts", ".npmrc", ".nvmrc",
-];
-const DOCS = ["wiki/note.md", "CHANGELOG.md", "README.md"];
-
-function landingLoop(repo: RepoFixture, path: string): { run: Run; calls: string[] } {
-  repo.git(["switch", "--quiet", "-c", "sandcastle/issue-4", "feat/afk-work"]);
-  repo.write(path, "// changed by an agent\n");
-  repo.commit("feat: four");
-  repo.git(["switch", "--quiet", "feat/afk-work"]);
-  return runner(repo, { loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-4"); return 0; } });
-}
-
-await test("a run that changed code or configuration is not landed unattended", async (t) => {
-  for (const path of EXECUTED) {
-    await t.test(path, (t) => {
-      const repo = fixture(t);
-      const { run, calls } = landingLoop(repo, path);
-      const result = go(repo, run);
-      assert.equal(result.code, EXIT_ERROR);
-      assert.ok(result.err.includes(path), "names the file");
-      assert.match(result.err, /SANDCASTLE_AFK_LAND_CODE/);
-      assert.ok(!calls.some((call) => call.includes("pr-ready") || call.startsWith("gh issue")));
-    });
-  }
-  for (const path of DOCS) {
-    await t.test(`${path} lands`, (t) => {
-      const repo = fixture(t);
-      const { run, calls } = landingLoop(repo, path);
-      assert.equal(go(repo, run).code, EXIT_OK);
-      assert.ok(calls.includes("node scripts/git/pr-ready.ts"));
-    });
-  }
-  await t.test("the owner's opt-in lets code land", (t) => {
-    const repo = fixture(t);
-    const { run, calls } = landingLoop(repo, "scripts/app/thing.ts");
-    const result = go(repo, run, [], { SANDCASTLE_AFK_LAND_CODE: "1" });
-    assert.equal(result.code, EXIT_OK, result.err);
-    assert.ok(calls.includes("node scripts/git/pr-ready.ts"));
-  });
-  await t.test("any other value of the opt-in is not an opt-in", (t) => {
-    const repo = fixture(t);
-    const { run } = landingLoop(repo, "scripts/app/thing.ts");
-    assert.equal(go(repo, run, [], { SANDCASTLE_AFK_LAND_CODE: "yes" }).code, EXIT_ERROR);
-  });
-});
-
-await test("a rerun after a refusal still refuses, because the edit is already on the branch", (t) => {
-  const repo = fixture(t);
-  const first = landingLoop(repo, "scripts/git/pr-ready.ts");
-  assert.equal(go(repo, first.run).code, EXIT_ERROR);
-  issueBranch(repo, "sandcastle/issue-5");
-  const second = runner(repo, { loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-5"); return 0; } });
-  const result = go(repo, second.run);
-  assert.equal(result.code, EXIT_ERROR);
-  assert.ok(result.err.includes("scripts/git/pr-ready.ts"));
-  assert.ok(!second.calls.some((call) => call.includes("pr-ready")));
-});
-
-await test("moving a guarded file away is seen as a change to it", (t) => {
-  const repo = fixture(t);
-  repo.git(["switch", "--quiet", "main"]);
-  repo.write("scripts/git/pr-ready.ts", "// the landing tool\n");
-  repo.commit("feat: landing tool");
-  repo.git(["push", "--quiet", "origin", "main"]);
-  repo.git(["fetch", "--quiet", "origin"]);
-  repo.git(["switch", "--quiet", "feat/afk-work"]);
-  repo.git(["merge", "--quiet", "--no-edit", "origin/main"]);
-  repo.git(["switch", "--quiet", "-c", "sandcastle/issue-4", "feat/afk-work"]);
-  repo.git(["mv", "scripts/git/pr-ready.ts", "wiki-moved.md"]);
-  repo.commit("feat: move it away");
-  repo.git(["switch", "--quiet", "feat/afk-work"]);
-  const { run, calls } = runner(repo, { loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-4"); return 0; } });
-  const result = go(repo, run);
-  assert.equal(result.code, EXIT_ERROR);
-  assert.ok(result.err.includes("scripts/git/pr-ready.ts"));
-  assert.ok(!calls.some((call) => call.includes("pr-ready")));
 });
 
 await test("an issue branch that the loop deleted is an error, not a silent success", (t) => {

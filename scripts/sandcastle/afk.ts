@@ -17,13 +17,11 @@ export type Options = { cwd?: string; output?: Output; run?: Run; env?: NodeJS.P
 export const PROMPT_REPO = "Zimfra/software_testing";
 // The landing step runs `npm run check` on the host, as the owner and unattended, and that executes
 // the repository's own scripts, tests and configuration, including whatever an agent just changed.
-// A change to any of these paths therefore needs a person to read the diff before it is run, unless
-// the owner opted in to landing code unattended with SANDCASTLE_AFK_LAND_CODE=1. Documentation
-// (wiki/, CHANGELOG.md and other Markdown) is not executed and lands as before.
-const GUARDED_PATHS = [
-  /^scripts\//, /^evals\//, /^config\//, /^\.claude\//, /^\.githooks\//, /^\.github\//, /^\.sandcastle\//,
-  /^package(-lock)?\.json$/, /^tsconfig[^/]*\.json$/, /^eslint\.config\./, /^\.npmrc$/, /^\.nvmrc$/,
-];
+// So the guard is an allowlist of what is not executed: Markdown documentation. Any other changed
+// path (a root json.py that `python3 -m unittest` would import, a nested eslint config, an
+// upper-case Scripts/ on a case-insensitive disk) needs a person to read the diff first, unless the
+// owner opted in to landing code unattended with SANDCASTLE_AFK_LAND_CODE=1.
+const DOCUMENTATION = [/^wiki\/.+\.md$/, /^docs\/.+\.md$/, /^[^/]+\.md$/];
 const LAND_CODE_ENV = "SANDCASTLE_AFK_LAND_CODE";
 const ISSUE_BRANCH = /^refs\/heads\/sandcastle\/issue-([1-9]\d*)$/;
 
@@ -49,7 +47,7 @@ function resolveRepo(run: Run): string {
 }
 
 /** The current branch (empty on a detached HEAD), the repository gh reports, and every reason not to run the loop. */
-function readiness(run: Run): { branch: string; repo: string; refused: string[] } {
+function readiness(run: Run, env: NodeJS.ProcessEnv): { branch: string; repo: string; refused: string[] } {
   const head = run("git", ["symbolic-ref", "--quiet", "--short", "HEAD"]);
   const branch = head.status === 0 ? head.stdout.trim() : "";
   const refused: string[] = [];
@@ -60,6 +58,11 @@ function readiness(run: Run): { branch: string; repo: string; refused: string[] 
   const repo = resolveRepo(run);
   if (repo === "") refused.push("gh cannot resolve this repository. Run gh auth login (as the machine account), then rerun.");
   else if (repo !== PROMPT_REPO) refused.push(`gh resolves ${repo}, but the Sandcastle prompts read and comment on issues of ${PROMPT_REPO}.`);
+  // A branch that already carries code would be refused after a paid loop; say so before it runs.
+  if (!landCode(env) && refused.length === 0) {
+    const code = guardedChanges(run);
+    if (code.length > 0) refused.push(codeMessage(code));
+  }
   return { branch, repo, refused };
 }
 
@@ -127,12 +130,35 @@ function strandedIssues(run: Run, cwd: string | undefined, before: ReadonlyMap<s
     .sort(byNumber);
 }
 
-/** Paths that differ from origin/main (so earlier unlanded work counts too) and that the landing step would execute. */
+/** Paths that differ from origin/main (so earlier unlanded work counts too) and are not documentation. */
 function guardedChanges(run: Run): string[] {
   const base = git(run, ["merge-base", "HEAD", "refs/remotes/origin/main"]).trim();
   return git(run, ["diff", "--name-only", "-z", "--no-renames", base, "HEAD"]).split("\0")
-    .filter((path) => GUARDED_PATHS.some((pattern) => pattern.test(path)));
+    .filter((path) => path !== "" && !DOCUMENTATION.some((pattern) => pattern.test(path)));
 }
+
+const landCode = (env: NodeJS.ProcessEnv): boolean => env[LAND_CODE_ENV] === "1";
+
+const codeMessage = (paths: string[]): string =>
+  `the branch differs from origin/main in files that are not documentation and that npm run check would run: ${paths.join(", ")}. Review that diff and land with npm run pr, or set ${LAND_CODE_ENV}=1 in your own shell to accept running agent-written code on this machine unattended.`;
+
+/** Tell each announced issue, since the owner may be away and no pull request will open. */
+function noticeComments(run: Run, repo: string, branch: string, issues: readonly string[]): void {
+  const body = `Sandcastle merged this issue into the local branch ${branch} but it is not landed: the branch changes code or configuration that npm run check would execute unattended. Nothing was pushed. Review the diff and run npm run pr.`;
+  for (const issue of issues) {
+    try {
+      run("gh", ["issue", "comment", issue, "-R", repo, "--body", body]);
+    } catch {
+      // a timed-out notice is not worth stopping the others for; the exit code and output carry it
+    }
+  }
+}
+
+// Branch tracking keys (branch.<name>.remote and .merge) appear whenever a branch is created from a
+// remote-tracking ref; the keys that run code (core.hooksPath, core.fsmonitor, alias.*, filter.*,
+// credential.*) are what this comparison is for.
+const localConfig = (run: Run): string =>
+  git(run, ["config", "--local", "--list"]).split("\n").filter((line) => !line.startsWith("branch.")).join("\n");
 
 type Landing = { repo: string; branch: string; issues: string[] };
 
@@ -175,7 +201,8 @@ export function main(args: readonly string[], options: Options = {}): number {
     return EXIT_ERROR;
   }
   const run = options.run ?? defaultRunner(options.cwd);
-  const { branch, repo, refused } = readiness(run);
+  const env = options.env ?? process.env;
+  const { branch, repo, refused } = readiness(run, env);
   for (const reason of refused) output.warn(`afk: ${reason}`);
   if (refused.length > 0) return EXIT_REFUSED;
   // "Earlier" work is a branch that was already merged here with its tip unchanged by the loop.
@@ -183,6 +210,7 @@ export function main(args: readonly string[], options: Options = {}): number {
   const tipsBefore = issueTips(run);
   const mergedBefore = new Set(mergedBranches(run, options.cwd).map((entry) => entry.ref));
   const headBefore = git(run, ["rev-parse", "HEAD"]).trim();
+  const configBefore = localConfig(run);
 
   output.write("afk: step 1 of 3, running the Sandcastle loop (node .sandcastle/main.ts).");
   if (run("node", [".sandcastle/main.ts"], { inherit: true }).status !== 0) {
@@ -195,6 +223,10 @@ export function main(args: readonly string[], options: Options = {}): number {
     output.warn(`afk: HEAD is no longer on ${branch} after the loop. Nothing was pushed or commented; check the checkout.`);
     return EXIT_ERROR;
   }
+  if (localConfig(run) !== configBefore) {
+    output.warn("afk: the loop changed this repository's git config, which a tracked diff cannot show (core.hooksPath and core.fsmonitor run code). Nothing was pushed or commented; review git config --local --list.");
+    return EXIT_ERROR;
+  }
   const leftover = unfinishedTree(run);
   if (leftover !== undefined) {
     output.warn(`afk: the loop left the tree ${leftover}. Nothing was pushed or commented; finish or abort that by hand.`);
@@ -205,10 +237,11 @@ export function main(args: readonly string[], options: Options = {}): number {
   const incomplete = unannounced.length > 0 || stranded.length > 0 || deleted.length > 0;
   if (issues.length === 0) return nothingToAnnounce(run, output, { branch, headBefore, earlier, earlierRefs, incomplete });
 
-  const guarded = (options.env ?? process.env)[LAND_CODE_ENV] === "1" ? [] : guardedChanges(run);
+  const guarded = landCode(env) ? [] : guardedChanges(run);
   if (guarded.length > 0) {
-    output.warn(`afk: the branch differs from origin/main in files that the landing step would run: ${guarded.join(", ")}. Nothing was pushed or commented. Review that diff and land with npm run pr, or set ${LAND_CODE_ENV}=1 to accept running agent-written code on this machine unattended.`);
-    return EXIT_ERROR;
+    output.warn(`afk: ${codeMessage(guarded)} Nothing was pushed.`);
+    noticeComments(run, repo, branch, issues);
+    return EXIT_REFUSED;
   }
   const code = land(run, output, { repo, branch, issues });
   return code === EXIT_OK && incomplete ? EXIT_ERROR : code;
