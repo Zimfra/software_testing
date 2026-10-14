@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, type TestContext } from "node:test";
 import type { Run } from "../git/pr-ready.ts";
 import { EXIT_ERROR, EXIT_OK, EXIT_REFUSED, type Output } from "../lib/cli.ts";
 import { cleanGitEnv, createRepo, type RepoFixture } from "../test-support/repo-fixture.ts";
-import { main } from "./afk.ts";
+import { PROMPT_REPO, main } from "./afk.ts";
 
 const PR_URL = "https://github.com/Zimfra/software_testing/pull/21";
 
@@ -436,6 +436,80 @@ await test("a gh call that times out is reported as a failed comment and the oth
   assert.deepEqual(comments(base.calls).map((call) => call.split(" ")[3]), ["12"], "the comment that timed out never reached gh, and issue 12 still went");
   assert.match(result.err, /issue 4/);
   assert.match(result.err, new RegExp(PR_URL));
+});
+
+await test("an empty branch left by an earlier run does not turn a quiet run into an error", (t) => {
+  const repo = fixture(t);
+  repo.write("feature.md", "feature work not on main yet\n");
+  repo.commit("feat: feature work");
+  repo.git(["branch", "sandcastle/issue-6"]); // created at HEAD by an earlier run, never committed to
+  const result = go(repo, runner(repo).run);
+  assert.equal(result.code, EXIT_OK, result.err);
+  assert.doesNotMatch(result.err, /issue 6/);
+});
+
+await test("earlier work that origin already holds stays a note after one more local commit", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-8");
+  mergeInto(repo, "feat/afk-work", "sandcastle/issue-8");
+  repo.git(["push", "--quiet", "origin", "feat/afk-work"]);
+  repo.git(["fetch", "--quiet", "origin"]);
+  repo.write("local.md", "a later local commit\n");
+  repo.commit("docs: later");
+  const result = go(repo, runner(repo).run);
+  assert.equal(result.code, EXIT_OK, result.err);
+  assert.match(result.out, /already pushed/);
+});
+
+await test("a tree left dirty or half-merged by the loop is an error, not a quiet success", async (t) => {
+  await t.test("uncommitted changes", (t) => {
+    const repo = fixture(t);
+    const { run, calls } = runner(repo, { loop: () => { repo.write("stray.md", "x\n"); return 0; } });
+    const result = go(repo, run);
+    assert.equal(result.code, EXIT_ERROR);
+    assert.match(result.err, /uncommitted/);
+    assert.ok(!calls.some((call) => call.includes("pr-ready") || call.startsWith("gh issue")));
+  });
+  await t.test("a merge left in progress", (t) => {
+    const repo = fixture(t);
+    issueBranch(repo, "sandcastle/issue-5");
+    repo.write("conflict.md", "ours\n");
+    repo.commit("docs: ours");
+    repo.git(["switch", "--quiet", "sandcastle/issue-5"]);
+    repo.write("conflict.md", "theirs\n");
+    repo.commit("docs: theirs");
+    repo.git(["switch", "--quiet", "feat/afk-work"]);
+    const { run } = runner(repo, {
+      loop: () => {
+        try { repo.git(["merge", "--no-commit", "--no-ff", "sandcastle/issue-5"]); } catch { /* the conflict is the point */ }
+        return 0;
+      },
+    });
+    assert.equal(go(repo, run).code, EXIT_ERROR);
+  });
+});
+
+await test("a gh that throws when resolving the repository is a refusal, not a crash", (t) => {
+  const repo = fixture(t);
+  const base = runner(repo);
+  const run: Run = (command, args, options) => {
+    if (command === "gh" && args[0] === "repo") throw new Error("spawnSync gh ETIMEDOUT");
+    return base.run(command, args, options);
+  };
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_REFUSED);
+  assert.match(result.err, /gh cannot resolve/);
+  assert.ok(!base.calls.includes("node .sandcastle/main.ts"));
+});
+
+await test("every -R repository in the Sandcastle prompts is the one the wrapper requires", () => {
+  const found: string[] = [];
+  for (const file of ["plan-prompt.md", "implement-prompt.md", "merge-prompt.md", "review-prompt.md"]) {
+    const text = readFileSync(new URL(`../../.sandcastle/${file}`, import.meta.url), "utf8");
+    found.push(...[...text.matchAll(/-R ([\w.-]+\/[\w.-]+)/g)].map((match) => match[1] ?? ""));
+  }
+  assert.ok(found.length > 0, "the prompts name the repository");
+  assert.deepEqual([...new Set(found)], [PROMPT_REPO]);
 });
 
 await test("arguments", (t) => {

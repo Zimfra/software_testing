@@ -14,7 +14,7 @@ import { branchWork, type BranchWork } from "./already-done.ts";
 export type Options = { cwd?: string; output?: Output; run?: Run };
 
 // The repository the Sandcastle prompts read issues from and comment on (.sandcastle/*.md).
-const PROMPT_REPO = "Zimfra/software_testing";
+export const PROMPT_REPO = "Zimfra/software_testing";
 const ISSUE_BRANCH = /^refs\/heads\/sandcastle\/issue-([1-9]\d*)$/;
 
 const USAGE = `Usage: node scripts/sandcastle/afk.ts
@@ -28,6 +28,16 @@ function git(run: Run, args: readonly string[]): string {
   return result.stdout;
 }
 
+// A gh call that times out throws (spawnRunner); it means "cannot resolve", not a crash.
+function resolveRepo(run: Run): string {
+  try {
+    const view = run("gh", ["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]);
+    return view.status === 0 ? view.stdout.trim() : "";
+  } catch {
+    return "";
+  }
+}
+
 /** The current branch (empty on a detached HEAD), the repository gh reports, and every reason not to run the loop. */
 function readiness(run: Run): { branch: string; repo: string; refused: string[] } {
   const head = run("git", ["symbolic-ref", "--quiet", "--short", "HEAD"]);
@@ -37,9 +47,8 @@ function readiness(run: Run): { branch: string; repo: string; refused: string[] 
   if (git(run, ["status", "--porcelain"]).trim() !== "") refused.push("The tree has uncommitted changes. Commit or stash them first.");
   // One cheap call before the loop spends minutes: it fails when gh is not logged in or cannot
   // see the repository. The owner-login refusal stays with pr-ready.ts, after the loop.
-  const view = run("gh", ["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]);
-  const repo = view.stdout.trim();
-  if (view.status !== 0 || repo === "") refused.push("gh cannot resolve this repository. Run gh auth login (as the machine account), then rerun.");
+  const repo = resolveRepo(run);
+  if (repo === "") refused.push("gh cannot resolve this repository. Run gh auth login (as the machine account), then rerun.");
   else if (repo !== PROMPT_REPO) refused.push(`gh resolves ${repo}, but the Sandcastle prompts read and comment on issues of ${PROMPT_REPO}.`);
   return { branch, repo, refused };
 }
@@ -69,9 +78,9 @@ function comment(run: Run, repo: string, issue: string, url: string): boolean {
   }
 }
 
-/** True when origin already holds HEAD under this branch's name (pr-ready pushed it). */
-function isPushed(run: Run, branch: string): boolean {
-  return run("git", ["merge-base", "--is-ancestor", "HEAD", `refs/remotes/origin/${branch}`]).status === 0;
+/** True when origin already holds every one of these branch tips under this branch's name (pr-ready pushed them). */
+function isPushed(run: Run, branch: string, refs: readonly string[]): boolean {
+  return refs.every((ref) => run("git", ["merge-base", "--is-ancestor", ref, `refs/remotes/origin/${branch}`]).status === 0);
 }
 
 type Landing = { repo: string; branch: string; issues: string[] };
@@ -138,24 +147,36 @@ export function main(args: readonly string[], options: Options = {}): number {
     output.warn(`afk: HEAD is no longer on ${branch} after the loop. Nothing was pushed or commented; check the checkout.`);
     return EXIT_ERROR;
   }
+  const leftover = unfinishedTree(run);
+  if (leftover !== undefined) {
+    output.warn(`afk: the loop left the tree ${leftover}. Nothing was pushed or commented; finish or abort that by hand.`);
+    return EXIT_ERROR;
+  }
   const merged = mergedBranches(run, options.cwd);
   const fresh = merged.filter((entry) => !before.has(entry.ref));
   const issues = fresh.filter((entry) => entry.work === "worked").map((entry) => issueNumber(entry.ref)).sort(byNumber);
   const unannounced = fresh.filter((entry) => entry.work === "unrecognised").map((entry) => issueNumber(entry.ref)).sort(byNumber);
-  const earlier = merged.filter((entry) => before.has(entry.ref)).map((entry) => issueNumber(entry.ref)).sort(byNumber);
+  const earlierRefs = merged.filter((entry) => before.has(entry.ref) && entry.work === "worked").map((entry) => entry.ref);
+  const earlier = earlierRefs.map(issueNumber).sort(byNumber);
   if (earlier.length > 0) {
     output.warn(`afk: issue ${earlier.join(", ")} was merged on this branch by an earlier run and is not commented on by this run; the pull request carries its work.`);
   }
   if (unannounced.length > 0) {
     output.warn(`afk: issue ${unannounced.join(", ")} was merged by this run but its branch has no commit entry in its reflog, so it is not commented on; the pull request still carries its work.`);
   }
-  if (issues.length === 0) return nothingToAnnounce(run, output, { branch, headBefore, earlier, unannounced });
+  if (issues.length === 0) return nothingToAnnounce(run, output, { branch, headBefore, earlier, earlierRefs, unannounced });
 
   const code = land(run, output, { repo, branch, issues });
   return code === EXIT_OK && unannounced.length > 0 ? EXIT_ERROR : code;
 }
 
-type Quiet = { branch: string; headBefore: string; earlier: string[]; unannounced: string[] };
+type Quiet = { branch: string; headBefore: string; earlier: string[]; earlierRefs: string[]; unannounced: string[] };
+
+/** "dirty" or "mid-merge" when the loop left the tree unfinished, undefined when it is clean. */
+function unfinishedTree(run: Run): string | undefined {
+  if (run("git", ["rev-parse", "--verify", "--quiet", "MERGE_HEAD"]).status === 0) return "in the middle of a merge";
+  return git(run, ["status", "--porcelain"]).trim() === "" ? undefined : "with uncommitted changes";
+}
 
 /** Nothing was announceable: decide whether that is a quiet success or work left unlanded. */
 function nothingToAnnounce(run: Run, output: Output, state: Quiet): number {
@@ -164,7 +185,7 @@ function nothingToAnnounce(run: Run, output: Output, state: Quiet): number {
     output.warn("afk: HEAD moved during the loop but no issue branch with commits was merged, so nothing was announced. Check the branch before landing it by hand.");
     return EXIT_ERROR;
   }
-  if (state.earlier.length > 0 && !isPushed(run, state.branch)) {
+  if (state.earlier.length > 0 && !isPushed(run, state.branch, state.earlierRefs)) {
     output.warn("afk: work merged by an earlier run is on this branch and not pushed, and this run found nothing new. Land it with npm run pr.");
     return EXIT_ERROR;
   }

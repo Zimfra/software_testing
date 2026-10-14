@@ -19,7 +19,7 @@ Do not close any issue. An item is done only when the owner merges its pull requ
 
 For each branch that was merged and whose typecheck and tests pass, leave a comment with the following command:
 
-`gh issue comment -R Zimfra/software_testing <ID> --body "Branch <branch> was merged into the integration branch. A pull request is pending."`
+`gh issue comment -R Zimfra/software_testing <ID> --body "Branch <branch> was merged into the integration branch. It is not landed until the owner merges a pull request."`
 
 Here are all the issues:
 
