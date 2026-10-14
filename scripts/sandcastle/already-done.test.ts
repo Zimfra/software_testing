@@ -478,7 +478,7 @@ await test("an empty commit is not work, so the issue is not dropped", () => {
   }
 });
 
-await test("a conflict resolved with git commit logs commit (merge) and the branch counts as worked", () => {
+await test("a conflict resolved with git commit logs commit (merge), and the branch counts as worked through its own commit", () => {
   const repo = createRepo();
   try {
     repo.write("shared.txt", "base\n");
@@ -556,6 +556,27 @@ await test("a branch reset onto a moved main and given an empty commit is not wo
     assert.notEqual(branchWork("refs/heads/sandcastle/issue-74", repo.dir), "worked");
     repo.git(["update-ref", "refs/heads/sandcastle/issue-75", tip]);
     assert.equal(branchWork("refs/heads/sandcastle/issue-75", repo.dir), "unrecognised");
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("a branch whose only entry is a merge of another branch is not work, and stays pending", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["branch", "sandcastle/issue-80"]);
+    repo.git(["switch", "--quiet", "-c", "other-issue"]);
+    repo.write("other.txt", "o");
+    repo.commit("feat: other issue");
+    repo.git(["switch", "--quiet", "sandcastle/issue-80"]);
+    repo.git(["merge", "--no-commit", "--no-ff", "other-issue"]);
+    repo.git(["commit", "--quiet", "-m", "chore: join the other issue"]);
+    repo.git(["switch", "--quiet", "main"]);
+    const subjects = repo.git(["reflog", "show", "--format=%gs", "refs/heads/sandcastle/issue-80", "--"]);
+    assert.match(subjects, /^commit \(merge\)/m);
+    assert.notEqual(branchWork("refs/heads/sandcastle/issue-80", repo.dir), "worked");
+    assert.deepEqual(pendingIssues([issue("80")], repo.dir).map((entry) => entry.id), ["80"]);
   } finally {
     repo.cleanup();
   }

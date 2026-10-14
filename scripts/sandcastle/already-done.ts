@@ -6,8 +6,8 @@ export type PlannedIssue = { id: string; title: string; branch: string };
 // a commit is an ancestor of HEAD too. Only the branch's own reflog tells the two apart: it holds
 // the creation entry, plus one entry per commit made on the branch. A reset, rename, fetch or
 // fast-forward merge also writes an entry, so only entries that create a commit count (a
-// conflict resolved with `git commit` logs `commit (merge)`, which counts, as does
-// `commit (amend)`; a conflict-free merge of another branch logs `merge ...` and does not).
+// conflict resolved with `git commit` logs `commit (merge)`, which does not count by itself,
+// while `commit (amend)` does; a conflict-free merge of another branch logs `merge ...`).
 //
 // "worked" needs one such entry whose commit is still reachable from the tip and changes content
 // relative to its own parent, and nothing else
@@ -41,8 +41,9 @@ function changesContent(sha: string, cwd: string): boolean {
 // Subjects of reflog entries that move a branch tip without making work of the branch's own.
 const TIP_MOVES = /^(rebase \(finish\)|merge |cherry-pick: fast-forward|branch: Reset|Branch: renamed|reset:)/;
 // `cherry-pick: fast-forward` moves the tip onto an existing commit and makes none of the branch's own.
-// `commit (merge)` is never the branch's own work: with nothing committed on it there is nothing to conflict.
-const COMMIT_ENTRY = /^(commit(?! \(merge\))|cherry-pick(?!: fast-forward)|revert)(?=[ :(]|$)/;
+// `commit (merge)` matches too, but changesContent never accepts it: diff-tree prints nothing for a
+// merge commit, so a merge alone is never the branch's own work.
+const COMMIT_ENTRY = /^(commit|cherry-pick(?!: fast-forward)|revert)(?=[ :(]|$)/;
 
 /**
  * "worked": a commit entry's commit is still reachable from the tip. "empty": the branch is
