@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { RepoFixture } from "../test-support/repo-fixture.ts";
 import { test } from "node:test";
@@ -304,4 +304,64 @@ await test("a hook written into the shared hooks directory is seen from a linked
   const result = go(linked, run);
   assert.equal(result.code, EXIT_ERROR);
   assert.match(result.err, /hooks/);
+});
+
+await test("no git command that can run a planted hook runs before the hooks comparison", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-4");
+  const marker = join(repo.dir, "hook-ran.txt");
+  const hooks = join(repo.dir, ".git", "hooks");
+  const { run, calls } = runner(repo, {
+    loop: () => {
+      mergeInto(repo, "feat/afk-work", "sandcastle/issue-4");
+      mkdirSync(hooks, { recursive: true });
+      for (const name of ["post-index-change", "post-checkout", "post-merge", "reference-transaction"]) {
+        writeFileSync(join(hooks, name), `#!/bin/sh\necho ran >> "${marker}"\n`, { mode: 0o755 });
+      }
+      const future = new Date(Date.now() + 60_000);
+      utimesSync(join(repo.dir, "README.md"), future, future); // makes git status refresh and rewrite the index
+      return 0;
+    },
+  });
+  repo.write("README.md", "readme\n");
+  repo.commit("docs: readme");
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.match(result.err, /hooks/);
+  assert.ok(!existsSync(marker), "a planted hook was run by the wrapper's own git commands");
+  assert.ok(!calls.some((call) => call.startsWith("git status")) || calls.indexOf("git status --porcelain") < calls.indexOf("node .sandcastle/main.ts"), "no status after the loop");
+});
+
+await test("a hook rewritten with the same size and mtime is still seen", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-4");
+  const hooks = join(repo.dir, ".git", "hooks");
+  mkdirSync(hooks, { recursive: true });
+  const hook = join(hooks, "pre-push");
+  const stamp = new Date("2020-01-01T00:00:00Z");
+  writeFileSync(hook, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+  utimesSync(hook, stamp, stamp);
+  const { run } = runner(repo, {
+    loop: () => {
+      mergeInto(repo, "feat/afk-work", "sandcastle/issue-4");
+      writeFileSync(hook, "#!/bin/sh\nexit 1\n", { mode: 0o755 }); // same length
+      utimesSync(hook, stamp, stamp);
+      return 0;
+    },
+  });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.match(result.err, /hooks/);
+});
+
+await test("a hooks directory that cannot be read is refused before the loop, never compared as empty", (t) => {
+  const repo = fixture(t);
+  const hooks = join(repo.dir, ".git", "hooks");
+  mkdirSync(hooks, { recursive: true });
+  symlinkSync(join(repo.dir, "does-not-exist"), join(hooks, "dangling"));
+  const { run, calls } = runner(repo);
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_REFUSED);
+  assert.match(result.err, /hooks/);
+  assert.ok(!calls.includes("node .sandcastle/main.ts"));
 });

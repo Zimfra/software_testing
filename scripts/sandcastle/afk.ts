@@ -7,7 +7,8 @@
 // are. Notification is GitHub only: the pull request's review request to the code owner and a
 // comment on each issue. It never pushes main, never merges or approves, never closes an issue,
 // never skips a hook and does not read .sandcastle/.env itself (the loop it starts does).
-import { readdirSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { lstatSync, readFileSync, readdirSync, readlinkSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { EXIT_ERROR, EXIT_OK, EXIT_REFUSED, consoleOutput, isEntryPoint, runCli, type Output } from "../lib/cli.ts";
 import { spawnRunner, type Run } from "../git/pr-ready.ts";
@@ -30,9 +31,10 @@ const ISSUE_BRANCH = /^refs\/heads\/sandcastle\/issue-([1-9]\d*)$/;
 const USAGE = `Usage: node scripts/sandcastle/afk.ts
 Runs the Sandcastle loop on the current feature branch, then opens a pull request for the issue
 branches it merged (npm run pr's tool) and comments on each issue. Never merges or closes anything.
-Exit: 0 done or nothing to land, 1 refused before anything changed (including a fetch that
-failed before the loop and code that may not land unattended), 2 a step failed (including a fetch
-that failed after the loop, when issue branches may already be merged here).`;
+Exit: 0 done or nothing to land, 1 refused with nothing pushed (before the loop: a failed fetch,
+an unreadable hooks directory, code on the branch; after it: code that may not land unattended, or
+a refusal from the landing tool), 2 a step failed (including a fetch that failed after the loop,
+when issue branches may already be merged here).`;
 
 function git(run: Run, args: readonly string[]): string {
   const result = run("git", args);
@@ -62,25 +64,39 @@ function fetchMain(run: Run): boolean {
   }
 }
 
-// What the loop could change that runs code on the next git command: the hooks directory (name, size
-// and mtime of each file). Compared before and after the loop, and before the post-loop fetch, because
-// a reference-transaction hook runs when a fetch updates refs.
-function hooksSnapshot(run: Run, cwd: string | undefined): string {
+// What the loop could change that runs code on the next git command: the hooks directory the repository
+// is configured to use (git rev-parse --git-path honours core.hooksPath). Each entry is its name, type,
+// mode and a SHA-256 of its content (of the target, for a symlink), so a rewrite that keeps size and
+// mtime is seen. Compared before and after the loop, and before any other git command after it, because
+// git status, checkout and fetch can run hooks. undefined means the directory could not be read, which
+// the caller must treat as a refusal and never as an empty directory; a missing directory is "".
+function hooksSnapshot(run: Run, cwd: string | undefined): string | undefined {
   const where = run("git", ["rev-parse", "--git-path", "hooks"]);
-  if (where.status !== 0) return "";
+  if (where.status !== 0) return undefined;
   const dir = resolve(cwd ?? process.cwd(), where.stdout.trim());
+  let names: string[];
   try {
-    return readdirSync(dir).sort().map((name) => {
-      const info = statSync(join(dir, name));
-      return `${name}:${String(info.size)}:${String(info.mtimeMs)}`;
-    }).join("\n");
-  } catch {
-    return "";
+    names = readdirSync(dir).sort();
+  } catch (error) {
+    return error instanceof Error && "code" in error && error.code === "ENOENT" ? "" : undefined;
   }
+  const entries: string[] = [];
+  for (const name of names) {
+    try {
+      const path = join(dir, name);
+      const link = lstatSync(path).isSymbolicLink() ? `->${readlinkSync(path)}` : "";
+      const info = statSync(path);
+      const content = info.isFile() ? createHash("sha256").update(readFileSync(path)).digest("hex") : "dir";
+      entries.push(`${name}${link}:${String(info.mode)}:${content}`);
+    } catch {
+      return undefined;
+    }
+  }
+  return entries.join("\n");
 }
 
 /** The current branch (empty on a detached HEAD), the repository gh reports, and every reason not to run the loop. */
-function readiness(run: Run, env: NodeJS.ProcessEnv): { branch: string; repo: string; refused: string[] } {
+function readiness(run: Run, env: NodeJS.ProcessEnv, cwd: string | undefined): { branch: string; repo: string; refused: string[]; hooks: string } {
   const head = run("git", ["symbolic-ref", "--quiet", "--short", "HEAD"]);
   const branch = head.status === 0 ? head.stdout.trim() : "";
   const refused: string[] = [];
@@ -100,7 +116,9 @@ function readiness(run: Run, env: NodeJS.ProcessEnv): { branch: string; repo: st
     if (code === undefined) refused.push("This branch has no history in common with origin/main. Merge origin/main into it, then rerun.");
     else if (code.length > 0) refused.push(codeMessage(code));
   }
-  return { branch, repo, refused };
+  const hooks = hooksSnapshot(run, cwd);
+  if (hooks === undefined) refused.push("The git hooks directory cannot be read (an unreadable entry or a dangling link), so changes to it could not be seen. Fix or remove that entry, then rerun.");
+  return { branch, repo, refused, hooks: hooks ?? "" };
 }
 
 const branchesMerged = (run: Run, flag: string, ref: string): string[] =>
@@ -253,17 +271,21 @@ type Before = { branch: string; configBefore: string; hooksBefore: string };
  * before the post-loop fetch because a reference-transaction hook runs when a fetch updates refs.
  */
 function loopAftermath(run: Run, cwd: string | undefined, before: Before): string | undefined {
-  if (run("git", ["symbolic-ref", "--quiet", "--short", "HEAD"]).stdout.trim() !== before.branch) {
-    return `HEAD is no longer on ${before.branch} after the loop; check the checkout.`;
-  }
+  // Config and hooks first, with the fewest git commands (neither git config nor rev-parse runs a
+  // hook): git status can refresh and write the index, and a post-index-change hook an agent planted
+  // would run as the owner.
   if (localConfig(run) !== before.configBefore) {
     return "the loop changed this repository's git config, which a tracked diff cannot show (core.hooksPath and core.fsmonitor run code); review git config --local --list.";
   }
+  const hooks = hooksSnapshot(run, cwd);
+  if (hooks === undefined || hooks !== before.hooksBefore) {
+    return "the loop changed this repository's git hooks or left them unreadable, which a tracked diff cannot show and which a later git command would run; no other git command was run first; review .git/hooks.";
+  }
+  if (run("git", ["symbolic-ref", "--quiet", "--short", "HEAD"]).stdout.trim() !== before.branch) {
+    return `HEAD is no longer on ${before.branch} after the loop; check the checkout.`;
+  }
   const leftover = unfinishedTree(run);
   if (leftover !== undefined) return `the loop left the tree ${leftover}; finish or abort that by hand.`;
-  if (hooksSnapshot(run, cwd) !== before.hooksBefore) {
-    return "the loop changed this repository's git hooks, which a tracked diff cannot show and which a later git command would run; no further git command was run; review .git/hooks.";
-  }
   return undefined;
 }
 
@@ -279,7 +301,7 @@ export function main(args: readonly string[], options: Options = {}): number {
   }
   const run = options.run ?? defaultRunner(options.cwd);
   const env = options.env ?? process.env;
-  const { branch, repo, refused } = readiness(run, env);
+  const { branch, repo, refused, hooks: hooksBefore } = readiness(run, env, options.cwd);
   for (const reason of refused) output.warn(`afk: ${reason}`);
   if (refused.length > 0) return EXIT_REFUSED;
   // "Earlier" work is a branch that was already merged here with its tip unchanged by the loop.
@@ -288,7 +310,6 @@ export function main(args: readonly string[], options: Options = {}): number {
   const mergedBefore = new Set(mergedBranches(run, options.cwd).map((entry) => entry.ref));
   const headBefore = git(run, ["rev-parse", "HEAD"]).trim();
   const configBefore = localConfig(run);
-  const hooksBefore = hooksSnapshot(run, options.cwd);
 
   output.write("afk: step 1 of 3, running the Sandcastle loop (node .sandcastle/main.ts).");
   if (run("node", [".sandcastle/main.ts"], { inherit: true }).status !== 0) {
