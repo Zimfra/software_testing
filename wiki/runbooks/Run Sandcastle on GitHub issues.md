@@ -165,7 +165,8 @@ Sandcastle loop, a real push, and GitHub's review request reaching the owner.
   file keeps the upstream template's style.
 - The already-done guard drops an issue only when its `sandcastle/issue-<number>` branch is
   merged into the current branch and its reflog holds a commit, amend or revert entry whose
-  commit is still reachable from the tip, and nothing else. A rebased branch is therefore not
+  commit is still reachable from the tip and whose tip differs in content from the tree the
+  branch was created at (an empty commit is not work), and nothing else. A rebased branch is therefore not
   recognised as worked: it stays pending and is planned again every round until `MAX_ITERATIONS`
   (10) stops the loop, each round costing an implementer run of up to 100 iterations and losing
   nothing, so do not rebase; the
@@ -178,6 +179,13 @@ Sandcastle loop, a real push, and GitHub's review request reaching the owner.
   of an issue's work, once merged, is dropped on the next round, so the implementer is told to
   say in the issue comment when a task is incomplete and the owner reads that comment before
   merging; and a reflog entry that names a pruned commit counts as not reachable.
+- Known false "done" cases, each by design and unfixed here: a non-fast-forward cherry-pick of a
+  commit HEAD already holds creates a new commit with the same patch and counts as the branch's
+  own work; a `git revert` that is the branch's only change counts, and once merged removes that
+  commit from HEAD; and after the owner squash-merges a pull request the issue branch is
+  "ahead" of the integration branch forever, so it is passed to the merger each round until
+  the issue is closed or the local branch deleted. Detecting "same patch as HEAD" needs a
+  patch-id comparison, which is follow-up work.
 - UNKNOWN until the first real run: whether Sandcastle writes `commit:` entries into the host
   branch reflog. After the first run, `git reflog show sandcastle/issue-<number>` should list
   them. If it lists only `fetch` or `update-ref` entries, every branch is "unrecognised", the
