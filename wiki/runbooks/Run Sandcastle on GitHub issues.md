@@ -89,8 +89,9 @@ Use it for small, well-specified issues. Rules the agents follow are in `CLAUDE.
   file keeps the upstream template's style.
 - The already-done guard drops an issue only when its `sandcastle/issue-<number>` branch is
   merged into the current branch and its reflog holds a commit, amend or revert entry whose
-  commit is still reachable from the tip, or a rebase that rewrote earlier commit entries (a
-  rebase of an empty branch is not work). A branch that was created, reset, renamed or
+  commit is still reachable from the tip, and nothing else. A rebased branch is therefore not
+  recognised as worked: it stays pending and is planned again (a round, nothing lost), the
+  prompts forbid rebasing, and a rebased branch ahead of HEAD is still passed to the merger. A branch that was created, reset, renamed or
   fast-forwarded and never committed to stays pending, as does one whose commits an agent reset
   away. Four limits follow: a pull request that the owner squash-merges leaves a branch that is
   never an ancestor, so delete that local branch or close the issue; a branch with no reflog
@@ -119,8 +120,11 @@ Use it for small, well-specified issues. Rules the agents follow are in `CLAUDE.
   even when the implementer adds nothing, so it no longer stalls the loop. It is merged without
   a review round and may be partial or broken, so read it before landing the integration branch.
 - A branch whose commits an agent reset away (to its creation point or to any commit HEAD already
-  contains) has no work and stays pending. A branch reset only part of the way back keeps the
-  commits that are still reachable from its tip and counts as worked.
+  contains), in any order with a rebase, has no reachable commit entry and stays pending. A
+  branch reset only part of the way back keeps the commits that are still reachable from its tip
+  and counts as worked. A branch ahead of HEAD with no reachable commit entry (a rebase, a tip
+  written by `fetch` or `update-ref`, another branch merged onto an empty one) is passed to the
+  merger and never dropped.
 - The review prompt runs `git diff <current branch>...` in a shell, so run the loop from a
   branch whose name is plain (letters, digits, `-`, `/`).
 - `main.ts` refuses to start on `main` or a detached HEAD, because the merger commits into the
