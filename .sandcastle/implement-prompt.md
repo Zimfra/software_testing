@@ -45,7 +45,7 @@ Follow `CLAUDE.md` and `.claude/rules/zeem/` in this repository. Make git commit
 2. Stage files by name. Never `git add -A` or `git add .`.
 3. Write the test first, see it fail, then implement.
 4. Add a `CHANGELOG.md` entry and update a work record under `wiki/work/` on the branch.
-5. Never use `--no-verify`.
+5. Never use `--no-verify`, and never rebase or reset a branch past commits you made: merge instead.
 6. Never push. Sandcastle collects the branch; a person pushes it.
 
 State in the body the task completed, key decisions, and blockers or notes for the next iteration. Keep it concise.
