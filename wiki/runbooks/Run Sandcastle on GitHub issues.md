@@ -97,20 +97,22 @@ In order:
    progress, because the merger is an agent with a shell on this checkout.
 3. Runs `git fetch origin main`, then lists the local branches named `sandcastle/issue-<N>` that
    this run merged into `HEAD` and that are not on `origin/main`. A branch with a commit entry
-   in its reflog is announced. A branch merged before the run started and holding a commit of
-   its own ("earlier work") is named in a warning and not commented on; the pull request this
+   in its reflog is announced. A branch that was merged and already held work before the run
+   started ("earlier work") is named in a warning and not commented on; the pull request this
    run opens still carries its work. An empty branch from an earlier run (created at HEAD, never
-   committed to) is not earlier work and is ignored. A branch the run merged whose reflog holds
+   committed to) is not earlier work: it is ignored while it stays empty, and announced like any
+   other when this run commits to it and merges it. A branch the run merged whose reflog holds
    no commit entry (a ref written by `update-ref` or `fetch`) is named in a warning, not
    commented on, and makes the run exit 2 after landing the rest. With nothing to announce it
    exits 0 unless HEAD moved, or earlier work is not on `origin/<branch>` yet (judged by those
-   branches' own tips, so a later local commit does not matter), which exit 2.
+   branches' own tips, so a later local commit does not matter), or earlier work is pushed but
+   `gh pr view` finds no pull request for the branch; each of those exits 2.
 4. Runs `node scripts/git/pr-ready.ts`, the tool behind `npm run pr`, with its output streamed to
    the terminal: it runs `npm run check`, refuses a `gh` login that is the repository owner,
    pushes the branch and opens or reports the pull request. Its refusal (exit 1) is passed on with "nothing was pushed or commented"; its failure
    (exit 2) is passed on with "a push may already have happened", because the tool pushes
-   before it opens the pull request, and nothing is commented. It then asks `gh pr view <branch> --json url` for the pull request URL; no URL is
-   exit 2.
+   before it opens the pull request, and nothing is commented. It then asks `gh pr view <branch> --json url` for the pull request URL; a missing URL
+   is exit 2.
 5. Comments on each listed issue with `gh issue comment <N> -R <repository gh reported>`, giving
    the pull request URL, saying the work may be incomplete and that it waits for the owner's
    review. A comment that fails or times out does not stop the others; the wrapper then exits 2
