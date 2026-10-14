@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { createRepo } from "../test-support/repo-fixture.ts";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
-import { aheadIssues, pendingIssues } from "./already-done.ts";
+import { aheadIssues, branchWork, pendingIssues } from "./already-done.ts";
 
 const issue = (id: string): { id: string; title: string; branch: string } =>
   ({ id, title: `Issue ${id}`, branch: `sandcastle/issue-${id}` });
@@ -196,6 +196,47 @@ await test("aheadIssues lists the planned branches that hold commits of their ow
     repo.git(["merge", "--quiet", "--no-ff", "--no-edit", "sandcastle/issue-19"]);
     const planned = [issue("17"), issue("18"), issue("19"), issue("20")];
     assert.deepEqual(aheadIssues(planned, repo.dir).map((entry) => entry.id), ["17"]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("pendingIssues keeps a branch reset to a commit HEAD already contains, after it committed", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-21"]);
+    repo.write("twenty-one.txt", "21");
+    repo.commit("feat: twenty-one");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.write("later.txt", "l");
+    repo.commit("chore: HEAD moves on");
+    repo.git(["switch", "--quiet", "sandcastle/issue-21"]);
+    repo.git(["reset", "--quiet", "--hard", "main"]);
+    repo.git(["switch", "--quiet", "main"]);
+    assert.deepEqual(pendingIssues([issue("21")], repo.dir), [issue("21")]);
+    assert.equal(branchWork("refs/heads/sandcastle/issue-21", repo.dir), "empty");
+  } finally {
+    repo.cleanup();
+  }
+});
+
+await test("branchWork tells worked, untouched and unrecognised branches apart", () => {
+  const repo = createRepo();
+  try {
+    repo.commit("chore: base");
+    repo.git(["branch", "sandcastle/issue-30"]);
+    repo.git(["switch", "--quiet", "-c", "sandcastle/issue-31"]);
+    repo.write("thirty-one.txt", "31");
+    repo.commit("feat: thirty-one");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.write("later.txt", "l");
+    const moved = repo.commit("chore: HEAD moves on");
+    repo.git(["update-ref", "refs/heads/sandcastle/issue-32", moved]);
+    assert.equal(branchWork("refs/heads/sandcastle/issue-30", repo.dir), "empty");
+    assert.equal(branchWork("refs/heads/sandcastle/issue-31", repo.dir), "worked");
+    assert.equal(branchWork("refs/heads/sandcastle/issue-32", repo.dir), "unrecognised");
+    assert.equal(branchWork("refs/heads/sandcastle/issue-99", repo.dir), "empty", "a missing branch has no work");
   } finally {
     repo.cleanup();
   }

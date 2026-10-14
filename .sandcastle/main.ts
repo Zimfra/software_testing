@@ -11,7 +11,10 @@
 //                               branch (1 iteration). All issue pipelines run
 //                               concurrently via Promise.allSettled().
 //   Phase 3 (Merge):            A single agent merges all completed branches
-//                               into the current branch.
+//                               into the current branch, plus any planned
+//                               branch that still holds commits HEAD lacks
+//                               (left over from an earlier round, and not
+//                               reviewed this round).
 //
 // The outer loop repeats up to MAX_ITERATIONS times so that newly unblocked
 // issues are picked up after each round of merges.
@@ -91,7 +94,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // re-run does not plan them again.
   const issues = pendingIssues(plan.output.issues, process.cwd());
   for (const issue of plan.output.issues) {
-    if (!issues.includes(issue)) {
+    if (!issues.some((pending) => pending.id === issue.id)) {
       console.log(`  skipped ${issue.id}: ${issue.branch} is already merged into the current branch`);
     }
   }
@@ -191,7 +194,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // A branch that still holds commits HEAD lacks (a reviewer that threw, a merge that was
   // aborted) is merged too, even when the implementer added nothing this round.
   const leftOver = aheadIssues(issues, process.cwd()).filter(
-    (issue) => !producedIssues.includes(issue),
+    (issue) => !producedIssues.some((produced) => produced.id === issue.id),
   );
   const completedIssues = [...producedIssues, ...leftOver];
 
