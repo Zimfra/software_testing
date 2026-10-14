@@ -90,7 +90,9 @@ Use it for small, well-specified issues. Rules the agents follow are in `CLAUDE.
 - The already-done guard drops an issue only when its `sandcastle/issue-<number>` branch is
   merged into the current branch and its reflog holds a commit, amend or revert entry whose
   commit is still reachable from the tip, and nothing else. A rebased branch is therefore not
-  recognised as worked: it stays pending and is planned again (a round, nothing lost), the
+  recognised as worked: it stays pending and is planned again every round until `MAX_ITERATIONS`
+  (10) stops the loop, each round costing an implementer run of up to 100 iterations and losing
+  nothing, so do not rebase; the
   prompts forbid rebasing, and a rebased branch ahead of HEAD is still passed to the merger. A branch that was created, reset, renamed or
   fast-forwarded and never committed to stays pending, as does one whose commits an agent reset
   away. Four limits follow: a pull request that the owner squash-merges leaves a branch that is
@@ -103,7 +105,8 @@ Use it for small, well-specified issues. Rules the agents follow are in `CLAUDE.
 - UNKNOWN until the first real run: whether Sandcastle writes `commit:` entries into the host
   branch reflog. After the first run, `git reflog show sandcastle/issue-<number>` should list
   them. If it lists only `fetch` or `update-ref` entries, every branch is "unrecognised", the
-  guard drops nothing and `npm run sandcastle:afk` exits 2 instead of announcing.
+  guard drops nothing and a branch that did get merged is not recognised as worked (the AFK wrapper,
+  a separate branch, treats that as an error and not as success).
 - The planner's output is validated before anything runs: `id` is a positive number without
   leading zeros, `branch` is `sandcastle/issue-<id>`, an issue appears once, and `title` is
   non-empty after it is normalised to one line of at most 200 characters with backticks and
