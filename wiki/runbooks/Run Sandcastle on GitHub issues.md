@@ -93,15 +93,18 @@ In order:
    branch.
 2. Runs `node .sandcastle/main.ts`. If that exits non-zero the wrapper stops with exit 2 and
    nothing is pushed or commented. It also stops with exit 2 when HEAD is no longer on the
-   starting branch afterwards, because the merger is an agent with a shell on this checkout.
+   starting branch afterwards, or the tree is left with uncommitted changes or a merge in
+   progress, because the merger is an agent with a shell on this checkout.
 3. Runs `git fetch origin main`, then lists the local branches named `sandcastle/issue-<N>` that
    this run merged into `HEAD` and that are not on `origin/main`. A branch with a commit entry
-   in its reflog is announced. A branch merged before the run started is named in a warning and
-   not commented on; the pull request this run opens still carries its work. A branch the run
-   merged whose reflog holds no commit entry (a ref written by `update-ref` or `fetch`) is named
-   in a warning, not commented on, and makes the run exit 2 after landing the rest. With nothing
-   to announce it exits 0 only when HEAD did not move and no earlier work sits unpushed; HEAD
-   moving, or earlier work that origin does not hold yet, exits 2.
+   in its reflog is announced. A branch merged before the run started and holding a commit of
+   its own ("earlier work") is named in a warning and not commented on; the pull request this
+   run opens still carries its work. An empty branch from an earlier run (created at HEAD, never
+   committed to) is not earlier work and is ignored. A branch the run merged whose reflog holds
+   no commit entry (a ref written by `update-ref` or `fetch`) is named in a warning, not
+   commented on, and makes the run exit 2 after landing the rest. With nothing to announce it
+   exits 0 unless HEAD moved, or earlier work is not on `origin/<branch>` yet (judged by those
+   branches' own tips, so a later local commit does not matter), which exit 2.
 4. Runs `node scripts/git/pr-ready.ts`, the tool behind `npm run pr`, with its output streamed to
    the terminal: it runs `npm run check`, refuses a `gh` login that is the repository owner,
    pushes the branch and opens or reports the pull request. Its refusal (exit 1) is passed on with "nothing was pushed or commented"; its failure
@@ -131,8 +134,8 @@ with the loop, `pr-ready`, `gh` and `npm` replaced by scripted runners: the orde
 which branches are selected (merged by this run, not on `origin/main`, correctly named, with a
 commit of their own, or named when unrecognised), each refusal including an unresolvable or
 different repository, both exit codes of the landing step and their wording, a URL taken from
-`gh` and not from the tool's text, a failing or timed-out comment, a branch switch and a moved
-HEAD during the loop, earlier work pushed and unpushed, and that none of the wrapper's own
+`gh` and not from the tool's text, a failing or timed-out comment, a branch switch, a moved HEAD, a dirty
+or half-merged tree after the loop, earlier work pushed and unpushed, an empty earlier branch, and that none of the wrapper's own
 calls pushes, merges, closes, bypasses a hook or names `.env` (the landing tool is scripted, so
 its push is not exercised). Not exercised: the real `gh`, Docker, the
 Sandcastle loop, a real push, and GitHub's review request reaching the owner.
