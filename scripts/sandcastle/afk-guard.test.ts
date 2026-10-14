@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { RepoFixture } from "../test-support/repo-fixture.ts";
 import { test } from "node:test";
 import type { Run } from "../git/pr-ready.ts";
@@ -225,4 +227,81 @@ await test("branch tracking keys written when a branch is created from origin/ma
     },
   });
   assert.equal(go(repo, run).code, EXIT_OK);
+});
+
+await test("a fetch that throws, such as a timeout, is a refusal before the loop and names the other reasons", (t) => {
+  const repo = fixture(t);
+  repo.write("dirty.md", "x\n");
+  const base = runner(repo);
+  const run: Run = (command, args, options) => {
+    if (command === "git" && args[0] === "fetch") throw new Error("spawnSync git ETIMEDOUT");
+    return base.run(command, args, options);
+  };
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_REFUSED);
+  assert.match(result.err, /fetch/);
+  assert.match(result.err, /uncommitted/);
+  assert.ok(!base.calls.includes("node .sandcastle/main.ts"));
+});
+
+await test("a fetch that throws after the loop says the loop ran, not a bare crash", (t) => {
+  const repo = fixture(t);
+  const base = runner(repo);
+  let fetches = 0;
+  const run: Run = (command, args, options) => {
+    if (command === "git" && args[0] === "fetch" && ++fetches === 2) throw new Error("spawnSync git ETIMEDOUT");
+    return base.run(command, args, options);
+  };
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.match(result.err, /loop ran/);
+  assert.ok(base.calls.includes("node .sandcastle/main.ts"));
+});
+
+await test("a fetch that reports success without the remote ref is a refusal, not a stale comparison", (t) => {
+  const repo = fixture(t);
+  repo.git(["update-ref", "-d", "refs/remotes/origin/main"]);
+  const base = runner(repo);
+  const run: Run = (command, args, options) =>
+    command === "git" && args[0] === "fetch" ? { status: 0, stdout: "" } : base.run(command, args, options);
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_REFUSED);
+  assert.match(result.err, /origin\/main/);
+  assert.ok(!base.calls.includes("node .sandcastle/main.ts"));
+});
+
+await test("a git hook the loop wrote is an error, and no later git command runs it", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-4");
+  const base = runner(repo, {
+    loop: () => {
+      mergeInto(repo, "feat/afk-work", "sandcastle/issue-4");
+      mkdirSync(join(repo.dir, ".git", "hooks"), { recursive: true });
+      writeFileSync(join(repo.dir, ".git", "hooks", "reference-transaction"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+      return 0;
+    },
+  });
+  const result = go(repo, base.run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.match(result.err, /hooks/);
+  assert.equal(base.calls.filter((call) => call.startsWith("git fetch")).length, 1, "the post-loop fetch never ran");
+  assert.ok(!base.calls.some((call) => call.includes("pr-ready") || call.startsWith("gh issue")));
+});
+
+await test("a hook written into the shared hooks directory is seen from a linked worktree", (t) => {
+  const repo = fixture(t);
+  const sibling = `${repo.dir}-linked`;
+  repo.git(["worktree", "add", "--quiet", "-b", "feat/linked", sibling, "HEAD"]);
+  t.after(() => { try { repo.git(["worktree", "remove", "--force", sibling]); } catch { /* the fixture removes the repository */ } });
+  const linked: RepoFixture = { ...repo, dir: sibling, git: (args) => repo.git(["-C", sibling, ...args]) };
+  const { run } = runner(linked, {
+    loop: () => {
+      mkdirSync(join(repo.dir, ".git", "hooks"), { recursive: true });
+      writeFileSync(join(repo.dir, ".git", "hooks", "post-merge"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+      return 0;
+    },
+  });
+  const result = go(linked, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.match(result.err, /hooks/);
 });

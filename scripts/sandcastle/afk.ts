@@ -7,6 +7,8 @@
 // are. Notification is GitHub only: the pull request's review request to the code owner and a
 // comment on each issue. It never pushes main, never merges or approves, never closes an issue,
 // never skips a hook and does not read .sandcastle/.env itself (the loop it starts does).
+import { readdirSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { EXIT_ERROR, EXIT_OK, EXIT_REFUSED, consoleOutput, isEntryPoint, runCli, type Output } from "../lib/cli.ts";
 import { spawnRunner, type Run } from "../git/pr-ready.ts";
 import { branchWork, type BranchWork } from "./already-done.ts";
@@ -28,7 +30,9 @@ const ISSUE_BRANCH = /^refs\/heads\/sandcastle\/issue-([1-9]\d*)$/;
 const USAGE = `Usage: node scripts/sandcastle/afk.ts
 Runs the Sandcastle loop on the current feature branch, then opens a pull request for the issue
 branches it merged (npm run pr's tool) and comments on each issue. Never merges or closes anything.
-Exit: 0 done or nothing to land, 1 refused, 2 a step failed.`;
+Exit: 0 done or nothing to land, 1 refused before anything changed (including a fetch that
+failed before the loop and code that may not land unattended), 2 a step failed (including a fetch
+that failed after the loop, when issue branches may already be merged here).`;
 
 function git(run: Run, args: readonly string[]): string {
   const result = run("git", args);
@@ -46,14 +50,43 @@ function resolveRepo(run: Run): string {
   }
 }
 
+// A git call that times out throws (spawnRunner); for a fetch that is a failed fetch, not a crash. The
+// explicit destination, and the check that the ref exists afterwards, keep a narrowed remote.origin.fetch
+// from leaving the comparison below on a stale or absent origin/main.
+function fetchMain(run: Run): boolean {
+  try {
+    const fetched = run("git", ["fetch", "--quiet", "origin", "+refs/heads/main:refs/remotes/origin/main"]).status === 0;
+    return fetched && run("git", ["rev-parse", "--verify", "--quiet", "refs/remotes/origin/main^{commit}"]).status === 0;
+  } catch {
+    return false;
+  }
+}
+
+// What the loop could change that runs code on the next git command: the hooks directory (name, size
+// and mtime of each file). Compared before and after the loop, and before the post-loop fetch, because
+// a reference-transaction hook runs when a fetch updates refs.
+function hooksSnapshot(run: Run, cwd: string | undefined): string {
+  const where = run("git", ["rev-parse", "--git-path", "hooks"]);
+  if (where.status !== 0) return "";
+  const dir = resolve(cwd ?? process.cwd(), where.stdout.trim());
+  try {
+    return readdirSync(dir).sort().map((name) => {
+      const info = statSync(join(dir, name));
+      return `${name}:${String(info.size)}:${String(info.mtimeMs)}`;
+    }).join("\n");
+  } catch {
+    return "";
+  }
+}
+
 /** The current branch (empty on a detached HEAD), the repository gh reports, and every reason not to run the loop. */
 function readiness(run: Run, env: NodeJS.ProcessEnv): { branch: string; repo: string; refused: string[] } {
   const head = run("git", ["symbolic-ref", "--quiet", "--short", "HEAD"]);
   const branch = head.status === 0 ? head.stdout.trim() : "";
   const refused: string[] = [];
   // A tracking ref that is behind makes the comparison below name code the owner never wrote.
-  const fetched = run("git", ["fetch", "--quiet", "origin", "main"]).status === 0;
-  if (!fetched) refused.push("git fetch origin main failed: check the network and the origin remote, then rerun.");
+  const fetched = fetchMain(run);
+  if (!fetched) refused.push("git fetch of origin/main failed or left no origin/main: check the network and the origin remote, then rerun.");
   if (branch === "" || branch === "main") refused.push("Run this on a feature branch, not main or a detached HEAD.");
   if (git(run, ["status", "--porcelain"]).trim() !== "") refused.push("The tree has uncommitted changes. Commit or stash them first.");
   // One cheap call before the loop spends minutes: it fails when gh is not logged in or cannot
@@ -212,6 +245,28 @@ function land(run: Run, output: Output, { repo, branch, issues }: Landing): numb
   return EXIT_OK;
 }
 
+type Before = { branch: string; configBefore: string; hooksBefore: string };
+
+/**
+ * What the loop left that must be looked at before any further git command runs: the merger is an
+ * agent with a shell on this checkout. Undefined when nothing is wrong. The hooks comparison comes
+ * before the post-loop fetch because a reference-transaction hook runs when a fetch updates refs.
+ */
+function loopAftermath(run: Run, cwd: string | undefined, before: Before): string | undefined {
+  if (run("git", ["symbolic-ref", "--quiet", "--short", "HEAD"]).stdout.trim() !== before.branch) {
+    return `HEAD is no longer on ${before.branch} after the loop; check the checkout.`;
+  }
+  if (localConfig(run) !== before.configBefore) {
+    return "the loop changed this repository's git config, which a tracked diff cannot show (core.hooksPath and core.fsmonitor run code); review git config --local --list.";
+  }
+  const leftover = unfinishedTree(run);
+  if (leftover !== undefined) return `the loop left the tree ${leftover}; finish or abort that by hand.`;
+  if (hooksSnapshot(run, cwd) !== before.hooksBefore) {
+    return "the loop changed this repository's git hooks, which a tracked diff cannot show and which a later git command would run; no further git command was run; review .git/hooks.";
+  }
+  return undefined;
+}
+
 export function main(args: readonly string[], options: Options = {}): number {
   const output = options.output ?? consoleOutput;
   if (args[0] === "--help") {
@@ -233,28 +288,19 @@ export function main(args: readonly string[], options: Options = {}): number {
   const mergedBefore = new Set(mergedBranches(run, options.cwd).map((entry) => entry.ref));
   const headBefore = git(run, ["rev-parse", "HEAD"]).trim();
   const configBefore = localConfig(run);
+  const hooksBefore = hooksSnapshot(run, options.cwd);
 
   output.write("afk: step 1 of 3, running the Sandcastle loop (node .sandcastle/main.ts).");
   if (run("node", [".sandcastle/main.ts"], { inherit: true }).status !== 0) {
     output.warn("afk: the Sandcastle loop failed (output above). Nothing was pushed or commented, but the loop may already have merged issues into this branch.");
     return EXIT_ERROR;
   }
-  // The merger is an agent with a shell on this checkout: the pull request must be the one for
-  // the branch the run started on, and a moved HEAD must not end as a silent "nothing to land".
-  if (run("git", ["symbolic-ref", "--quiet", "--short", "HEAD"]).stdout.trim() !== branch) {
-    output.warn(`afk: HEAD is no longer on ${branch} after the loop. Nothing was pushed or commented; check the checkout.`);
+  const tampered = loopAftermath(run, options.cwd, { branch, configBefore, hooksBefore });
+  if (tampered !== undefined) {
+    output.warn(`afk: ${tampered} Nothing was pushed or commented.`);
     return EXIT_ERROR;
   }
-  if (localConfig(run) !== configBefore) {
-    output.warn("afk: the loop changed this repository's git config, which a tracked diff cannot show (core.hooksPath and core.fsmonitor run code). Nothing was pushed or commented; review git config --local --list.");
-    return EXIT_ERROR;
-  }
-  const leftover = unfinishedTree(run);
-  if (leftover !== undefined) {
-    output.warn(`afk: the loop left the tree ${leftover}. Nothing was pushed or commented; finish or abort that by hand.`);
-    return EXIT_ERROR;
-  }
-  if (run("git", ["fetch", "--quiet", "origin", "main"]).status !== 0) {
+  if (!fetchMain(run)) {
     output.warn("afk: the loop ran and may have merged issue branches into this branch, but git fetch origin main failed afterwards, so the result cannot be classified. Nothing was pushed or commented; check the network, then rerun.");
     return EXIT_ERROR;
   }
