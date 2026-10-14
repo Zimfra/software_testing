@@ -30,6 +30,10 @@ export type BranchWork = "worked" | "empty" | "unrecognised";
  * "unrecognised": the tip moved or the reflog is gone, but no entry says a commit was made (a ref
  * written by update-ref or fetch); callers that must not stay silent treat it differently from "empty".
  */
+// Subjects of reflog entries that move a branch tip without making work of the branch's own.
+const TIP_MOVES = /^(rebase \(finish\)|merge |branch: Reset|Branch: renamed|reset:)/;
+const COMMIT_ENTRY = /^(commit|cherry-pick|revert)(?=[ :(]|$)/;
+
 export function branchWork(ref: string, cwd: string): BranchWork {
   if (!refExists(ref, { cwd })) return "empty";
   const log = tryGit(["reflog", "show", "--format=%H %gs", ref, "--"], { cwd });
@@ -39,9 +43,15 @@ export function branchWork(ref: string, cwd: string): BranchWork {
   });
   const created = entries.find((entry) => entry.subject.startsWith("branch: Created"));
   if (created !== undefined && created.sha === entries[0]?.sha) return "empty";
-  const commits = entries.filter((entry) => /^(commit|cherry-pick|revert|rebase \(finish\))/.test(entry.subject));
-  if (commits.length === 0) return "unrecognised";
-  return commits.some((entry) => reachable(entry.sha, ref, cwd)) ? "worked" : "empty";
+  const commits = entries.filter((entry) => COMMIT_ENTRY.test(entry.subject));
+  if (commits.some((entry) => reachable(entry.sha, ref, cwd))) return "worked";
+  // A rebase rewrites the branch's commits, so their entries are no longer reachable; it is
+  // only work when a commit entry older than the rebase says there was something to rewrite.
+  const rebased = entries.findIndex((entry) => entry.subject.startsWith("rebase (finish)"));
+  if (rebased >= 0 && commits.some((entry) => entries.indexOf(entry) > rebased)) return "worked";
+  if (commits.length > 0) return "empty";
+  const others = entries.filter((entry) => entry !== created);
+  return others.length > 0 && others.every((entry) => TIP_MOVES.test(entry.subject)) ? "empty" : "unrecognised";
 }
 
 export const hasOwnCommits = (ref: string, cwd: string): boolean => branchWork(ref, cwd) === "worked";
