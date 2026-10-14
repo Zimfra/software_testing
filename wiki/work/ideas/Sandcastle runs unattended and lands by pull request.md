@@ -30,6 +30,8 @@ evidence:
   - "VERIFIED: after the review of 8239586 (a finder and a verifier in separate contexts; the verifier passed seven mutation controls on named tests), the finder's HIGH finding (an empty leftover branch that the loop then worked and merged was treated as earlier work, so nothing landed) and its MEDIUM finding (pushed work with no pull request exited 0) were fixed test first at 89ba1d7: both new cases failed before the change, the clean mid-merge case and the prompt-repository tie already passed and stay as guards, afk.test.ts has 41 tests, and npm run check at 89ba1d7 exited 0 with 646 of 646 tests passing (2026-10-13)."
   - "VERIFIED: npm run check at 8239586 in the AFK worktree exited 0 with 640 of 640 tests passing (author's own rerun, 2026-10-13); the verifier of that head reported 602 where it ran, which equals the integration branch's count and is UNKNOWN in cause, so it is not used here."
   - "UNKNOWN: whether a real Sandcastle run writes commit entries into the host branch reflog; the wrapper exits 2 instead of announcing when it does not."
+  - "VERIFIED: after the review of 4a374a7 (a finder and a verifier in separate contexts; the verifier passed seven mutation controls on named tests and reproduced 646 of 646), the findings were fixed test first at 94f16e6: earlier work is now judged by branch tips (an unrecognised branch whose reflog expired no longer exits 2 on every run, and an earlier branch the run extends and merges again is announced), a worked branch the run left unmerged exits 2, and only an OPEN pull request counts; the new cases failed before the change (13 of 47 entries, most because the gh view output format changed with the fix) and afk.test.ts now has 47 test entries, and npm run check at 94f16e6 exited 0 with 655 of 655 tests passing (2026-10-13)."
+  - "UNKNOWN: a comment that failed after the pull request opened is not visible to a rerun, so a rerun exits 0 when earlier work is pushed and has an open pull request; the failed comment is never retried."
   - "UNKNOWN: the real gh (issue comment, the review request reaching the owner), Docker and the Sandcastle loop were not run; the tests replace them with scripted runners."
   - "UNKNOWN: whether gh pr view <branch> --json url --jq .url returns the URL for a branch pushed by pr-ready under a real gh; the test replaces gh with a scripted runner."
 ---
@@ -58,7 +60,7 @@ Owner points, none decided here:
    the pull request) should stay. Both exist now.
 4. An issue merged by an earlier run is named in a warning and not commented on again. When
    nothing new was merged and that earlier work is not on origin, the run exits 2 and says to
-   land it with `npm run pr`; once it is pushed the run exits 0 with a note. Whether a rerun
+   land it with `npm run pr`; once it is pushed and has an open pull request the run exits 0 with a note, and without one it exits 2. Whether a rerun
    should instead land and announce it is the owner's call.
 5. `.sandcastle/main.ts` ends with "All done." and exit 0 even when every agent failed, so a
    total failure looks like an empty queue to this wrapper.
