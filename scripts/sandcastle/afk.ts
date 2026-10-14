@@ -51,6 +51,8 @@ function readiness(run: Run, env: NodeJS.ProcessEnv): { branch: string; repo: st
   const head = run("git", ["symbolic-ref", "--quiet", "--short", "HEAD"]);
   const branch = head.status === 0 ? head.stdout.trim() : "";
   const refused: string[] = [];
+  // A tracking ref that is behind makes the comparison below name code the owner never wrote.
+  git(run, ["fetch", "--quiet", "origin", "main"]);
   if (branch === "" || branch === "main") refused.push("Run this on a feature branch, not main or a detached HEAD.");
   if (git(run, ["status", "--porcelain"]).trim() !== "") refused.push("The tree has uncommitted changes. Commit or stash them first.");
   // One cheap call before the loop spends minutes: it fails when gh is not logged in or cannot
@@ -59,9 +61,10 @@ function readiness(run: Run, env: NodeJS.ProcessEnv): { branch: string; repo: st
   if (repo === "") refused.push("gh cannot resolve this repository. Run gh auth login (as the machine account), then rerun.");
   else if (repo !== PROMPT_REPO) refused.push(`gh resolves ${repo}, but the Sandcastle prompts read and comment on issues of ${PROMPT_REPO}.`);
   // A branch that already carries code would be refused after a paid loop; say so before it runs.
-  if (!landCode(env) && refused.length === 0) {
+  if (!landCode(env) && branch !== "" && branch !== "main") {
     const code = guardedChanges(run);
-    if (code.length > 0) refused.push(codeMessage(code));
+    if (code === undefined) refused.push("This branch has no history in common with origin/main. Merge origin/main into it, then rerun.");
+    else if (code.length > 0) refused.push(codeMessage(code));
   }
   return { branch, repo, refused };
 }
@@ -130,10 +133,14 @@ function strandedIssues(run: Run, cwd: string | undefined, before: ReadonlyMap<s
     .sort(byNumber);
 }
 
-/** Paths that differ from origin/main (so earlier unlanded work counts too) and are not documentation. */
-function guardedChanges(run: Run): string[] {
-  const base = git(run, ["merge-base", "HEAD", "refs/remotes/origin/main"]).trim();
-  return git(run, ["diff", "--name-only", "-z", "--no-renames", base, "HEAD"]).split("\0")
+/**
+ * Paths that differ from origin/main (so earlier unlanded work counts too) and are not
+ * documentation, or undefined when the branch shares no history with origin/main.
+ */
+function guardedChanges(run: Run): string[] | undefined {
+  const base = run("git", ["merge-base", "HEAD", "refs/remotes/origin/main"]);
+  if (base.status !== 0) return undefined;
+  return git(run, ["diff", "--name-only", "-z", "--no-renames", base.stdout.trim(), "HEAD"]).split("\0")
     .filter((path) => path !== "" && !DOCUMENTATION.some((pattern) => pattern.test(path)));
 }
 
@@ -142,23 +149,37 @@ const landCode = (env: NodeJS.ProcessEnv): boolean => env[LAND_CODE_ENV] === "1"
 const codeMessage = (paths: string[]): string =>
   `the branch differs from origin/main in files that are not documentation and that npm run check would run: ${paths.join(", ")}. Review that diff and land with npm run pr, or set ${LAND_CODE_ENV}=1 in your own shell to accept running agent-written code on this machine unattended.`;
 
-/** Tell each announced issue, since the owner may be away and no pull request will open. */
-function noticeComments(run: Run, repo: string, branch: string, issues: readonly string[]): void {
+/** Tell each announced issue, since the owner may be away; returns the issues that could not be told. */
+function noticeComments(run: Run, repo: string, branch: string, issues: readonly string[]): string[] {
   const body = `Sandcastle merged this issue into the local branch ${branch} but it is not landed: the branch changes code or configuration that npm run check would execute unattended. Nothing was pushed. Review the diff and run npm run pr.`;
-  for (const issue of issues) {
+  return issues.filter((issue) => {
     try {
-      run("gh", ["issue", "comment", issue, "-R", repo, "--body", body]);
+      return run("gh", ["issue", "comment", issue, "-R", repo, "--body", body]).status !== 0;
     } catch {
-      // a timed-out notice is not worth stopping the others for; the exit code and output carry it
+      return true;
     }
-  }
+  });
 }
 
 // Branch tracking keys (branch.<name>.remote and .merge) appear whenever a branch is created from a
 // remote-tracking ref; the keys that run code (core.hooksPath, core.fsmonitor, alias.*, filter.*,
 // credential.*) are what this comparison is for.
 const localConfig = (run: Run): string =>
-  git(run, ["config", "--local", "--list"]).split("\n").filter((line) => !line.startsWith("branch.")).join("\n");
+  git(run, ["config", "--local", "--list", "-z"]).split("\0")
+    .filter((entry) => !entry.split("\n", 1)[0]?.startsWith("branch."))
+    .join("\0");
+
+type CodeRefusal = Landing & { incomplete: boolean };
+
+/** Refuse to land non-documentation changes: name them, tell the issues, and pick the exit code. */
+function refuseCode(run: Run, output: Output, { repo, branch, issues, incomplete }: CodeRefusal): number | undefined {
+  const guarded = guardedChanges(run) ?? ["(no history in common with origin/main)"];
+  if (guarded.length === 0) return undefined;
+  output.warn(`afk: ${codeMessage(guarded)} Nothing was pushed.`);
+  const untold = noticeComments(run, repo, branch, issues);
+  if (untold.length > 0) output.warn(`afk: issue ${untold.join(", ")} could not be told that its work is merged locally and not landed.`);
+  return incomplete || untold.length > 0 ? EXIT_ERROR : EXIT_REFUSED;
+}
 
 type Landing = { repo: string; branch: string; issues: string[] };
 
@@ -237,12 +258,8 @@ export function main(args: readonly string[], options: Options = {}): number {
   const incomplete = unannounced.length > 0 || stranded.length > 0 || deleted.length > 0;
   if (issues.length === 0) return nothingToAnnounce(run, output, { branch, headBefore, earlier, earlierRefs, incomplete });
 
-  const guarded = landCode(env) ? [] : guardedChanges(run);
-  if (guarded.length > 0) {
-    output.warn(`afk: ${codeMessage(guarded)} Nothing was pushed.`);
-    noticeComments(run, repo, branch, issues);
-    return EXIT_REFUSED;
-  }
+  const refusal = landCode(env) ? undefined : refuseCode(run, output, { repo, branch, issues, incomplete });
+  if (refusal !== undefined) return refusal;
   const code = land(run, output, { repo, branch, issues });
   return code === EXIT_OK && incomplete ? EXIT_ERROR : code;
 }

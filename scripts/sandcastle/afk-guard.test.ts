@@ -17,12 +17,12 @@ const EXECUTED = [
 ];
 const DOCS = ["wiki/note.md", "wiki/runbooks/Some page.md", "CHANGELOG.md", "README.md", "docs/guide.md", "NOTES.md"];
 
-function landingLoop(repo: RepoFixture, paths: string[]): { run: Run; calls: string[] } {
+function landingLoop(repo: RepoFixture, paths: string[], extra: { failComments?: string[]; also?: () => void } = {}): { run: Run; calls: string[] } {
   repo.git(["switch", "--quiet", "-c", "sandcastle/issue-4", "feat/afk-work"]);
   for (const path of paths) repo.write(path, "// changed by an agent\n");
   repo.commit("feat: four");
   repo.git(["switch", "--quiet", "feat/afk-work"]);
-  return runner(repo, { loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-4"); return 0; } });
+  return runner(repo, { ...(extra.failComments === undefined ? {} : { failComments: extra.failComments }), loop: () => { mergeInto(repo, "feat/afk-work", "sandcastle/issue-4"); extra.also?.(); return 0; } });
 }
 
 await test("a run that changed anything but documentation is not landed unattended", async (t) => {
@@ -136,14 +136,93 @@ await test("a repository config the loop changed is an error, because tracked di
   assert.ok(!calls.some((call) => call.includes("pr-ready") || call.startsWith("gh issue")));
 });
 
-await test("a branch with no history in common with origin/main stops the run with an error", (t) => {
+await test("a branch with no history in common with origin/main is a named refusal before the loop", (t) => {
   const repo = fixture(t);
   repo.git(["switch", "--quiet", "--orphan", "unrelated"]);
   repo.write("x.md", "x\n");
   repo.commit("docs: unrelated");
-  const result = (() => {
-    try { return go(repo, runner(repo).run).code; } catch { return EXIT_ERROR; }
-  })();
-  assert.notEqual(result, EXIT_OK);
+  const { run, calls } = runner(repo);
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_REFUSED);
+  assert.match(result.err, /no history in common with origin\/main/);
+  assert.ok(!calls.includes("node .sandcastle/main.ts"));
 });
 
+await test("a stale origin/main tracking ref does not make a documentation-only branch look like code", (t) => {
+  const repo = fixture(t);
+  const older = repo.git(["rev-parse", "refs/remotes/origin/main"]);
+  repo.git(["switch", "--quiet", "main"]);
+  repo.write("scripts/app/others-work.ts", "// merged to main by someone else\n");
+  repo.commit("feat: others work");
+  repo.git(["push", "--quiet", "origin", "main"]);
+  repo.git(["fetch", "--quiet", "origin"]);
+  repo.git(["switch", "--quiet", "feat/afk-work"]);
+  repo.git(["merge", "--quiet", "--no-edit", "origin/main"]);
+  repo.git(["update-ref", "refs/remotes/origin/main", older]); // the tracking ref is now stale
+  const result = go(repo, runner(repo).run);
+  assert.equal(result.code, EXIT_OK, result.err);
+});
+
+await test("the code refusal is reported together with the other independent refusals", (t) => {
+  const repo = fixture(t);
+  repo.write("scripts/app/owner-work.ts", "// the owner's work\n");
+  repo.commit("feat: owner work");
+  repo.write("dirty.md", "x\n");
+  const result = go(repo, runner(repo).run);
+  assert.equal(result.code, EXIT_REFUSED);
+  assert.match(result.err, /uncommitted/);
+  assert.ok(result.err.includes("scripts/app/owner-work.ts"));
+});
+
+await test("a code refusal that coincides with stranded work is a failure, not only a refusal", (t) => {
+  const repo = fixture(t);
+  const { run } = landingLoop(repo, ["scripts/app/thing.ts"], {
+    also: () => {
+      repo.git(["switch", "--quiet", "-c", "sandcastle/issue-7", "feat/afk-work"]);
+      repo.write("seven.md", "7\n");
+      repo.commit("feat: seven");
+      repo.git(["switch", "--quiet", "feat/afk-work"]);
+    },
+  });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.match(result.err, /issue 7/);
+});
+
+await test("a notice comment that failed is reported and fails the run, so silence is never mistaken for success", (t) => {
+  const repo = fixture(t);
+  const { run } = landingLoop(repo, ["scripts/app/thing.ts"], { failComments: ["4"] });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.match(result.err, /could not be told/);
+  assert.match(result.err, /issue 4/);
+});
+
+await test("a multi-line config value cannot hide a change behind a branch.-prefixed tail", (t) => {
+  const repo = fixture(t);
+  repo.git(["config", "core.editor", "vim"]);
+  issueBranch(repo, "sandcastle/issue-4");
+  const { run } = runner(repo, {
+    loop: () => {
+      mergeInto(repo, "feat/afk-work", "sandcastle/issue-4");
+      repo.git(["config", "core.editor", "vim\nbranch.x.note=hidden"]);
+      return 0;
+    },
+  });
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.match(result.err, /git config/);
+});
+
+await test("branch tracking keys written when a branch is created from origin/main are not a config change", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-4");
+  const { run } = runner(repo, {
+    loop: () => {
+      mergeInto(repo, "feat/afk-work", "sandcastle/issue-4");
+      repo.git(["branch", "--track", "sandcastle/issue-9", "origin/main"]);
+      return 0;
+    },
+  });
+  assert.equal(go(repo, run).code, EXIT_OK);
+});
