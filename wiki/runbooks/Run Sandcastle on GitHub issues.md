@@ -134,15 +134,16 @@ In order:
    2 and not 1.
    The wrapper also exits 2 when the loop changed the repository's local git config (compared
    key by key with `-z`, branch tracking keys excepted), because a tracked diff cannot show `core.hooksPath` or
-   `core.fsmonitor`. It compares the `.git/hooks` listing (names, sizes, mtimes, resolved from
-   a linked worktree too) before and after the loop, and does so before the post-loop fetch,
-   because a `reference-transaction` hook runs when a fetch updates refs; a changed hook exits 2
-   with no further git command. It cannot see `node_modules`, the contents behind unchanged hook
-   metadata, `config.worktree` (when
-   `extensions.worktreeConfig` is on), `.git/info/exclude`, the global git config or other
-   ignored files; running
-   the check inside the sandbox would, and is not built. An issue branch the loop deleted is
-   named and exits 2 as well.
+   `core.fsmonitor`. It compares the hooks directory the repository is configured to use
+   (`core.hooksPath` is honoured, and it resolves from a linked worktree too) by content, with a
+   SHA-256 of each file, before and after the loop, so a rewrite that keeps size and mtime is
+   seen. The config and hooks comparisons run before any git command that could run a hook
+   (`git status` can rewrite the index and run a `post-index-change` hook), and a changed hook
+   exits 2. A hooks directory that cannot be read, such as one holding a dangling link, is
+   refused before the loop and never compared as empty. It cannot see `node_modules`,
+   `config.worktree` (when `extensions.worktreeConfig` is on), `.git/info/exclude`, the global
+   git config or other ignored files; running the check inside the sandbox would, and is not
+   built. An issue branch the loop deleted is named and exits 2 as well.
 4. Runs `node scripts/git/pr-ready.ts`, the tool behind `npm run pr`, with its output streamed to
    the terminal: it runs `npm run check`, refuses a `gh` login that is the repository owner,
    pushes the branch and opens or reports the pull request. Its refusal (exit 1) is passed on with "nothing was pushed or commented"; its failure
