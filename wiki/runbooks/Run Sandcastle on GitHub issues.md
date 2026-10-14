@@ -120,8 +120,14 @@ In order:
    run) and after it; after the loop each announced issue gets a comment saying the work is
    merged on the local branch and not landed, so you are not left with silence. Setting
    `SANDCASTLE_AFK_LAND_CODE=1` in your own shell lifts the refusal and accepts that risk.
-   The wrapper also exits 2 when the loop changed the repository's local git config (branch
-   tracking keys excepted), because a tracked diff cannot show `core.hooksPath` or
+   It fetches `origin/main` before comparing, so a stale tracking ref cannot name code you never
+   wrote, and a branch with no history in common with `origin/main` is a named refusal. A branch
+   that already carries code is refused before the loop until you land it with `npm run pr`, so
+   this wrapper is unusable on your own feature branch while it holds code. When a code refusal
+   coincides with stranded or deleted work, or a notice comment could not be posted, the exit is
+   2 and not 1.
+   The wrapper also exits 2 when the loop changed the repository's local git config (compared
+   key by key with `-z`, branch tracking keys excepted), because a tracked diff cannot show `core.hooksPath` or
    `core.fsmonitor`. It cannot see `node_modules`, `.git/hooks` or other ignored files; running
    the check inside the sandbox would, and is not built. An issue branch the loop deleted is
    named and exits 2 as well.

@@ -38,6 +38,8 @@ evidence:
   - "UNKNOWN: the guard is a path list, not a proof; code that npm run check executes from outside the listed paths (a gitignored file, node_modules) is not seen by a tracked diff."
   - "VERIFIED: after the review of d5023c9 (a finder and a verifier in separate contexts; the verifier reproduced 689 of 689 and passed fourteen mutation controls), the finder's two HIGH findings and its design recommendation were applied test first at e665554: the guard is now an allowlist of Markdown documentation (a root json.py, a nested eslint config and an upper-case Scripts/ were all unguarded under the denylist), runs before the loop as well as after it, exits 1 as a refusal, comments on each announced issue, and a changed local git config exits 2; 33 entries were red before the change, afk.test.ts has 50 and afk-guard.test.ts 40 entries, and npm run check at e665554 exited 0 with 706 of 706 tests passing (2026-10-13)."
   - "UNKNOWN: the guard cannot see node_modules, .git/hooks or other ignored files; a tracked diff and the local git config comparison do not cover them, and running npm run check inside the sandbox, which is not built, would."
+  - "VERIFIED: after the review of e670558 (a finder and a verifier in separate contexts; the verifier reproduced 706 of 706 and passed seventeen mutation controls, with the base-choice control d surviving alone because the pre-loop guard makes the two comparisons equivalent), the finder's four MEDIUM findings and the other items were fixed test first at 3dfca0e: a fetch before the guard, a code refusal that coincides with stranded work or an unposted notice exits 2, the config comparison is key-aware, the code refusal is reported with the others and an unrelated history is a named refusal; 6 of 46 entries in afk-guard.test.ts were red before the change, the branch-tracking-key case passed already, afk.test.ts has 50, afk-guard.test.ts 46 and already-done.test.ts 32 entries, and npm run check at 3dfca0e exited 0 with 715 of 715 tests passing (2026-10-13)."
+  - "UNKNOWN: whether the in-sandbox agent can write the mounted .git/config; if it can, a user.name or user.email written there makes the config comparison exit 2 and leaves the work unlanded."
   - "UNKNOWN: the real gh (issue comment, the review request reaching the owner), Docker and the Sandcastle loop were not run; the tests replace them with scripted runners."
   - "UNKNOWN: whether gh pr view <branch> --json url --jq .url returns the URL for a branch pushed by pr-ready under a real gh; the test replaces gh with a scripted runner."
 ---
@@ -57,10 +59,9 @@ review and a comment on each issue naming it, with every merge still the owner's
 
 Owner points, none decided here:
 
-1. Whether the wrapper should also refuse early when the branch does not contain `origin/main`,
-   or when the `gh` login is the owner's, so a long run is not spent before `pr-ready` refuses.
-   It refuses early on branch, tree and an unresolvable repository; the other two checks stay
-   in `scripts/git/pr-ready.ts`, which is a different branch's file.
+1. Early refusals now cover the branch, the tree, an unresolvable or different repository, a
+   branch with code that differs from `origin/main` and a branch with no common history. The
+   owner-login refusal stays in `scripts/git/pr-ready.ts`, which is a different branch's file.
 2. Whether a notification channel beyond GitHub is wanted. None exists.
 3. Which of the two comments an issue gets (the merge prompt's, and the wrapper's, which names
    the pull request) should stay. Both exist now.
