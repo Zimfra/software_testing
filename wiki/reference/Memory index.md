@@ -50,6 +50,7 @@ One line per memory note. Add new notes here; work notes need no entry.
 
 - [[Land a change]] - Take work from a feature branch to an owner-merged pull request; nothing is ever pushed to main.
 - [[Maintain the repository wiki]] - Keep wiki explanations, work records, the Memory index and CHANGELOG.md current in the same branch as the change, and commit wiki files alone.
+- [[Run Sandcastle on GitHub issues]] - Run npm run sandcastle so Docker-sandboxed Claude agents plan, implement, review and merge issues labelled Sandcastle onto your branch, without pushing or closing anything.
 - [[Verify a repository change]] - Run npm run check and the hooks, review read-only with separate reviewer subagents, and record evidence before opening a pull request.
 
 ## Reference

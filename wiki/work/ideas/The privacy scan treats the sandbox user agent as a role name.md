@@ -6,11 +6,13 @@ tags: [area/wiki, area/agents]
 created: 2026-10-12
 updated: 2026-10-13
 agent: claude-code
-status: in-progress
+status: done
 owner: human
 priority: P2
-next_action: Owner reviews and merges the pull request; then decide whether the home-path pattern may allow the sandbox user's home directory before .sandcastle/ is tracked.
+next_action: None; the role-name change and the home-path follow-up are both delivered.
 evidence:
+  - "VERIFIED: pull request #2 on Zimfra/software_testing, which added agent to the role names, was merged by the owner on 2026-10-13 (merge commit bf3e407)."
+  - "VERIFIED: the home-path follow-up is delivered by branch feat/sandcastle-integration: scripts/wiki/redaction.test.ts failed before the change and passes 36 of 36 after it, and a path under the agent home is allowed while the agentsmith, agent-smith and alice homes are still flagged for the agent, node and alice logins."
   - "OWNER DECISION: \"add agent to the role names which roles explain this with an example\" (2026-10-12), after the options were laid out: add agent to the role names, or rename the sandbox user."
   - "VERIFIED: scripts/wiki/redaction.test.ts failed before the change (the service-account test, 1 of 35, because agent counted as a personal username) and passes after (35 of 35); scripts/wiki/wiki-validation.test.ts passes 59 of 59; npm run lint and npm run typecheck are clean."
   - "OWNER DECISION: asked whether the explanation and an example should live in the code comment (B) or only be given in chat (A), the owner answered \"b\" (2026-10-13)."
@@ -45,9 +47,10 @@ role name is, and the assertions in `scripts/wiki/redaction.test.ts`.
 - Renaming the sandbox user was the alternative. The Sandcastle README says the `agent` user is
   required and bind-mounts the repository under that user's home directory, and any other name of
   four characters or more would be flagged the same way unless it was also added to the list.
-- Not covered here: the sandbox user's home-directory paths in `.sandcastle/Dockerfile`. They trip the separate
-  home-path pattern (`redaction.ts`, "home path with username"), which only allows `<user>` and
-  `linuxbrew`. That matters once `.sandcastle/` is tracked, and it needs its own test-first change.
+- Not covered by pull request #2: the sandbox user's home-directory paths in `.sandcastle/Dockerfile`.
+  They tripped the separate home-path pattern (`redaction.ts`, "home path with username"), which
+  allowed only `<user>` and `linuxbrew`. Branch feat/sandcastle-integration also allows a path
+  under the role-name home `agent`, with a test-first change.
 - [no-doc-change: the change adds one name to an existing list and a comment above it, and no written rule states the list]
 - A rule that lists accounts is built from the environment, so it has to be tested in the
   environment that fails: [[A rule built from the environment needs testing in that environment]].
