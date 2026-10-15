@@ -4,7 +4,7 @@ title: Run Sandcastle on GitHub issues
 summary: Run npm run sandcastle so Docker-sandboxed Claude agents plan, implement, review and merge issues labelled Sandcastle onto your branch, without pushing or closing anything.
 tags: [area/agents, area/github, tool/claude-code, kind/setup]
 created: 2026-10-13
-updated: 2026-10-13
+updated: 2026-10-15
 agent: claude-code
 status: draft
 related: ["[[Land a change]]", "[[Verify a repository change]]", "[[Sandcastle runs under the repository rules]]"]
@@ -221,11 +221,22 @@ Sandcastle loop, a real push, and GitHub's review request reaching the owner.
   `switch -C` at a commit made on another ref, which later lands in HEAD, is "empty" and is
   planned again although its work is already there. Both cost implementer runs up to
   `MAX_ITERATIONS`.
-- UNKNOWN until the first real run: whether Sandcastle writes `commit:` entries into the host
-  branch reflog. After the first run, `git reflog show sandcastle/issue-<number>` should list
-  them. If it lists only `fetch` or `update-ref` entries, every branch is "unrecognised", the
-  guard drops nothing and a branch that did get merged is not recognised as worked (the AFK wrapper,
-  a separate branch, treats that as an error and not as success).
+- VERIFIED on the first real run (2026-10-15, throwaway issues #8 and #9): Sandcastle writes
+  `commit:` entries into the host branch reflog, and a branch merged by fast-forward logs
+  `merge sandcastle/issue-<number>: Fast-forward` on the target. The already-done guard skipped
+  the merged issue in the next round and the planner's round 2 said so. This is one run on one
+  host; a different Sandcastle version or provider is not covered.
+- An issue that points at another open issue ("after the sentence added for the first trial") is
+  planned as blocked by it, and agents never close issues, so it waits until you close the first
+  one. Write independent issues when you want them worked in the same round.
+- A documentation-only issue still needs a `CHANGELOG.md` entry and a work record on its branch,
+  because the change-record guard refuses a branch without them when the wrapper lands it
+  (`changelog-guard: ... adds no entry to CHANGELOG.md`). Do not write "change no other file" in a
+  Sandcastle issue; the implementer prompt already asks for both records.
+- The comments an agent posts are authored by whichever account owns the sandbox `GH_TOKEN`. On
+  the first run they were posted by the repository owner, because that token was the owner's
+  personal one. Use a fine-grained token of the machine account, limited to this repository with
+  Issues read and write and Metadata read, so an agent in the sandbox cannot act as the owner.
 - The planner's output is validated before anything runs: `id` is a positive number without
   leading zeros, `branch` is `sandcastle/issue-<id>`, an issue appears once, and `title` is
   non-empty after it is normalised to one line of at most 200 characters with backticks and
