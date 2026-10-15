@@ -3,8 +3,8 @@ type: idea
 title: Sandcastle token setup lessons
 summary: Swapping the sandbox GH_TOKEN to the machine account hit five distinct failures; the runbook now lists the steps and the checks that tell them apart.
 tags: [area/agents, area/github, tool/claude-code]
-created: 2026-10-16
-updated: 2026-10-16
+created: 2026-10-15
+updated: 2026-10-15
 agent: claude-code
 status: in-progress
 owner: human
