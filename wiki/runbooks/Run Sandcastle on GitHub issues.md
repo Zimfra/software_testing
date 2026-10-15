@@ -4,7 +4,7 @@ title: Run Sandcastle on GitHub issues
 summary: Run npm run sandcastle so Docker-sandboxed Claude agents plan, implement, review and merge issues labelled Sandcastle onto your branch, without pushing or closing anything.
 tags: [area/agents, area/github, tool/claude-code, kind/setup]
 created: 2026-10-13
-updated: 2026-10-15
+updated: 2026-10-16
 agent: claude-code
 status: draft
 related: ["[[Land a change]]", "[[Verify a repository change]]", "[[Sandcastle runs under the repository rules]]"]
@@ -55,6 +55,8 @@ Use it for small, well-specified issues. Rules the agents follow are in `CLAUDE.
   write. Grant no Contents and no Pull requests permission: the agents must not be able to push
   or open a pull request, and [[ADR-0025 Agents use a machine account and the owner approves]]
   keeps merging with the owner.
+  Create it signed in as the machine account, with the organisation as **Resource owner**, and
+  check it with the steps under "Token setup" below before the first run.
 - The sandbox image built once, and again after any `.sandcastle/Dockerfile` change:
   `npx sandcastle docker build-image`. It passes your user and group ids so the image user
   `agent` matches your host user (README, "sandcastle docker build-image").
@@ -237,6 +239,7 @@ Sandcastle loop, a real push, and GitHub's review request reaching the owner.
   the first run they were posted by the repository owner, because that token was the owner's
   personal one. Use a fine-grained token of the machine account, limited to this repository with
   Issues read and write and Metadata read, so an agent in the sandbox cannot act as the owner.
+  Replacing it took several attempts on 2026-10-15; "Token setup" below lists what each one hit.
 - The planner's output is validated before anything runs: `id` is a positive number without
   leading zeros, `branch` is `sandcastle/issue-<id>`, an issue appears once, and `title` is
   non-empty after it is normalised to one line of at most 200 characters with backticks and
@@ -268,6 +271,38 @@ Sandcastle loop, a real push, and GitHub's review request reaching the owner.
 - With `core.logAllRefUpdates=false` a branch has no reflog, so the guard keeps every issue
   pending and a rerun plans it again.
 
+## Token setup
+
+Captured 2026-10-15 on the first token swap. GitHub's token screens and organisation policy can
+change, so re-check against the token page itself.
+
+1. Sign in to GitHub as the machine account (the page header shows the username) and open
+   `Settings > Developer settings > Fine-grained tokens`. A token generated while signed in as
+   the owner is the owner's token, whatever its name says.
+2. **Resource owner** must be the organisation. The dropdown lists only the account itself until
+   the machine account has accepted its organisation invitation; `gh api
+   orgs/<org>/memberships/<machine-account>` must say `active`, not `pending`. With the account
+   as owner, "Only select repositories" is not offered and Issues stays read-only.
+3. Choose this repository only, **Issues** read and write, **Metadata** read, no other
+   permission, and an expiry within the organisation's limit (a longer one is refused).
+4. The organisation may hold a new token as pending. Until the owner approves it, the token reads
+   public data and every write answers 403, so a public repository hides the problem: the
+   planner and agents can still read issues.
+5. Put the value in `GH_TOKEN` in `.sandcastle/.env`, then check from the same image without
+   printing the token:
+
+   ```
+   docker run --rm --env-file .sandcastle/.env --entrypoint bash <image> -c \
+     'gh api user --jq .login; gh api -i repos/<org>/<repo>/issues/<n> | grep -i expiration'
+   ```
+
+   The login must be the machine account and the expiry date must differ from the old token's.
+   Post one comment on a throwaway issue and read its author before a real run.
+6. An unchanged expiry date after you "updated the token" means the file still holds the old
+   string. Editing a token's permissions does not change the string, and a token whose resource
+   owner was the account itself cannot be edited into an organisation token: create a new one.
+7. Revoke the replaced tokens afterwards, including any created under the wrong account.
+
 ## Troubleshooting
 
 Reported by the owner from earlier runs and not reproduced while writing this page.
@@ -275,4 +310,5 @@ Reported by the owner from earlier runs and not reproduced while writing this pa
 - The agent refuses its credential: an OAuth token from `claude setup-token` must start with
   `sk-ant-oat`.
 - `gh` answers 403: the token is still pending approval by the organisation, or it lacks the
-  Issues permission on this repository.
+  Issues permission on this repository. The response header `X-Accepted-Github-Permissions` names
+  what the endpoint needs (`issues=write` for a comment). See "Token setup".
