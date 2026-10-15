@@ -327,6 +327,18 @@ await test("a failing loop says issues may already be merged on the branch", (t)
   assert.match(result.err, /may already have merged/);
 });
 
+await test("a branch with no remote yet is probed quietly, never with a merge-base against a ref that does not exist", (t) => {
+  const repo = fixture(t);
+  issueBranch(repo, "sandcastle/issue-8");
+  mergeInto(repo, "feat/afk-work", "sandcastle/issue-8");
+  const { run, calls } = runner(repo);
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_ERROR);
+  assert.match(result.err, /not pushed/);
+  assert.ok(calls.includes("git rev-parse --verify --quiet refs/remotes/origin/feat/afk-work^{commit}"), "asks for the remote ref quietly first");
+  assert.ok(!calls.some((call) => call.startsWith("git merge-base --is-ancestor") && call.endsWith("refs/remotes/origin/feat/afk-work")), "no merge-base against a missing ref (it prints a fatal line)");
+});
+
 await test("work merged by an earlier run and not pushed is an error, and once pushed it is a note", async (t) => {
   await t.test("not pushed", (t) => {
     const repo = fixture(t);

@@ -4,7 +4,10 @@ Every branch adds its own entry here, under a `## YYYY-MM-DD` heading dated betw
 started and the day it lands (UTC). Entries describe the change; they never cite
 facts that only exist after the owner merges. `npm run changelog:guard` enforces this.
 
-## 2026-10-14
+## 2026-10-15
+
+- `npm run sandcastle:afk` no longer prints a raw `fatal: Not a valid object name` line when the branch has no remote yet: the wrapper asks quietly whether the remote ref exists before comparing against it, and reports "not pushed" as before. The Sandcastle runbook now records what the first real run showed: the host branch reflog does carry `commit:` entries, an issue that points at another open issue is planned as blocked by it, a documentation-only issue still needs a changelog entry and a work record to land, and the sandbox token decides who the agents' comments are posted as.
+
 
 - The wiki privacy scan now allows a home-directory path under the sandbox user's home, the role-name user `agent` that the Sandcastle image runs as, the same way it already allows the Homebrew prefix. A home directory that merely starts with that name (a longer account name, or one with a suffix) and every other home path are still flagged, in any case, and a path that climbs out of the role-name home is still caught. This lets the Sandcastle Dockerfile and its documentation name the sandbox workspace without tripping the scan.
 

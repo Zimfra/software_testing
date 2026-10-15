@@ -159,7 +159,11 @@ function pullRequestUrl(run: Run, branch: string): string {
 
 /** True when origin already holds every one of these branch tips under this branch's name (pr-ready pushed them). */
 function isPushed(run: Run, branch: string, refs: readonly string[]): boolean {
-  return refs.every((ref) => run("git", ["merge-base", "--is-ancestor", ref, `refs/remotes/origin/${branch}`]).status === 0);
+  const remote = `refs/remotes/origin/${branch}`;
+  // A branch that was never pushed has no remote ref; asking merge-base about it prints a raw
+  // `fatal:` line, so the ref is checked quietly first.
+  if (run("git", ["rev-parse", "--verify", "--quiet", `${remote}^{commit}`]).status !== 0) return false;
+  return refs.every((ref) => run("git", ["merge-base", "--is-ancestor", ref, remote]).status === 0);
 }
 
 /** Every local sandcastle/issue-<N> branch tip, by full ref name. */
