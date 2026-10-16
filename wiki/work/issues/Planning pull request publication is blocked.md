@@ -1,24 +1,28 @@
 ---
 type: issue
 title: Planning pull request publication is blocked
-summary: GitHub authentication and the active account prevent the planning branch from being published; this delivery blocker does not prevent local design or plan drafting.
+summary: Planning PR 15 was published as the machine account through a validated bot-only CLI context; the original inactive credential profile remains a local cleanup concern.
 tags: [area/auth, area/github, tool/gh]
 created: 2026-10-16
 updated: 2026-10-16
 agent: opencode
-status: blocked
+status: done
 owner: human
 priority: P1
 issue_kind: environment
-next_action: Complete the machine-account device authorization, then recheck the active actor, repository identity and branch before running npm run pr.
-blocker: The last publication attempt found an invalid stored GitHub account and the active login matched CODEOWNERS; owner action is needed for a valid machine-account session.
+root_cause: The shared CLI reported an invalid inactive credential profile while the originally active account was a code owner.
+fix_ref: https://github.com/Zimfra/software_testing/pull/15
+regression_evidence: The earlier npm run pr refused before push; the validated machine-account context ran npm run pr successfully and created PR 15 with author zimmybot and the reviewed head.
+prevention: Before publication verify the machine-account actor, repository and clean reviewed SHA; npm run pr still applies authentication, code-owner and branch checks in that context.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 evidence:
   - "VERIFIED: npm run pr at 4cb19802c18914e707fbd39d2a45342d9b6a0158 passed the full check and refused before pushing because gh auth status reported an invalid stored account."
   - "VERIFIED: later read-only checks during planning again returned gh auth status exit 1, identified the active login as a code owner and found no PR for feat/provider-neutral-governance."
-  - "INFERRED: this blocks publication and subsequent owner-merged plan approval, but does not block resolving design questions or drafting the proposed plan locally."
+  - "INFERRED: the observed authentication state blocked publication and subsequent owner-merged plan approval, but did not block resolving design questions or drafting the proposed plan locally."
   - "VERIFIED: the 2026-10-16 publication recheck identified zimmybot as the repository's write-enabled machine-account collaborator. The first browser authorization returned the code-owner identity again; a second machine-account authorization was requested. No credential or device code is recorded here."
+  - "VERIFIED: the owner subsequently authenticated zimmybot, and gh repo view reported WRITE permission. A temporary bot-only CLI context passed gh auth status and verified the actor, repository, branch and clean reviewed SHA without removing saved account profiles."
+  - "VERIFIED: npm run pr in that context exited 0 after 766 Node tests, 56 Python tests and all guards passed; PR 15 was created with author zimmybot, base main and head 18e32772ddc74e9debffad66e708b4623e728cf6."
 ---
 
 ## Reproduction
@@ -31,8 +35,9 @@ credential-store contents into the evidence.
 ## Expected and actual
 
 Expected: the PR tool publishes the feature branch through a valid machine-account session.
-Observed: authentication failed for a stored account, and the active account also matched a code
-owner. The branch remained local and no PR was created.
+Initially observed: authentication failed for a stored account, and the active account also
+matched a code owner. The branch remained local. The later validated machine-account context
+published the branch and opened [PR 15](https://github.com/Zimfra/software_testing/pull/15).
 
 ## Root cause
 
@@ -42,19 +47,26 @@ Model-provider authentication is a separate concern.
 
 ## Fix
 
-The owner completes authentication as the intended machine account. The agent then verifies
-the actor, target repository, branch and current main before using `npm run pr`. Browser/device
-authorization remains the owner's action. Do not weaken publication or approval rules to work
-around a credential-profile problem; the required account must actually authenticate.
+The owner completed browser authorization as the intended machine account. Publication used a
+temporary `GH_CONFIG_DIR` and HOME with a GitHub credential helper, and the authenticated bot
+token was passed only through process memory/environment. The context pinned the actor to
+zimmybot, the repository to this fork, and the clean branch to the reviewed SHA before running
+the normal PR tool. No saved credential profile was deleted and no publication rule was bypassed.
+
+The original inactive credential still makes the unscoped whole-account check fail. Future
+publication needs a valid machine-account context or owner repair of that local profile. The
+resolution here establishes publication of this planning PR, not a claim that every local account
+was repaired. No token or one-time device code is stored in the repository.
 
 ## Verification
 
-Record the successful nonsecret authentication results, published branch and actual PR URL after
-publication. Keep this issue open until those results are observed. A created PR does not itself
-approve the proposed plan; that requires the owner's merge through the existing workflow.
+The successful preflight checked the authenticated actor, WRITE permission, origin repository,
+branch name, clean tree and exact reviewed SHA. GitHub then reported PR 15 as OPEN with author
+zimmybot and base main. A created PR does not approve the proposed plan; that still requires the
+owner's merge through the existing workflow.
 
 ## Prevention
 
 `scripts/git/pr-ready.ts`, run by `npm run pr`, refuses invalid authentication and code-owner
 publication. This check prevents publication under the wrong identity; it does not repair local
-credentials. The owner's authentication step remains the manual prerequisite.
+credentials. A valid machine-account context remains the publication prerequisite.

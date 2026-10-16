@@ -36,23 +36,24 @@ All authoritative work state lives in the repository. The original chat is not a
 1. **Determine the phase from committed records.** If the map is clarifying, use `wayfinder` to
    work one named or unblocked decision ticket with the owner. Ask one question per turn with
    evidence and a recommendation. Recommendations in tickets are not decisions.
-2. **Use the canonical proposed plan.** The resolved map and verification approach are recorded
-   in [[Repository audit remediation implementation plan]]. Read it rather than creating a competing
-   plan. Use `write-plan` for any agreed revision; preserve finding coverage, test seams and the
-   distinction between proposed work and observed results.
+2. **Use the canonical approved plan.** The resolved map and verification approach are recorded
+   in [[Repository audit remediation implementation plan]], approved through PR 15. Read it rather
+   than creating a competing plan. Use `write-plan` for any agreed revision; preserve finding
+   coverage, test seams and the distinction between planned work and observed results.
 3. **Verify plan approval before ticket creation.** Follow [[Idea to execution]]. The owner must
-   merge the PR adding the plan. Inspect GitHub's actual state and merger; record the real PR in
+   merge [planning PR 15](https://github.com/Zimfra/software_testing/pull/15). Inspect GitHub's
+   actual state and merger; record the real PR in
    `approval_ref`. A status written by an agent is insufficient. If approval is absent, stop at
    the proposed plan and name the pending action. If the plan still says proposed after GitHub's
    owner merge, update its approval metadata only after verifying that actual merge.
-   For this bootstrap PR, also add the plan's typed `map` link to Repository audit remediation map
-   once the validator fix is on main; the initial proposed note links the map through `related`
-   to remain readable by main's pre-fix guards.
+   The approval handoff restores the plan's typed `map` link after the validator fix landed in
+   PR 15. Older checkouts may still have the initial `related` link; update from the committed
+   handoff before creating tickets.
 4. **Create the agreed build tickets.** Use `plan-tickets`, showing the owner the numbered breakdown,
    dependencies and delivered behavior before creation unless that breakdown is already approved.
    Each ticket has one deliverable and fits a fresh context. When `job_specs: required` is set,
    include every required section and obtain the owner's job-spec approval before implementation.
-   The canonical plan contains 26 proposed slices; verify or reuse that approved breakdown and
+   The canonical plan contains 26 approved slices; verify or reuse that breakdown and
    begin with Fixture Git containment once its job spec is approved.
 5. **Select one executable ticket.** Its plan must be approved and its dependencies completed.
    Read its Goal, Approach, Acceptance criteria and Out of scope. If the plan requires job specs,
