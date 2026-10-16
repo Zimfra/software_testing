@@ -109,6 +109,12 @@
   ],
   "allowed": [
     {
+      "path": "wiki/work/tickets/Establish a feasible isolated Sandcastle handoff.md",
+      "contains": "https://github.com/mattpocock/sandcastle/blob/e99f832f26dc9d245c019a9ddd19fa5dee792427/docs/adr/0015-no-sandbox-in-run-and-create-sandbox.md",
+      "reason": "Primary-source citation to the pinned SDK's ADR; it does not prescribe a decision-note location in this repository.",
+      "claims": ["docs-work-paths"]
+    },
+    {
       "path": "wiki/work/ideas/Allow any agent provider to work in the repository.md",
       "contains": "lets change the only claude code to any providor - remove these blocks",
       "reason": "Verbatim owner instruction replacing the restriction; it authorizes the skill interface revisions.",

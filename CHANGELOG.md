@@ -6,6 +6,10 @@ facts that only exist after the owner merges. `npm run changelog:guard` enforces
 
 ## 2026-10-16
 
+- The remediation map records fork-only landing assurance after the verified inherited commit before the fork's first PR merge. The fresh-session handoff now asks for meaningful progress updates explaining the current task, its rationale, evidence, blockers and next action. Publication authentication is tracked as a delivery issue so it does not block finishing the design map.
+
+- Isolation research identifies an outer disposable container with the pinned SDK's no-sandbox provider inside it, plus controlled Git-bundle transfer and independent verification. A local bundle experiment preserves commit identity without importing source configuration, hooks or untracked files. The map records the research as source-supported, leaves real container containment unverified, and links a proposed verification approach for owner agreement before the implementation plan.
+
 - The remediation map records the approved partial-failure policy: reviewed successes may proceed into a PR, failed or unreviewed work stays unintegrated, incomplete runs exit nonzero, and retries resume missing phases without duplicate notifications. The history-scope decision becomes the next owner question.
 
 - The remediation map records the owner's full-workflow isolation choice, resolves the boundary decision ticket and adds focused research for a feasible isolated handoff. Partial-failure behavior becomes the next owner decision; the proposed runtime and transfer mechanism still require evidence.
