@@ -17,6 +17,8 @@ evidence:
   - "VERIFIED: the checkout started clean at 616a4ea59f84885cae294f0aa5f31dd9dffac129; Node 24.22.0 was used for the targeted tests after installing the locked dependencies with npm ci --ignore-scripts."
   - "VERIFIED: npm run check exits 0 on the updated tree with Node 24.22.0: 762 Node tests, 56 Python tests, 99.31 percent line coverage, 92.83 percent branch coverage and 96.92 percent function coverage; every repository guard passes."
   - "VERIFIED: the wiki, skill, governance and ECC-rules guards from main at 616a4ea59f84885cae294f0aa5f31dd9dffac129 each exit 0 against the updated tree. The schema examples let the old wiki guard recognize this branch's author while the new guard accepts unregistered identifiers."
+  - "VERIFIED: independent OpenCode standards and spec reviewers inspected 4cb19802c18914e707fbd39d2a45342d9b6a0158. The spec reviewer found stale registration guidance in Maintain the repository wiki and an implicit fallback for a harness built-in; this follow-up corrects both."
+  - "VERIFIED: npm run pr at 4cb19802c18914e707fbd39d2a45342d9b6a0158 passed all checks, then refused before pushing because gh auth status reported an invalid stored account. The active login is also a code owner; publication requires a valid machine-account session."
   - "UNKNOWN: native skill discovery and model-backed behavior across providers have not been exercised by this change."
 ---
 
