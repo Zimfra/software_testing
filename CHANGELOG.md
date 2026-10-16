@@ -6,7 +6,7 @@ facts that only exist after the owner merges. `npm run changelog:guard` enforces
 
 ## 2026-10-16
 
-- The Sandcastle runbook's Prerequisites now carry a bullet, after the `GH_TOKEN` bullet, telling the reader to run the "Token setup" check (step 5) before the first loop on a new token, and why: a token that reads issues but cannot write them answers 403 only when an agent tries to comment, so it fails after the agents have done their work and spent a paid run.
+- The Sandcastle runbook's Prerequisites now carry a bullet, after the `GH_TOKEN` bullet, telling the reader to run the "Token setup" check (step 5), throwaway comment included, before the first loop on a new token, and why: the command only reads, so a token that reads issues but cannot write them passes it and answers 403 only when an agent tries to comment, after the agents have done their work.
 
 ## 2026-10-15
 
