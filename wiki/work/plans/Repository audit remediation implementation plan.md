@@ -10,7 +10,7 @@ status: approved
 approval_ref: "#15"
 owner: human
 priority: P1
-next_action: Use plan-tickets to create the agreed 26 job specs, obtain their owner approval, then begin Fixture Git containment in a fresh execution session.
+next_action: Owner reviews the 26 proposed job specs; after verifying their merge approval, begin S01 Fixture Git containment in a fresh execution session.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 map: "[[Repository audit remediation map]]"
@@ -24,7 +24,8 @@ evidence:
   - "VERIFIED: this plan was published for owner review in https://github.com/Zimfra/software_testing/pull/15 with the machine account as author."
   - "VERIFIED: GitHub reports PR 15 merged by code owner ahzeems on 2026-10-16 at 16:08:27 UTC, with reviewed head 18e32772ddc74e9debffad66e708b4623e728cf6 and merge commit edb9e35da1284e7593bd62f6408cc719771d9b7d on origin/main. This is the plan's approval reference."
   - "INFERRED: the source-supported outer-container design can implement the selected boundary; the first runtime slice must prove containment through a real non-model container test."
-  - "UNKNOWN: no live container containment, new verifier receipt, isolated publication or model-backed evaluation result is established by plan approval. Required job specs have not yet been created or approved."
+  - "VERIFIED: the owner-merged 26-slice breakdown is expanded into canonical proposed job-spec tickets with the same named dependencies; their status and implementation evidence live in those notes."
+  - "UNKNOWN: job-spec owner approval and implementation-specific red/green evidence remain pending. Plan approval does not establish live containment or future runtime behavior."
 ---
 
 ## Problem
@@ -149,12 +150,14 @@ behavior remains unverified until that boundary is actually exercised with autho
 
 ## Implementation slices
 
-These slices are the breakdown approved through PR 15. `plan-tickets` creates the canonical
-job-spec notes and replaces these titles with links. Slice labels below are stable
-cross-references; ticket titles retain the descriptive names. Parents are actual prerequisites,
-not dependencies on this plan or its map.
+These slices are the breakdown approved through PR 15. Their canonical job-spec notes are linked
+below; all are proposed until the owner merges the job-spec PR. The approved slice requirements
+remain here as the source contract; live status, implementation details and evidence belong to
+the tickets. Parents are actual ticket prerequisites, never this plan or its map.
 
 ### S01 Fixture Git containment
+
+Job spec: [[S01 Fixture Git containment]].
 
 - **Parents:** none. **Findings:** A02.
 - **Deliverable:** every Python fixture subprocess targets its disposable repository despite
@@ -165,6 +168,8 @@ not dependencies on this plan or its map.
 
 ### S02 Explicit-checkout command routing
 
+Job spec: [[S02 Explicit-checkout command routing]].
+
 - **Parents:** S01 Fixture Git containment. **Findings:** A03.
 - **Deliverable:** an explicit runner cwd is authoritative for Git, Node and npm operations.
 - **Acceptance:** actual runner calls under inherited decoy Git variables inspect only the named
@@ -173,6 +178,8 @@ not dependencies on this plan or its map.
 
 ### S03 Fresh pinned main revisions
 
+Job spec: [[S03 Fresh pinned main revisions]].
+
 - **Parents:** S02 Explicit-checkout command routing. **Findings:** A09.
 - **Deliverable:** readiness and audit paths use the explicitly refreshed, pinned main revision.
 - **Acceptance:** narrowed fetch refspecs cannot leave a successful check using stale main;
@@ -180,6 +187,8 @@ not dependencies on this plan or its map.
 - **Surface:** Git and Sandcastle fetch callers and real bare-origin fixture tests.
 
 ### S04 Content-sensitive working-state snapshots
+
+Job spec: [[S04 Content-sensitive working-state snapshots]].
 
 - **Parents:** S01 Fixture Git containment. **Findings:** A06.
 - **Deliverable:** snapshots detect tracked and nonignored untracked content changes even when
@@ -190,6 +199,8 @@ not dependencies on this plan or its map.
 
 ### S05 Checked-commit publication invariant
 
+Job spec: [[S05 Checked-commit publication invariant]].
+
 - **Parents:** S02 Explicit-checkout command routing; S04 Content-sensitive working-state snapshots.
   **Findings:** A04.
 - **Deliverable:** publication uses the unchanged branch, SHA and relevant state captured before checks.
@@ -199,6 +210,8 @@ not dependencies on this plan or its map.
 
 ### S06 Exact PR destination and head identity
 
+Job spec: [[S06 Exact PR destination and head identity]].
+
 - **Parents:** S03 Fresh pinned main revisions; S05 Checked-commit publication invariant. **Findings:** A05.
 - **Deliverable:** an opened or reused PR identifies the intended repository, main base, source
   repository/branch and checked head SHA.
@@ -207,6 +220,8 @@ not dependencies on this plan or its map.
 - **Surface:** `scripts/git/pr-ready.ts` and GitHub response controls.
 
 ### S07 Fork-only landing assurance
+
+Job spec: [[S07 Fork-only landing assurance]].
 
 - **Parents:** S03 Fresh pinned main revisions. **Findings:** A07, A08.
 - **Deliverable:** audit only this fork after the selected exclusive boundary and validate actual
@@ -218,6 +233,8 @@ not dependencies on this plan or its map.
 
 ### S08 Testable coordinator entry point
 
+Job spec: [[S08 Testable coordinator entry point]].
+
 - **Parents:** S01 Fixture Git containment. **Findings:** A13.
 - **Deliverable:** expose the actual orchestration to fake model/service boundaries and include
   its production paths in lint and coverage accounting.
@@ -228,6 +245,8 @@ not dependencies on this plan or its map.
 
 ### S09 Explicit phase outcomes and review eligibility
 
+Job spec: [[S09 Explicit phase outcomes and review eligibility]].
+
 - **Parents:** S08 Testable coordinator entry point. **Findings:** A10.
 - **Deliverable:** distinguish produced work, passed checks/review, eligible integration, failure
   and incomplete work under the approved policy; a fresh reviewer does not certify its own edits.
@@ -237,6 +256,8 @@ not dependencies on this plan or its map.
 
 ### S10 Blocked-queue planning contract
 
+Job spec: [[S10 Blocked-queue planning contract]].
+
 - **Parents:** S09 Explicit phase outcomes and review eligibility. **Findings:** A11.
 - **Deliverable:** planning cannot deliberately waive unresolved dependencies when all work is blocked.
 - **Acceptance:** all-blocked and empty queues are explicit non-executing outcomes, not execution
@@ -245,6 +266,8 @@ not dependencies on this plan or its map.
 
 ### S11 Non-executable branch inputs
 
+Job spec: [[S11 Non-executable branch inputs]].
+
 - **Parents:** S08 Testable coordinator entry point. **Findings:** A12.
 - **Deliverable:** Git-valid branch names remain data when review inputs are prepared.
 - **Acceptance:** harmless command-substitution and quoting controls cannot execute; ordinary
@@ -252,6 +275,8 @@ not dependencies on this plan or its map.
 - **Surface:** review prompt, coordinator arguments and branch/ref handling.
 
 ### S12 Reproducible runtime and real containment control
+
+Job spec: [[S12 Reproducible runtime and real containment control]].
 
 - **Parents:** S01 Fixture Git containment. **Findings:** A14 and the boundary proof for A01.
 - **Deliverable:** a Node-24-aligned, reproducible image and a real non-model container test runner
@@ -263,6 +288,8 @@ not dependencies on this plan or its map.
 
 ### S13 Candidate artifact contract and quarantine
 
+Job spec: [[S13 Candidate artifact contract and quarantine]].
+
 - **Parents:** S02 Explicit-checkout command routing; S03 Fresh pinned main revisions. **Findings:** A01.
 - **Deliverable:** validate versioned candidate manifests and explicit-ref bundles as untrusted data,
   without activating candidate code or importing guest Git configuration.
@@ -272,6 +299,8 @@ not dependencies on this plan or its map.
 - **Surface:** Sandcastle artifact/import commands and real temporary-repository controls.
 
 ### S14 Isolated coordinator preparation and export
+
+Job spec: [[S14 Isolated coordinator preparation and export]].
 
 - **Parents:** S08 Testable coordinator entry point; S09 Explicit phase outcomes and review eligibility;
   S10 Blocked-queue planning contract; S11 Non-executable branch inputs;
@@ -286,6 +315,8 @@ not dependencies on this plan or its map.
 
 ### S15 Independent isolated verification receipts
 
+Job spec: [[S15 Independent isolated verification receipts]].
+
 - **Parents:** S12 Reproducible runtime and real containment control;
   S13 Candidate artifact contract and quarantine. **Findings:** A01 and the evidence gap in A13.
 - **Deliverable:** fresh isolated check/reviewer contexts produce host-supervised receipts bound
@@ -295,6 +326,8 @@ not dependencies on this plan or its map.
 - **Surface:** trusted verifier driver, receipt validation and fake/real boundary controls.
 
 ### S16 Trusted publication of verified candidate refs
+
+Job spec: [[S16 Trusted publication of verified candidate refs]].
 
 - **Parents:** S05 Checked-commit publication invariant; S06 Exact PR destination and head identity;
   S13 Candidate artifact contract and quarantine; S15 Independent isolated verification receipts.
@@ -308,6 +341,8 @@ not dependencies on this plan or its map.
 
 ### S17 Durable recovery and notification reconciliation
 
+Job spec: [[S17 Durable recovery and notification reconciliation]].
+
 - **Parents:** S09 Explicit phase outcomes and review eligibility;
   S13 Candidate artifact contract and quarantine; S15 Independent isolated verification receipts;
   S16 Trusted publication of verified candidate refs. **Findings:** A10 recovery behavior.
@@ -319,6 +354,8 @@ not dependencies on this plan or its map.
 - **Surface:** run state, recovery artifacts, notification handling and deterministic failure injection.
 
 ### S18 Public-command cutover and end-to-end isolation proof
+
+Job spec: [[S18 Public-command cutover and end-to-end isolation proof]].
 
 - **Parents:** S14 Isolated coordinator preparation and export;
   S15 Independent isolated verification receipts; S16 Trusted publication of verified candidate refs;
@@ -333,6 +370,8 @@ not dependencies on this plan or its map.
 
 ### S19 Privacy exception confinement
 
+Job spec: [[S19 Privacy exception confinement]].
+
 - **Parents:** S01 Fixture Git containment. **Findings:** A15.
 - **Deliverable:** permit genuine role-name sandbox paths while detecting paths that escape them.
 - **Acceptance:** valid role paths pass under role and personal runtime identities; escaping
@@ -341,6 +380,8 @@ not dependencies on this plan or its map.
 
 ### S20 Real Markdown section validation
 
+Job spec: [[S20 Real Markdown section validation]].
+
 - **Parents:** S01 Fixture Git containment. **Findings:** A19.
 - **Deliverable:** required note/job-spec sections are actual visible Markdown headings.
 - **Acceptance:** valid headings pass; headings hidden in comments or fenced examples cannot
@@ -348,6 +389,8 @@ not dependencies on this plan or its map.
 - **Surface:** schema/work-record validation and valid/broken fixture CLIs.
 
 ### S21 Complete imported-skill provenance
+
+Job spec: [[S21 Complete imported-skill provenance]].
 
 - **Parents:** S01 Fixture Git containment. **Findings:** A20.
 - **Deliverable:** the approved provenance inventory covers imported companion instructions as
@@ -358,6 +401,8 @@ not dependencies on this plan or its map.
 
 ### S22 Historical wiki integrity
 
+Job spec: [[S22 Historical wiki integrity]].
+
 - **Parents:** S01 Fixture Git containment. **Findings:** A21.
 - **Deliverable:** history-aware checks enforce protected decision/session bodies and immutable
   author/creation fields, with explicit permitted supersession metadata updates.
@@ -366,6 +411,8 @@ not dependencies on this plan or its map.
 - **Surface:** wiki history validation, CLI integration, schema guidance and commit fixtures.
 
 ### S23 Benchmark-clean evaluation snapshots
+
+Job spec: [[S23 Benchmark-clean evaluation snapshots]].
 
 - **Parents:** S01 Fixture Git containment. **Findings:** A17.
 - **Deliverable:** scenario snapshots preserve required operational tooling and valid wiki context
@@ -377,6 +424,8 @@ not dependencies on this plan or its map.
 
 ### S24 Outcome-based compliance requirements
 
+Job spec: [[S24 Outcome-based compliance requirements]].
+
 - **Parents:** S23 Benchmark-clean evaluation snapshots. **Findings:** A18.
 - **Deliverable:** prohibited actions and required artifacts/outcomes receive independent checks
   instead of relying solely on positive tool-call labels or cascading step scores.
@@ -387,6 +436,8 @@ not dependencies on this plan or its map.
 
 ### S25 Shell-backstop refusal controls
 
+Job spec: [[S25 Shell-backstop refusal controls]].
+
 - **Parents:** S01 Fixture Git containment. **Findings:** A22.
 - **Deliverable:** recognize the audited conditional, unquoted-heredoc substitution and explicit
   push-repository forms without treating the heuristic hook as a sandbox.
@@ -395,6 +446,8 @@ not dependencies on this plan or its map.
 - **Surface:** `scripts/claude/block-pr-merge.ts`, its tests and the merge-gate contract.
 
 ### S26 Evidence-based token setup guidance
+
+Job spec: [[S26 Evidence-based token setup guidance]].
 
 - **Parents:** S01 Fixture Git containment, for safe hook-run verification. **Findings:** A16.
 - **Deliverable:** token instructions distinguish identity, expiry and write permission without
@@ -412,12 +465,12 @@ working-state snapshots and S12 Reproducible runtime and real containment contro
 above to expose subsequent work; run one ticket per fresh session. Logical independence does not
 permit two writers in the same checkout or simultaneous edits to the same file without coordination.
 
-Verify this plan's recorded owner merge before using `plan-tickets` to confirm or reuse this
-approved breakdown, create the job specs, and link their
-notes here. Each includes Inputs, Allowed files, Forbidden files, Human checkpoints, Secrets needed,
-Tests and evals, Rollback and recovery, Evidence, and Wiki and doc updates. Obtain owner approval
-of the job specs before starting implementation. Do not create a second task list detached from
-these canonical records.
+The linked tickets contain the required Inputs, Allowed files, Forbidden files, Human checkpoints,
+Secrets needed, Tests and evals, Rollback and recovery, Evidence, and Wiki and doc updates.
+Verify the actual owner merge approving the current job-spec revision before implementation,
+then verify each parent's completion PR. Lifecycle/evidence updates belong to the ticket;
+changes to its approved goal, acceptance, scope or dependencies require renewed owner agreement.
+Follow [[Resume repository audit remediation]] and do not create a parallel task list.
 
 ## Acceptance criteria
 

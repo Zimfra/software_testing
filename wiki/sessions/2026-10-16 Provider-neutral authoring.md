@@ -63,6 +63,14 @@ was in flight. The PR tool opened PR 16 for that follow-up. Merged current main 
 recorded the verified plan approval and restored its typed map link so the next session starts
 at job-spec creation rather than repeating completed planning or publication work.
 
+After PR 16 merged, the owner requested the build job specs and required issues. Reverified the
+plan approval, created S01-S26 from the approved breakdown, linked them from the plan and added
+the current Docker-proof and inactive-auth-profile environment issues. Each proposed job records
+its file boundaries, acceptance controls, human checkpoints, secrets, recovery and evidence needs.
+Structural inspection confirmed all 13 required sections and exact parent lists for each job,
+with an acyclic graph and S01 as the sole root. The full check passed 766 Node tests and 56 Python
+tests; wiki-lint validated 97 notes.
+
 ## Outcome
 
 The implementation and verification are tracked in the originating idea. The work was authored
@@ -72,6 +80,6 @@ ECC-rules guards also passed against the changed tree.
 
 ## Open items
 
-The plan is approved through the owner's actual merge of PR 15. Complete review of the PR 16
-approval/handoff follow-up, then create the required job specs in the next execution session.
-Their owner approval precedes implementation; live containment proof remains implementation work.
+The plan and approval handoff are merged. Obtain owner approval of the proposed S01-S26 job specs,
+then the next LLM verifies that approval and begins S01 before its dependants. Live containment
+proof remains implementation work, with current environment limits recorded in the linked issues.

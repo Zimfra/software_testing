@@ -6,6 +6,8 @@ facts that only exist after the owner merges. `npm run changelog:guard` enforces
 
 ## 2026-10-16
 
+- The approved audit plan now links 26 proposed build-ticket job specs with file boundaries, parent dependencies, concrete acceptance controls, human checkpoints, secrets requirements, recovery and evidence instructions. The fresh-session handoff starts at Fixture Git containment after job-spec approval and links the Docker-proof and inactive-auth-profile environment issues.
+
 - The remediation handoff now records verified plan approval, restores the typed map relationship after the validator fix, and advances the next session to creating the agreed job specs. Publication records distinguish the completed planning delivery from the remaining local credential-profile cleanup.
 
 - The proposed remediation implementation plan covers all 22 audit findings in 26 dependency-ordered slices, with required job specs, explicit acceptance controls, a real-container CI gate and a receipt-bound isolation/publication contract. The fresh-session handoff now routes directly to that plan and verifies its owner-merged approval before ticket creation and implementation.

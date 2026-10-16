@@ -9,7 +9,7 @@ agent: opencode
 status: in-progress
 owner: human
 priority: P1
-next_action: The next LLM verifies the plan's PR 15 approval, creates the agreed job specs and obtains their owner approval before implementation.
+next_action: Obtain owner merge approval of the proposed job specs; the next LLM then verifies approval and starts S01 Fixture Git containment.
 project: "[[Repository audit remediation]]"
 evidence:
   - "OWNER DECISION: on 2026-10-16 the owner said: yes the goal is to take this planning, commit into the repo with a pull request, and for the planning to be executred by another llm in a different terminal session maybe claude for example"
@@ -32,7 +32,11 @@ evidence:
   - "VERIFIED: GitHub subsequently reported PR 15 merged by code owner ahzeems at 2026-10-16 16:08:27 UTC as edb9e35da1284e7593bd62f6408cc719771d9b7d. The plan's approval is recorded; the follow-up handoff changes are in PR 16."
   - "VERIFIED: all 26 slice titles, dependencies, deliverables, acceptance criteria and affected surfaces match the plan at approved head 18e32772ddc74e9debffad66e708b4623e728cf6. The follow-up changes approval and handoff state, not the approved implementation scope."
   - "VERIFIED: after merging current main and recording approval, npm run check exited 0 on Node 24.22.0 with 766 Node tests, 56 Python tests and all guards passing. The follow-up has its own changelog entry relative to the newly merged main."
-  - "UNKNOWN: Docker is unavailable here, so live containment is not proven. Job specs and their owner approval are still required before implementation."
+  - "OWNER DECISION: on 2026-10-16 the owner said: create the job spec and the tickets and or issues required for the next LLM to talk the build"
+  - "VERIFIED: PRs 15 and 16 were rechecked as owner-merged before creating the 26 proposed job specs from the approved breakdown."
+  - "VERIFIED: structural inspection found 26 proposed build tickets with all 13 visible required sections, exact approved parent lists, an acyclic graph covering A01-A22 and S01 as the sole initial root. The approved slice contracts are unchanged apart from links to their job specs."
+  - "VERIFIED: npm run check passed with Node 24.22.0, 766 Node tests, 56 Python tests and all repository guards after job-spec creation; wiki-lint validated 97 notes."
+  - "UNKNOWN: job-spec merge approval and implementation evidence remain pending. Docker is unavailable locally, and the unscoped CLI still reports an invalid inactive GitHub profile."
 ---
 
 ## Problem
@@ -50,6 +54,6 @@ verification and a recoverable handoff.
 
 ## Next step
 
-The next LLM verifies the recorded approval of [[Repository audit remediation implementation plan]],
-then uses `plan-tickets` and the fresh-session runbook to create the agreed job specs. Their owner
-approval precedes implementation. The handoff must stand alone without this conversation.
+The next LLM verifies approval of the plan and the current job-spec revision, then follows
+[[Resume repository audit remediation]] to execute [[S01 Fixture Git containment]] before its
+dependants. The handoff stands alone without this conversation.

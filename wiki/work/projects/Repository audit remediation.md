@@ -9,11 +9,12 @@ agent: opencode
 status: in-progress
 owner: human
 priority: P1
-next_action: The next session verifies the plan's PR 15 approval, creates the agreed job specs and obtains their owner approval before starting implementation.
+next_action: Owner reviews the 26 proposed job specs; after verified approval, the next session starts S01 and follows the completed-parent frontier.
 idea: "[[Execute the repository audit remediation]]"
 evidence:
   - "OWNER DECISION: on 2026-10-16 the owner requested committed planning, a pull request and execution by another LLM in a separate terminal session."
   - "VERIFIED: GitHub reports planning PR 15 merged by code owner ahzeems on 2026-10-16 as edb9e35da1284e7593bd62f6408cc719771d9b7d; the plan's approval metadata is now recorded."
+  - "OWNER DECISION: on 2026-10-16 the owner requested the job specs, tickets and issues needed for the next LLM to take the build."
 ---
 
 ## Outcome
@@ -45,7 +46,7 @@ and let a fresh LLM implement a bounded slice without inventing decisions or rel
 - [x] Every decision needed by the plan is resolved with owner evidence or reproducible research.
 - [x] The plan is proposed in a pull request and identifies its intended base, test seams and limits.
 - [x] After owner merge, approval is verified on GitHub and recorded before build-ticket creation.
-- [ ] Each build ticket has one deliverable, checkable acceptance, explicit dependencies and a
+- [x] Each build ticket has one deliverable, checkable acceptance, explicit dependencies and a
   valid and broken control for the behavior it changes.
 - [ ] The handoff routes a fresh session by actual work status and explains where to stop for
   owner decisions, verification failures, missing capabilities or approval.
@@ -58,4 +59,7 @@ and let a fresh LLM implement a bounded slice without inventing decisions or rel
 - [[Resume repository audit remediation]]: entry point for a different LLM session.
 - [[Planning pull request publication is blocked]]: resolved publication record for [PR 15](https://github.com/Zimfra/software_testing/pull/15), including the local authentication limits.
 - [[Audit remediation verification approach]]: test seams included in the approved plan.
-- [[Repository audit remediation implementation plan]]: approved execution contract, 26 slices and acceptance checks for job-spec creation.
+- [[Repository audit remediation implementation plan]]: approved contract and index of the 26 proposed job specs.
+- [[S01 Fixture Git containment]]: first ticket after job-spec approval; it protects later hook-run regression work.
+- [[Docker-capable containment proof is unavailable locally]]: runtime-proof environment issue for S12 and its consumers.
+- [[Inactive GitHub profile blocks unscoped PR preflight]]: remaining local publication-context issue.

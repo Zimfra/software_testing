@@ -25,11 +25,26 @@ All authoritative work state lives in the repository. The original chat is not a
   the current ticket and the evidence it needs.
 - Read [[Repository audit remediation implementation plan]] and inspect its actual approval
   state before selecting implementation work.
+- The canonical S01-S26 job specs are linked from the plan. Start with [[S01 Fixture Git containment]]
+  after their owner-merge approval; do not regenerate a second ticket set.
 - Use the selected provider's available tools and truthful author identity. For Claude Code,
   use ECC helpers when available; for another harness, follow the same methods with available
   equivalents and disclose substitutions.
 - For checks, use Node from `.nvmrc` and install locked dependencies with `npm ci`. For publication,
   verify the machine-account prerequisite; model authentication and GitHub authentication are separate.
+- Current environment issues are [[Docker-capable containment proof is unavailable locally]] and
+  [[Inactive GitHub profile blocks unscoped PR preflight]]. A Docker-capable CI result can supply
+  the former proof; a valid scoped machine-account context can permit publication without pretending
+  the shared credential configuration was repaired.
+
+The authoring session verified this Node-24 command on this machine when the default PATH used
+an older Node version:
+
+```sh
+NODE_OPTIONS=--use-system-ca npm --logs-max=0 exec --yes --package=node@24 -- npm run check
+```
+
+Verify the runtime in the next session; ordinary `npm` commands in the tickets assume Node 24.
 
 ## Steps
 
@@ -49,17 +64,23 @@ All authoritative work state lives in the repository. The original chat is not a
    The approval handoff restores the plan's typed `map` link after the validator fix landed in
    PR 15. Older checkouts may still have the initial `related` link; update from the committed
    handoff before creating tickets.
-4. **Create the agreed build tickets.** Use `plan-tickets`, showing the owner the numbered breakdown,
-   dependencies and delivered behavior before creation unless that breakdown is already approved.
-   Each ticket has one deliverable and fits a fresh context. When `job_specs: required` is set,
-   include every required section and obtain the owner's job-spec approval before implementation.
-   The canonical plan contains 26 approved slices; verify or reuse that breakdown and
-   begin with Fixture Git containment once its job spec is approved.
+4. **Verify job-spec approval.** The 26 canonical job specs have been created from the approved
+   breakdown. They remain proposed until the owner merges the PR approving them. Identify the
+   PR for the current job-spec revision from its Git history and GitHub's commit/PR association,
+   or use the owner-supplied PR URL; verify the actual merge and reviewer identity. Plan PR 15
+   is not a substitute for this job-spec approval. Record the confirmed approval in ticket evidence.
+   Use `plan-tickets` only for an owner-agreed change to the existing breakdown.
+   Merge does not automatically rewrite ticket metadata. If a ticket still says proposed after
+   its current contract was owner-merged, record that verified approval and advance the selected
+   ticket only when its dependencies are actually complete.
 5. **Select one executable ticket.** Its plan must be approved and its dependencies completed.
    Read its Goal, Approach, Acceptance criteria and Out of scope. If the plan requires job specs,
    also verify the job-spec approval and read Inputs, Allowed files, Forbidden files and Human
    checkpoints. If scope or a required capability is unclear, record the blocker instead of
    substituting an assumption.
+   Verify that each parent's completion PR is merged into current main, rather than trusting an
+   unmerged branch's done label. S01 is the sole initial build root. After its landing, prioritize
+   S02, S04 and S12 as the plan specifies; select by actual dependencies and available capabilities.
 6. **Implement test-first.** Follow `manage-branch`, then ECC's TDD method or its equivalent. Use
    `write-guard` for guard changes. Reproduce the original failure in disposable fixtures, observe
    a failing regression control, implement the smallest slice and run its acceptance commands
@@ -72,6 +93,24 @@ All authoritative work state lives in the repository. The original chat is not a
    and labelled evidence; commit wiki files separately from other changes. Use `npm run pr`.
    Record the actual PR URL when available. Only the owner approves and merges. Leave the branch,
    commit, completed criteria, remaining blockers and next eligible ticket in the handoff.
+
+## Job execution conventions
+
+- Allowed/Forbidden files bound repository edits. Owned disposable fixtures and the explicitly
+  described runtime artifacts are permitted by the ticket's test/recovery steps; real user files
+  and credential stores are not test fixtures. Existing tool permission denials still apply.
+- New module families named in a ticket are bounded proposed paths, with sibling tests. Read
+  landed parent interfaces first. If they require a different scope, update the contract with
+  owner agreement instead of adding a compatibility shim or editing unrelated files silently.
+- A job-spec approval covers its goal, acceptance, scope and dependencies. Lifecycle metadata and
+  truthful evidence can advance during execution; changing the approved contract needs renewed
+  owner approval through the job-spec PR workflow. Do not cite an older approval for a materially
+  changed job spec or use a branch's own edits as that approval.
+- For S01, use an identified root checkout with inherited Git routing scrubbed. Do not bootstrap
+  its known unsafe baseline through a real linked-worktree hook. Subsequent implementation
+  worktrees start after S01's merged fix.
+- One ticket, one branch and one fresh context. Leave a concrete blocker/next action when a human
+  checkpoint is reached. Do not advance a dependent ticket merely because its parent's code exists locally.
 
 ## Progress updates
 
@@ -107,7 +146,9 @@ Paste this in a fresh LLM session opened at the repository checkout:
 Read AGENTS.md and CLAUDE.md, then load wiki-memory. Follow
 wiki/runbooks/Resume repository audit remediation.md. Identify the checkout and current
 work state, read the project and map, and follow their recorded next action for the current phase:
-one decision, a plan or ticket-preparation step, or one approved unblocked build ticket. Observe
-the approval gates in the runbook. Use the repository's skills and independent review. Do not
-infer owner decisions or approval. Leave committed evidence and a concrete next action.
+verify the plan approval and the owner-merged PR for the current job specs. If that approval is
+pending, stop at that checkpoint. Otherwise read S01 Fixture Git containment, verify its inputs
+and execute it test-first; if it is already complete, choose the next eligible ticket from the
+approved dependency graph. Use the repository's skills and independent review. Do not infer
+approval or dependency completion. Leave committed evidence and a concrete next action.
 ```

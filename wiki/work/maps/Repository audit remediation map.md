@@ -9,7 +9,7 @@ agent: opencode
 status: done
 owner: human
 priority: P1
-next_action: Verify the plan's PR 15 approval reference, then create and obtain owner approval for the agreed job specs.
+next_action: Obtain owner approval of the proposed job specs linked from the plan, then begin S01 Fixture Git containment.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 evidence:
@@ -20,7 +20,8 @@ evidence:
   - "VERIFIED: the research ticket establishes supported SDK APIs and a tested Git bundle primitive, with live containment and the new publication path explicitly unverified."
   - "OWNER DECISION: on 2026-10-16, after the verification approach was presented, the owner directed the agent to proceed and complete the PR for merge."
   - "VERIFIED: the owner merged planning PR 15 on 2026-10-16; the plan records approval_ref and restores its typed map relationship after the validator fix landed."
-  - "UNKNOWN: Docker is unavailable here, live containment is unproven and required job specs still need creation and approval."
+  - "VERIFIED: the approved breakdown is expanded into 26 proposed job specs linked from the plan; they depend on build tickets, not this completed map."
+  - "UNKNOWN: job-spec approval and live containment proof remain pending; environment issues are tracked independently from design completion."
 ---
 
 ## Destination
@@ -50,7 +51,7 @@ publication of PR 15. Authentication was required to publish, not to resolve the
 
 No map decision remains open. The verification approach is included in
 [[Repository audit remediation implementation plan]], approved through the owner's merge of
-PR 15. The next stage is job-spec creation and approval.
+PR 15. The next stage is owner approval of the linked job specs, then dependency-ordered execution.
 
 ## Decisions so far
 
@@ -71,7 +72,7 @@ pull request, then execution by another LLM in a different session.
 ## Not yet specified
 
 The approved plan specifies the execution/evidence contract, slice boundaries and dependencies.
-Exact job-spec commands and file allowlists are recorded during ticket creation after plan approval.
+Exact job-spec commands and file allowlists are recorded in the linked proposed tickets.
 The first isolation slice must establish a real container test; source research does not satisfy
 that implementation criterion. All A01-A22 findings remain in scope.
 
