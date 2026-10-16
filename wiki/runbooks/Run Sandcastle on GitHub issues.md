@@ -57,6 +57,9 @@ Use it for small, well-specified issues. Rules the agents follow are in `CLAUDE.
   keeps merging with the owner.
   Create it signed in as the machine account, with the organisation as **Resource owner**, and
   check it with the steps under "Token setup" below before the first run.
+- On a new token, run the check from "Token setup" (step 5) before the first loop. A token that
+  reads issues but cannot write them answers 403 only when an agent tries to comment, so it fails
+  after the agents have already done their work and spent a paid run.
 - The sandbox image built once, and again after any `.sandcastle/Dockerfile` change:
   `npx sandcastle docker build-image`. It passes your user and group ids so the image user
   `agent` matches your host user (README, "sandcastle docker build-image").
