@@ -9,9 +9,10 @@ enforced by `npm run skills:lint`.
 - A skill only the user may start sets `disable-model-invocation: true` and is listed in `userOnly`; the two
   must agree. Do not invoke a user-only skill on your own initiative.
 - If native discovery is unavailable, read the canonical skill file directly. An explicit permission
-  denial still stops that line of work; reading a file does not override it. If a named ECC tool is
-  unavailable, use an available tool that preserves the method and report the substitution, or report
-  the capability as blocked when there is no equivalent.
+  denial still stops that line of work; reading a file does not override it. If a named tool or agent,
+  including an ECC tool or harness built-in, is unavailable, use an available equivalent that preserves
+  the method, separate contexts and tool limits, and report the substitution. Report the capability
+  as blocked when there is no equivalent.
 - Third-party skills are byte-preserved and hashed in `.claude/skills/import-baseline.json`. Change one only
   with an owner approval quoted in the revision record; never rewrite a landed entry.
 - Adapting an imported skill keeps its method. Review interface substitutions (paths, commands, tool names)
