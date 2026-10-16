@@ -4,7 +4,7 @@ title: Skill standards
 summary: What npm run skills:lint enforces on .claude/skills (limits, user-only list, provenance hashes, citations, em dashes) and what stays convention.
 tags: [area/agents, tool/claude-code, kind/convention]
 created: 2026-09-21
-updated: 2026-10-10
+updated: 2026-10-16
 agent: claude-code
 status: active
 related: ["[[Skill integration must preserve the method]]", "[[Skill restoration needs source comparison]]"]
@@ -12,14 +12,14 @@ related: ["[[Skill integration must preserve the method]]", "[[Skill restoration
 
 `npm run skills:lint` (`scripts/skills/`) checks `.claude/skills/` in `npm run check` and the
 `guards` workflow. Structure only: whether a skill is selected and helps needs observed trials
-(ECC `skill-comply`).
+(ECC `skill-comply` or an equivalent observed trial in the chosen harness).
 
 ## Enforced
 
 | Rule | Detail |
 |---|---|
 | Configuration | `config/skill-standards.json` parses and has only `note`, `descriptionLimit` (160), `bodyLimit` (6000), `allowances` and `userOnly`. |
-| Shape | Each folder has a `SKILL.md` with parsable frontmatter, `name` equal to the folder name, and a description. The root holds only skill folders, `import-baseline.json` and `THIRD-PARTY-NOTICES.md`. No symbolic links, `openai.yaml` or OpenCode files. |
+| Shape | Each folder has a `SKILL.md` with parsable frontmatter, `name` equal to the folder name, and a description. The root holds only skill folders, `import-baseline.json` and `THIRD-PARTY-NOTICES.md`. No symbolic links. Harness adapter files may accompany a skill; this check does not validate their runtime semantics. |
 | Limits | Description at most 160 characters, body at most 6000, frontmatter keys only `name`, `description` and `disable-model-invocation`. Skills in the import baseline are exempt from these three. |
 | Allowances | Each excuses one limit for one skill with a reason of at least 12 characters. An allowance that excuses nothing is an error. |
 | User-only skills | `disable-model-invocation`, when present, is a boolean. Every skill in `userOnly` is installed and sets it to `true`, and every skill that sets it to `true` is in `userOnly`. |
@@ -51,5 +51,6 @@ reviewer compares the quote with the owner's actual words.
 - Removing a name from `userOnly` fails `skills:lint` while the skill still sets
   `disable-model-invocation: true`. Making a skill model-invocable takes both edits, a
   `config/` change the owner reviews.
-- Skills need not be linked from a route file: Claude Code discovers skills from their
-  descriptions.
+- Harnesses may discover skills natively or read their canonical files explicitly. Adapters refer
+  to the same source. User-only invocation remains a rule even where a harness does not enforce
+  the frontmatter flag itself. See [[Work with any agent provider]].
