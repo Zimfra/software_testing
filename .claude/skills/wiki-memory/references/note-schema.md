@@ -33,7 +33,7 @@ related: ["[[Root shell hides user-installed tools]]"]
 | `tags` | yes | YAML list (inline or block), at least one tag, all from the allowed list below. |
 | `created` | yes | `YYYY-MM-DD`. Never changes. |
 | `updated` | yes | `YYYY-MM-DD`. Change on every edit. |
-| `agent` | yes | The original author. Never changes when someone else updates the note, since git history records editors. Must be one of the allowed agents listed below; the linter reads that list. |
+| `agent` | yes | The original author, identified by a nonempty kebab-case name from any provider or harness. Never changes when someone else updates the note, since git history records editors. No registration is required. |
 | `status` | yes | Memory: `active`, `draft`, or `superseded`. Work: see the workflow states below. |
 | `related` | no | YAML list of quoted wikilinks (inline or block). Every link must resolve to a note. |
 | `superseded_by` | when superseded | One quoted wikilink to the replacement. |
@@ -120,15 +120,24 @@ a commit, pull request, or a verified environment resolution. Name an existing p
 check, or state none with a reason and the actual manual control. Link substantial build
 work through an approved plan/ticket. An Obsidian Base over these records is optional; none ships yet.
 
-## Allowed agents
+## Author identities
 
-The original author of a note. To add one, add it to this list in a commit of its own, before the note
-that uses it, exactly as with tags. Keeping the set closed is what stops a second spelling of
-the same author, such as `claude` beside `claude-code`, from accumulating unnoticed.
+Use the actual authoring agent or harness, such as `opencode`, `claude-code`, `codex`, or
+`gemini-cli`; use `human` for a human-authored note. Any provider or harness may author notes.
+Names use lowercase letters or digits separated by single hyphens. Keep the same identifier
+across sessions rather than inventing aliases. Record the model and provider in review evidence
+when relevant; the author field is not an installed-provider or capability check.
+
+These examples also let main's pre-transition validator read this change's notes. The updated
+validator does not read an author allowlist, and new identifiers need no schema change.
 
 <!-- agents:start -->
 - `claude-code`
 - `human`
+- `opencode`
+- `codex`
+- `gemini-cli`
+- `github-copilot`
 <!-- agents:end -->
 
 ## Allowed tags
