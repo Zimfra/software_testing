@@ -25,6 +25,10 @@ The owner then requested committed planning and a pull-request handoff for execu
 different LLM session. Recorded the baseline inventory, project, map, three unresolved decisions,
 publication prerequisite and [[Resume repository audit remediation]].
 
+The owner selected full-workflow isolation with a controlled host import. Recorded the answer in
+[[Choose the Sandcastle execution boundary]], updated the map's frontier and opened
+[[Establish a feasible isolated Sandcastle handoff]] for the remaining factual design question.
+
 ## Outcome
 
 The implementation and verification are tracked in the originating idea. The work was authored
@@ -36,4 +40,5 @@ ECC-rules guards also passed against the changed tree.
 
 The provider-neutral change passed independent review at 7fd3faa. Resolve the decisions in
 [[Repository audit remediation map]], verify the planning records and publish through the machine
-account. The provider-neutral policy does not decide the map's architecture or failure-handling questions.
+account. The execution-boundary target is selected; feasibility, failure behavior and history
+scope remain open.

@@ -9,7 +9,7 @@ agent: opencode
 status: clarifying
 owner: human
 priority: P1
-next_action: Work through the map's open decisions and clear the machine-account publication prerequisite.
+next_action: Resolve the remaining failure and history decisions, establish a feasible isolated handoff, and clear the machine-account publication prerequisite.
 idea: "[[Execute the repository audit remediation]]"
 evidence:
   - "OWNER DECISION: on 2026-10-16 the owner requested committed planning, a pull request and execution by another LLM in a separate terminal session."
@@ -23,6 +23,8 @@ and let a fresh LLM implement a bounded slice without inventing decisions or rel
 ## Scope
 
 - Give every finding in the audit inventory an explicit disposition and evidence requirement.
+- Use the selected full-workflow isolation target in [[Choose the Sandcastle execution boundary]];
+  establish its feasible implementation through the linked research ticket.
 - Resolve the choices that change implementation, then write the proposed plan with test seams
   and dependency-linked implementation slices.
 - Propose `job_specs: required` so build tickets carry inputs, file boundaries, tests, recovery,

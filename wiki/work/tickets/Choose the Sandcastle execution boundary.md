@@ -1,15 +1,15 @@
 ---
 type: ticket
 title: Choose the Sandcastle execution boundary
-summary: Choose between isolating the complete execution workflow and hardening host-side SDK operations before designing the sandbox remediation.
+summary: The owner selected full-workflow isolation with a controlled host import; feasibility research must now establish the smallest supported design.
 tags: [area/planning, area/agents, kind/architecture]
 created: 2026-10-16
 updated: 2026-10-16
 agent: opencode
-status: backlog
+status: done
 owner: human
 priority: P1
-next_action: Ask the owner which execution boundary to target, with the recommendation and tradeoffs below.
+next_action: Establish a feasible isolated handoff before the remediation plan names a topology or transfer mechanism.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 ticket_kind: decision
@@ -19,6 +19,7 @@ evidence:
   - "VERIFIED: at the audit baseline, .sandcastle/main.ts calls sandbox.close before scripts/sandcastle/afk.ts can run its post-loop tampering check."
   - "VERIFIED: the pinned Sandcastle 0.12.0 source inspected on 2026-10-16 mounts Git metadata into the sandbox and calls host-side git status during cleanup. Source links are in the audit inventory."
   - "UNKNOWN: an end-to-end Docker reproduction and the implementation cost of alternative boundaries have not been measured."
+  - "OWNER DECISION: on 2026-10-16 the owner selected full-workflow isolation; the verbatim answer is recorded in Resolution. This resolves the target boundary, not implementation or plan approval."
 ---
 
 ## Question
@@ -60,6 +61,14 @@ plan promises a particular container topology or dependency change.
 
 ## Resolution
 
-Unresolved. Record the owner's actual answer and date here, then update the map. If the chosen
-boundary exposes a factual feasibility question, create a focused research ticket before writing
-the implementation plan.
+OWNER DECISION: on 2026-10-16 the owner answered:
+
+> Isolate the complete workflow — recommended. Run the coordinator, agents, Git operations, and checks in a disposable environment, then import changes through a controlled host step. This gives a clearer boundary but requires more integration work.
+
+The selected target isolates the complete workflow, with a controlled import into the host.
+The owner accepts the additional integration work. This is a planning decision, not evidence
+that isolation is implemented or that a particular runtime, transfer format or infrastructure
+purchase is approved.
+
+[[Establish a feasible isolated Sandcastle handoff]] now owns the factual design question.
+The partial-failure and audit-history choices remain with their own decision tickets.

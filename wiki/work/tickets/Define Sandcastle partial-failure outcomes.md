@@ -9,7 +9,7 @@ agent: opencode
 status: backlog
 owner: human
 priority: P1
-next_action: Ask the owner to choose a completion and recovery policy after the execution-boundary discussion.
+next_action: Ask the owner whether reviewed successes may proceed while failed work stays unintegrated and the overall run reports incomplete.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 ticket_kind: decision
