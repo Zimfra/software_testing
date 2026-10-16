@@ -6,6 +6,8 @@ facts that only exist after the owner merges. `npm run changelog:guard` enforces
 
 ## 2026-10-16
 
+- The remediation map records the approved partial-failure policy: reviewed successes may proceed into a PR, failed or unreviewed work stays unintegrated, incomplete runs exit nonzero, and retries resume missing phases without duplicate notifications. The history-scope decision becomes the next owner question.
+
 - The remediation map records the owner's full-workflow isolation choice, resolves the boundary decision ticket and adds focused research for a feasible isolated handoff. Partial-failure behavior becomes the next owner decision; the proposed runtime and transfer mechanism still require evidence.
 
 - The audit remediation now has a committed-work structure: a baseline findings inventory, an owning idea and project, a clarifying map, three decision tickets, a publication prerequisite and a fresh-session runbook. The map keeps architectural recommendations unresolved until the owner decides, and the handoff routes another LLM through plan approval, session-sized job specs and independent verification.
