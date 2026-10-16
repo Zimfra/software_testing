@@ -70,6 +70,9 @@ Verify the runtime in the next session; ordinary `npm` commands in the tickets a
    or use the owner-supplied PR URL; verify the actual merge and reviewer identity. Plan PR 15
    is not a substitute for this job-spec approval. Record the confirmed approval in ticket evidence.
    Use `plan-tickets` only for an owner-agreed change to the existing breakdown.
+   Merge does not automatically rewrite ticket metadata. If a ticket still says proposed after
+   its current contract was owner-merged, record that verified approval and advance the selected
+   ticket only when its dependencies are actually complete.
 5. **Select one executable ticket.** Its plan must be approved and its dependencies completed.
    Read its Goal, Approach, Acceptance criteria and Out of scope. If the plan requires job specs,
    also verify the job-spec approval and read Inputs, Allowed files, Forbidden files and Human
