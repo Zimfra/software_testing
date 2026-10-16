@@ -4,6 +4,10 @@ Every branch adds its own entry here, under a `## YYYY-MM-DD` heading dated betw
 started and the day it lands (UTC). Entries describe the change; they never cite
 facts that only exist after the owner merges. `npm run changelog:guard` enforces this.
 
+## 2026-10-16
+
+- The Sandcastle runbook's Prerequisites now carry a bullet, after the `GH_TOKEN` bullet, telling the reader to run the "Token setup" check (step 5), throwaway comment included, before the first loop on a new token, and why: the command only reads, so a token that reads issues but cannot write them passes it and answers 403 only when an agent tries to comment, after the agents have done their work.
+
 ## 2026-10-15
 
 - The Sandcastle runbook gains a "Token setup" section for replacing the sandbox `GH_TOKEN` with a machine account token: sign in as the machine account, accept the organisation invitation so the organisation is offered as resource owner, grant Issues read and write and Metadata read on this repository only, have the owner approve the token, then check the login and expiry date from inside the sandbox image before a real run. The 403 troubleshooting entry now names the response header that states the permission an endpoint needs.
