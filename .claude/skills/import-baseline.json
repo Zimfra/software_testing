@@ -23,6 +23,14 @@
             "quote": "Approve both (Recommended)"
           },
           "reason": "Post-Phase 7 alignment: step 3 cites the PR's required check and guards CI checks instead of \"once CI is configured\"."
+        },
+        {
+          "sha256": "7361e6d78641e4ffed152e04775df2d72436eee8935a247bb3d2de80577984ba",
+          "approval": {
+            "record": "wiki/work/ideas/Allow any agent provider to work in the repository.md",
+            "quote": "lets change the only claude code to any providor - remove these blocks"
+          },
+          "reason": "Provider-neutral interface: use available independent reviewer contexts while preserving separate standards and spec axes, SHA pinning and disclosure of reviewer identity."
         }
       ]
     },
@@ -197,6 +205,14 @@
             "quote": "Authorize, incl. 2-space indent (Recommended)"
           },
           "reason": "Zeemrepo migration: removed references to Zimi machinery (AGENTS.md, gate, git notes, Codex, OpenCode), applied the stocktake changes and the review fixes recorded in docs/migration/skill-stocktake.md."
+        },
+        {
+          "sha256": "538d94d8cc237113b6e5153889590545037da646a5ee27759157e7d9ac9a3c11",
+          "approval": {
+            "record": "wiki/work/ideas/Allow any agent provider to work in the repository.md",
+            "quote": "lets change the only claude code to any providor - remove these blocks"
+          },
+          "reason": "Provider-neutral interface: canonical skills may be discovered or read explicitly, and equivalent available tools replace unavailable ECC discovery, drafting and inventory commands."
         }
       ]
     }

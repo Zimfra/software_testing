@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test } from "node:test";
 import { checkGovernance, configProblems, globToRegExp, normalizeText, readConfig } from "./governance-validation.ts";
 
@@ -6,6 +8,19 @@ const claim = { id: "self-merge-gate", pattern: "npm\\s+run\\s+gate", superseded
 const exclude = [{ glob: "CHANGELOG.md", reason: "history" }];
 const valid = { surfaces: ["**"], exclude, staleClaims: [claim], allowed: [] };
 const check = (text: string, allowed: unknown[] = [], path = "README.md") => checkGovernance([{ path, text }], { staleClaims: [claim], allowed: readConfig({ ...valid, allowed }).allowed });
+
+await test("repository policy permits provider-neutral instruction and adapter paths", () => {
+  const config = readConfig(JSON.parse(readFileSync(join(import.meta.dirname, "../../config/governance-alignment.json"), "utf8")));
+  const text = "Any provider may read AGENTS.md and use .opencode/opencode.json, .agents/skills, or a codex/ feature branch.";
+  assert.deepEqual(checkGovernance([{ path: "AGENTS.md", text }], config).violations, []);
+});
+
+await test("repository policy refuses active claims that restrict work to Claude Code", () => {
+  const config = readConfig(JSON.parse(readFileSync(join(import.meta.dirname, "../../config/governance-alignment.json"), "utf8")));
+  for (const text of ["Claude Code is the only harness.", "A Claude-Code-only repository.", "This repository targets Claude Code alone."]) {
+    assert.ok(checkGovernance([{ path: "README.md", text }], config).violations.some((item) => item.claim === "single-harness-policy"), text);
+  }
+});
 
 await test("configProblems accepts a valid config and explains each defect", async (t) => {
   assert.deepEqual(configProblems(valid), []);

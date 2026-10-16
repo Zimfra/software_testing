@@ -25,6 +25,7 @@ await test("the broken fixture vault fails, listing each problem", () => {
   assert.equal(result.code, EXIT_REFUSED);
   assert.match(result.err, /missing section "## Fix"/);
   assert.match(result.err, /tag is not in the allowed list/);
+  assert.match(result.err, /agent must be a kebab-case short name/);
   assert.match(result.err, /wiki-lint: \d+ problem\(s\) in 1 note\(s\)/);
 });
 

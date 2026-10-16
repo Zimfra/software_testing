@@ -21,6 +21,10 @@
       "reason": "Migration history: the audit and stocktake quote the replaced rules on purpose."
     },
     {
+      "glob": "wiki/work/ideas/Migrate Zimi into Zeemrepo.md",
+      "reason": "Completed migration record describes the harness policy that applied when the work was done."
+    },
+    {
       "glob": ".claude/skills/import-baseline.json",
       "reason": "Append-only provenance record: it must name the source paths the skills came from, and landed entries cannot change."
     },
@@ -58,29 +62,14 @@
       "supersededBy": "Wiki commits use docs(wiki):"
     },
     {
-      "id": "codex-branch-prefix",
-      "pattern": "\\bcodex/",
-      "supersededBy": "Claude Code only (zimi-audit rule 10)"
-    },
-    {
-      "id": "agents-md-config",
-      "pattern": "\\bAGENTS\\.md\\b",
-      "supersededBy": "Claude Code only; CLAUDE.md and .claude/"
+      "id": "single-harness-policy",
+      "pattern": "Claude[ -]Code[ -]only|\\bClaude Code (?:is the only harness|only|alone)\\b|\\bonly Claude Code\\b",
+      "supersededBy": "ADR-0026: any provider or harness may work under the shared repository rules"
     },
     {
       "id": "intent-md",
       "pattern": "\\bINTENT\\.md\\b",
-      "supersededBy": "Claude Code only; CLAUDE.md and .claude/rules (plan)"
-    },
-    {
-      "id": "agents-skills-dir",
-      "pattern": "\\.agents/skills",
-      "supersededBy": "Skills live in .claude/skills"
-    },
-    {
-      "id": "opencode-config",
-      "pattern": "opencode\\.json|\\.opencode/",
-      "supersededBy": "Claude Code only"
+      "supersededBy": "Shared rules live in CLAUDE.md and .claude/rules, with AGENTS.md as an entry point"
     },
     {
       "id": "today-only-changelog",
@@ -119,6 +108,18 @@
     }
   ],
   "allowed": [
+    {
+      "path": "wiki/work/ideas/Allow any agent provider to work in the repository.md",
+      "contains": "lets change the only claude code to any providor - remove these blocks",
+      "reason": "Verbatim owner instruction replacing the restriction; it authorizes the skill interface revisions.",
+      "claims": ["single-harness-policy"]
+    },
+    {
+      "path": "wiki/reference/Memory index.md",
+      "contains": "[[ADR-0024 Claude Code is the only harness]]",
+      "reason": "Indexes the superseded decision by its original title so its historical record remains discoverable.",
+      "claims": ["single-harness-policy"]
+    },
     {
       "path": "wiki/decisions/ADR-0021 Authority comes from an identified checkout.md",
       "contains": "ADR-0021 The bare root is storage, authority comes from an identified checkout.md",

@@ -103,10 +103,10 @@ await test("nothing in a skill escapes the file checks", async (t) => {
     assert.match(errorsOf(root), /alpha\/linked\.md: symbolic link/);
   });
   await t.test("node_modules and dot folders inside a skill are checked too", (t) => {
-    const root = library(t, { "alpha/SKILL.md": skill("alpha"), "alpha/node_modules/x.md": "a \u2014 b\n", "alpha/.hidden/openai.yaml": "x\n" });
+    const root = library(t, { "alpha/SKILL.md": skill("alpha"), "alpha/node_modules/x.md": "a \u2014 b\n", "alpha/.hidden/opencode.md": "a \u2014 b\n" });
     const errors = errorsOf(root);
     assert.match(errors, /alpha\/node_modules\/x\.md: line 1: em dash/);
-    assert.match(errors, /alpha\/\.hidden\/openai\.yaml: Codex and OpenCode files/);
+    assert.match(errors, /alpha\/\.hidden\/opencode\.md: line 1: em dash/);
   });
   await t.test("a skill that fails to load still has its files checked", (t) => {
     const root = library(t, { "alpha/notes.md": "a \u2014 b\n" });
@@ -120,9 +120,12 @@ await test("nothing in a skill escapes the file checks", async (t) => {
   });
 });
 
-await test("files for other harnesses are refused", (t) => {
-  const root = library(t, { "alpha/SKILL.md": skill("alpha"), "alpha/agents/openai.yaml": "policy: {}\n" });
-  assert.match(errorsOf(root), /alpha\/agents\/openai\.yaml: Codex and OpenCode files are not used/);
+await test("adapter files for any harness are accepted alongside the canonical skill", (t) => {
+  const root = library(t, {
+    "alpha/SKILL.md": skill("alpha"), "alpha/agents/openai.yaml": "policy: {}\n",
+    "alpha/opencode.json": "{}\n", "alpha/opencode.md": "Read SKILL.md.\n", "alpha/future-agent/config.yaml": "{}\n",
+  });
+  assert.equal(errorsOf(root), "");
 });
 
 await test("allowances excuse one rule for one skill, and stale ones are reported", async (t) => {
