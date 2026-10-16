@@ -6,6 +6,8 @@ facts that only exist after the owner merges. `npm run changelog:guard` enforces
 
 ## 2026-10-16
 
+- The audit remediation now has a committed-work structure: a baseline findings inventory, an owning idea and project, a clarifying map, three decision tickets, a publication prerequisite and a fresh-session runbook. The map keeps architectural recommendations unresolved until the owner decides, and the handoff routes another LLM through plan approval, session-sized job specs and independent verification.
+
 - Repository authoring now accepts any agent harness or model provider. `AGENTS.md` points to the shared rules, wiki authors use open kebab-case identifiers, skill adapter files are accepted, and other harness instruction paths are workflow-critical. ADR-0026 records the owner's decision; skills and runbooks describe equivalent tool and reviewer use when ECC is unavailable. Regression tests cover accepted new authors and adapters, retained metadata refusals, and the replacement governance policy.
 
 - The Sandcastle runbook's Prerequisites now carry a bullet, after the `GH_TOKEN` bullet, telling the reader to run the "Token setup" check (step 5), throwaway comment included, before the first loop on a new token, and why: the command only reads, so a token that reads issues but cannot write them passes it and answers 403 only when an agent tries to comment, after the agents have done their work.
