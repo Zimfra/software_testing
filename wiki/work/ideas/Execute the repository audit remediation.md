@@ -6,10 +6,10 @@ tags: [area/planning, area/agents, area/compliance]
 created: 2026-10-16
 updated: 2026-10-16
 agent: opencode
-status: clarifying
+status: in-review
 owner: human
 priority: P1
-next_action: Obtain owner agreement on Audit remediation verification approach, then write the proposed plan and its implementation slices.
+next_action: Publish the independently reviewed proposed plan through the machine account for owner merge approval.
 project: "[[Repository audit remediation]]"
 evidence:
   - "OWNER DECISION: on 2026-10-16 the owner said: yes the goal is to take this planning, commit into the repo with a pull request, and for the planning to be executred by another llm in a different terminal session maybe claude for example"
@@ -23,7 +23,11 @@ evidence:
   - "OWNER DECISION: on 2026-10-16 the owner chose 'audit only the fork' and then asked 'and let me know in some detail whats being worked on and why'."
   - "VERIFIED: the SDK's pinned no-sandbox API supports the proposed outer-container execution design, and a temporary-repository experiment preserved commit identity while excluding source Git configuration, hooks and untracked work from a bundle import."
   - "VERIFIED: after recording fork scope, research results and the proposed verification approach, npm run check exited 0 on Node 24.22.0 with 762 Node tests and 56 Python tests passing; wiki-lint validated 68 notes and all repository guards passed."
-  - "UNKNOWN: Docker is unavailable here, so live containment is not proven. Test-seam agreement and remediation-plan approval remain pending."
+  - "OWNER DECISION: on 2026-10-16, after the verification approach was presented, the owner said: do what it takes to get the PR completed so we can merge, - proceed as required"
+  - "VERIFIED: the proposed plan exposed a blocking validator defect: a completed map counted its downstream plan as an unfinished ticket. Before the fix, work-tracking.test.ts reported 40 tests with 36 passing and 4 failing entries, covering proposed, approved and executing plans plus their parent test."
+  - "VERIFIED: after the narrow validator fix, all 40 work-tracking tests passed. The full check passed 766 Node tests, 56 Python tests and all guards; wiki-lint validated 69 notes. All seven trusted guard CLIs from main at 616a4ea also passed against the proposed-plan tree."
+  - "VERIFIED: a structural inspection of the proposed plan found 26 unique slices, an acyclic parent graph, coverage of all A01-A22 findings and Fixture Git containment as the first eligible slice."
+  - "UNKNOWN: Docker is unavailable here, so live containment is not proven. The proposed plan still requires owner merge approval before build-ticket creation."
 ---
 
 ## Problem
@@ -41,5 +45,6 @@ verification and a recoverable handoff.
 
 ## Next step
 
-Use the linked project's map to resolve one decision at a time. The publication prerequisite
-can be resolved independently. The execution handoff must stand alone without this conversation.
+Review [[Repository audit remediation implementation plan]], complete machine-account publication
+and obtain the owner's merge. The next LLM verifies that approval before using `plan-tickets` and
+the fresh-session runbook. The handoff must stand alone without this conversation.

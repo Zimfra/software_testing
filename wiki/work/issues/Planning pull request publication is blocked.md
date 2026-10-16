@@ -10,7 +10,7 @@ status: blocked
 owner: human
 priority: P1
 issue_kind: environment
-next_action: The owner establishes a valid machine-account session; recheck authentication, repository identity and the branch before running npm run pr.
+next_action: Complete the machine-account device authorization, then recheck the active actor, repository identity and branch before running npm run pr.
 blocker: The last publication attempt found an invalid stored GitHub account and the active login matched CODEOWNERS; owner action is needed for a valid machine-account session.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
@@ -18,6 +18,7 @@ evidence:
   - "VERIFIED: npm run pr at 4cb19802c18914e707fbd39d2a45342d9b6a0158 passed the full check and refused before pushing because gh auth status reported an invalid stored account."
   - "VERIFIED: later read-only checks during planning again returned gh auth status exit 1, identified the active login as a code owner and found no PR for feat/provider-neutral-governance."
   - "INFERRED: this blocks publication and subsequent owner-merged plan approval, but does not block resolving design questions or drafting the proposed plan locally."
+  - "VERIFIED: the 2026-10-16 publication recheck identified zimmybot as the repository's write-enabled machine-account collaborator. The first browser authorization returned the code-owner identity again; a second machine-account authorization was requested. No credential or device code is recorded here."
 ---
 
 ## Reproduction
@@ -41,9 +42,10 @@ Model-provider authentication is a separate concern.
 
 ## Fix
 
-The owner repairs the authentication state and selects the intended machine account. Then the
-agent rechecks the target repository, branch and current main before using `npm run pr`. No
-credential deletion, account switch or publication-policy exception has been authorized here.
+The owner completes authentication as the intended machine account. The agent then verifies
+the actor, target repository, branch and current main before using `npm run pr`. Browser/device
+authorization remains the owner's action. Do not weaken publication or approval rules to work
+around a credential-profile problem; the required account must actually authenticate.
 
 ## Verification
 

@@ -6,13 +6,13 @@ tags: [area/planning, area/agents, area/compliance]
 created: 2026-10-16
 updated: 2026-10-16
 agent: opencode
-status: clarifying
+status: in-review
 owner: human
 priority: P1
-next_action: Agree the proposed verification approach, write the remediation plan and slices, and resolve the delivery authentication issue before opening the planning PR.
+next_action: Review and publish the proposed implementation plan; after owner merge, verify approval and create the agreed job specs.
 idea: "[[Execute the repository audit remediation]]"
 evidence:
-  - "OWNER DECISION: on 2026-10-16 the owner requested committed planning, a pull request and execution by another LLM in a separate terminal session."
+- "OWNER DECISION: on 2026-10-16 the owner requested committed planning, a pull request and execution by another LLM in a separate terminal session."
 ---
 
 ## Outcome
@@ -31,16 +31,17 @@ and let a fresh LLM implement a bounded slice without inventing decisions or rel
   [[Choose the landing audit history scope]].
 - Resolve the choices that change implementation, then write the proposed plan with test seams
   and dependency-linked implementation slices.
-- Propose `job_specs: required` so build tickets carry inputs, file boundaries, tests, recovery,
-  evidence and human checkpoints. Agree the ticket breakdown before creating them.
+- The proposed plan sets `job_specs: required` so build tickets carry inputs, file boundaries,
+  tests, recovery, evidence and human checkpoints. Confirm or reuse the approved breakdown before
+  creating them, and obtain owner approval of the job specs before implementation.
 - Keep the existing branch, test-first, independent-review and owner-merge workflow.
 - Give meaningful progress updates explaining the current task, why it matters, the evidence
   found, any concrete blocker and the next action, following the fresh-session runbook.
 
 ## Acceptance criteria
 
-- [ ] Every inventory finding is linked to a proposed slice or an explicit, reasoned deferral.
-- [ ] Every decision needed by the plan is resolved with owner evidence or reproducible research.
+- [x] Every inventory finding is linked to a proposed slice or an explicit, reasoned deferral.
+- [x] Every decision needed by the plan is resolved with owner evidence or reproducible research.
 - [ ] The plan is proposed in a pull request and identifies its intended base, test seams and limits.
 - [ ] After owner merge, approval is verified on GitHub and recorded before build-ticket creation.
 - [ ] Each build ticket has one deliverable, checkable acceptance, explicit dependencies and a
@@ -55,4 +56,5 @@ and let a fresh LLM implement a bounded slice without inventing decisions or rel
 - [[Repository audit findings 2026-10-16]]: baseline findings and evidence limits.
 - [[Resume repository audit remediation]]: entry point for a different LLM session.
 - [[Planning pull request publication is blocked]]: delivery prerequisite for publication and approval.
-- [[Audit remediation verification approach]]: proposed test seams awaiting owner agreement.
+- [[Audit remediation verification approach]]: test seams included in the proposed plan.
+- [[Repository audit remediation implementation plan]]: execution contract, 26 proposed slices and acceptance checks for owner review.

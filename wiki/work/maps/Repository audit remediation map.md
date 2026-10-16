@@ -1,7 +1,7 @@
 ---
 type: map
 title: Repository audit remediation map
-summary: The owner choices and source-level isolation research are resolved; confirm the proposed verification approach before writing the remediation plan.
+summary: The owner choices and source-level isolation research are resolved and recorded in the proposed remediation implementation plan.
 tags: [area/planning, area/agents]
 created: 2026-10-16
 updated: 2026-10-16
@@ -9,7 +9,7 @@ agent: opencode
 status: done
 owner: human
 priority: P1
-next_action: Confirm Audit remediation verification approach with the owner, then use write-plan to record the proposed implementation slices.
+next_action: Review and publish Repository audit remediation implementation plan; build-ticket creation follows its verified owner-merged approval.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 evidence:
@@ -18,7 +18,8 @@ evidence:
   - "OWNER DECISION: on 2026-10-16 the owner approved the partial-failure policy recorded in Define Sandcastle partial-failure outcomes."
   - "OWNER DECISION: on 2026-10-16 the owner selected fork-only auditing in Choose the landing audit history scope."
   - "VERIFIED: the research ticket establishes supported SDK APIs and a tested Git bundle primitive, with live containment and the new publication path explicitly unverified."
-  - "UNKNOWN: the owner has not yet agreed the proposed test seams, and no remediation plan is approved. Docker is unavailable for a live containment check here."
+  - "OWNER DECISION: on 2026-10-16, after the verification approach was presented, the owner directed the agent to proceed and complete the PR for merge."
+  - "UNKNOWN: the remediation plan is proposed, not owner-merged. Docker is unavailable for a live containment check here."
 ---
 
 ## Destination
@@ -46,8 +47,9 @@ authentication is required to publish, not to resolve the design map or draft th
 
 ## Open decisions
 
-No map decision remains open. The `write-plan` preflight still needs owner agreement on
-[[Audit remediation verification approach]]. Publication is tracked by the delivery issue above.
+No map decision remains open. The verification approach is included in
+[[Repository audit remediation implementation plan]], which is proposed for owner review.
+Publication is tracked by the delivery issue above.
 
 ## Decisions so far
 
@@ -67,10 +69,10 @@ pull request, then execution by another LLM in a different session.
 
 ## Not yet specified
 
-The proposed plan must specify the run-result and recovery contract, slice boundaries and real
-dependencies within the selected behavior. The first isolation slice must establish a real
-container test; source research does not satisfy that implementation criterion. All A01-A22
-findings remain in scope, with no owner-approved deferral.
+The proposed plan specifies the execution/evidence contract, slice boundaries and dependencies.
+Exact job-spec commands and file allowlists are recorded during ticket creation after plan approval.
+The first isolation slice must establish a real container test; source research does not satisfy
+that implementation criterion. All A01-A22 findings remain in scope.
 
 ## Out of scope
 

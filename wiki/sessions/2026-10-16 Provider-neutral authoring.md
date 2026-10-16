@@ -45,6 +45,15 @@ outer disposable container. A temporary Git experiment preserved the exported co
 rejected a missing-prerequisite bundle, and transferred no source config, hook or untracked file.
 Recorded the research limits and [[Audit remediation verification approach]] for owner agreement.
 
+After the owner directed the agent to proceed and complete the PR, recorded
+[[Repository audit remediation implementation plan]] with 26 proposed slices covering A01-A22,
+their dependencies, acceptance controls and the fresh-session approval/execution contract.
+
+The plan exposed a validator defect that counted a downstream plan as an unfinished map ticket.
+Added a failing regression control and fixed the type check; all 40 work-tracking tests then
+passed. The proposed-plan tree passed the full check with 766 Node and 56 Python tests, plus
+all seven trusted guard CLIs from main. The initial plan uses a related map link until that fix lands.
+
 ## Outcome
 
 The implementation and verification are tracked in the originating idea. The work was authored
@@ -54,7 +63,6 @@ ECC-rules guards also passed against the changed tree.
 
 ## Open items
 
-The provider-neutral change passed independent review at 7fd3faa. Resolve the decisions in
-[[Repository audit remediation map]], verify the planning records and publish through the machine
-account. The map choices and source-level research are resolved. Agreement on test seams,
-live containment proof in implementation and publication authentication remain open.
+The provider-neutral change passed independent review at 7fd3faa. Review the proposed plan and
+publish it through the machine account for owner merge approval. Live containment proof belongs
+to implementation. No proposed plan or build ticket is approved by the authoring session.

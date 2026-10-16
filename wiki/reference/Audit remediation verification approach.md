@@ -1,18 +1,20 @@
 ---
 type: reference
 title: Audit remediation verification approach
-summary: Proposed test seams for the remediation plan, using real Git fixtures, the actual orchestration with fake agents, container boundary controls and offline evaluation outcomes.
+summary: Verification seams for the proposed remediation plan, using real Git fixtures, the actual orchestration with fake agents, container boundary controls and offline evaluation outcomes.
 tags: [area/planning, area/agents, area/evals]
 created: 2026-10-16
 updated: 2026-10-16
 agent: opencode
-status: draft
+status: active
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 ---
 
-> **Status:** draft. The owner has selected the behavior and audit scope. Agreement on these
-> test seams is the next step before `write-plan`; this note is not an approved build plan.
+On 2026-10-16, after this verification approach was presented, the owner directed the agent to
+proceed and complete the PR for merge. These seams are included in the proposed
+[[Repository audit remediation implementation plan]]. Approval of that plan still requires the
+owner's merge of the PR adding it; the future tests are not claimed as implemented here.
 
 ## Why these seams
 
@@ -21,7 +23,7 @@ boundary responsible for each behavior. Mocks remain useful at external service/
 but a mocked loop cannot prove that the real coordinator propagates failure, and an in-memory
 check cannot prove container containment.
 
-## Proposed verification layers
+## Verification layers
 
 | Seam | Findings and behavior | Existing prior art | Required positive and broken controls |
 |---|---|---|---|
@@ -44,22 +46,12 @@ identity/expiry reads prove from what a write-capability test proves. Any authen
 trial remains an explicit owner-controlled checkpoint. Do not claim that a mock establishes
 real token permissions.
 
-## Intended sequencing
+## Sequencing
 
-1. Protect fixture routing and checkout identity so subsequent regression work cannot affect the
-   real repository. Establish the container test environment and boundary control early.
-2. Repair state snapshots, checked-commit publication and fork-only audit behavior using the
-   existing real-Git fixtures. The fork's exclusive starting commit is recorded in its decision ticket.
-3. Expose the actual orchestration to tests, then implement the approved phase outcomes and
-   eligibility rules. Include the entry point in lint and coverage accounting.
-4. Build controlled export/import, independent verification and trusted publication around the
-   chosen isolation boundary. Add recovery and notification reconciliation at those boundaries.
-5. Complete privacy/metadata, skill provenance, historical-note and evaluation repairs. These
-   become separate slices where their acceptance can be verified independently.
-
-The plan will assign every A01-A22 finding to concrete slices and name real dependencies. These
-are sequencing areas, not build tickets or permission to begin implementation. No audit finding
-has been deferred by the owner.
+[[Repository audit remediation implementation plan]] owns the slices, finding coverage and
+dependency order. It begins with fixture containment and establishes the real container control
+early. Build tickets are created from the owner-approved plan; this reference owns the verification
+approach rather than maintaining a second task list. No audit finding has an approved deferral.
 
 ## Evidence requirements
 

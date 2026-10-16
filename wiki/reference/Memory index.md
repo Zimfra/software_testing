@@ -63,7 +63,7 @@ One line per memory note. Add new notes here; work notes need no entry.
 - [[Merge gate contract]] - The merge gate is GitHub: the protect-main ruleset, the required check and guards workflows, the local backstops, and the read-only landing audit.
 - [[Skill standards]] - What npm run skills:lint enforces on .claude/skills (limits, user-only list, provenance hashes, citations, em dashes) and what stays convention.
 - [[Repository audit findings 2026-10-16]] - Audit baseline, 22 findings, source citations and verification limits for the remediation plan.
-- [[Audit remediation verification approach]] - Proposed real-Git, coordinator, container, validator and evaluation controls to agree before the implementation plan.
+- [[Audit remediation verification approach]] - Real-Git, coordinator, container, validator and evaluation controls included in the proposed implementation plan.
 
 ## Sessions
 
