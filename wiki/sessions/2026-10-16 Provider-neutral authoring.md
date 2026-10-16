@@ -56,7 +56,12 @@ all seven trusted guard CLIs from main. The initial plan uses a related map link
 
 The owner authenticated the machine account. A validated bot-only CLI context ran the normal PR
 tool successfully and opened [PR 15](https://github.com/Zimfra/software_testing/pull/15) as zimmybot.
-Independent standards/spec reviews and verification at 18e3277 passed; the owner review is pending.
+Independent standards/spec reviews and verification at 18e3277 passed; owner review was pending at publication.
+
+GitHub then reported the owner's merge of PR 15 as edb9e35 while the publication-record follow-up
+was in flight. The PR tool opened PR 16 for that follow-up. Merged current main into the branch,
+recorded the verified plan approval and restored its typed map link so the next session starts
+at job-spec creation rather than repeating completed planning or publication work.
 
 ## Outcome
 
@@ -67,6 +72,6 @@ ECC-rules guards also passed against the changed tree.
 
 ## Open items
 
-The provider-neutral change passed independent review at 7fd3faa. Obtain owner merge approval
-for the proposed plan in PR 15. Live containment proof belongs
-to implementation. No proposed plan or build ticket is approved by the authoring session.
+The plan is approved through the owner's actual merge of PR 15. Complete review of the PR 16
+approval/handoff follow-up, then create the required job specs in the next execution session.
+Their owner approval precedes implementation; live containment proof remains implementation work.

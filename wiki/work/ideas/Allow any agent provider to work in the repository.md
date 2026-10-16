@@ -6,10 +6,10 @@ tags: [area/agents, area/wiki, area/compliance]
 created: 2026-10-16
 updated: 2026-10-16
 agent: opencode
-status: in-review
+status: done
 owner: human
 priority: P1
-next_action: Owner reviews and merges PR 15, which carries the provider-neutral change and proposed audit remediation plan.
+next_action: Continue the approved audit remediation plan through job-spec creation and owner approval.
 related: ["[[ADR-0026 Any provider may work under shared rules]]", "[[Work with any agent provider]]", "[[Repository audit remediation map]]"]
 evidence:
   - "OWNER DECISION: on 2026-10-16 the owner said: lets change the only claude code to any providor - remove these blocks"
@@ -20,7 +20,8 @@ evidence:
   - "VERIFIED: independent OpenCode standards and spec reviewers inspected 4cb19802c18914e707fbd39d2a45342d9b6a0158. The spec reviewer found stale registration guidance in Maintain the repository wiki and an implicit fallback for a harness built-in; this follow-up corrects both."
   - "VERIFIED: npm run pr at 4cb19802c18914e707fbd39d2a45342d9b6a0158 passed all checks, then refused before pushing because gh auth status reported an invalid stored account. The active login is also a code owner; publication requires a valid machine-account session."
   - "VERIFIED: separate OpenCode standards and spec reviewers reported no remaining findings at 7fd3faa86650ce6e2c4c7874e5204ab87c0b611a. An independent verifier ran npm run check at that head: 762 Node tests and 56 Python tests passed, all guards passed, and the checkout remained clean."
-  - "VERIFIED: the provider-neutral change and planning records were published as PR 15 by the machine account on 2026-10-16; owner merge approval remains pending."
+  - "VERIFIED: the provider-neutral change and planning records were published as PR 15 by the machine account on 2026-10-16; owner merge approval was pending at publication."
+  - "VERIFIED: GitHub reports PR 15 merged by code owner ahzeems on 2026-10-16 as edb9e35da1284e7593bd62f6408cc719771d9b7d, landing the provider-neutral authoring change and approving the remediation plan."
   - "UNKNOWN: native skill discovery and model-backed behavior across providers have not been exercised by this change."
 ---
 
@@ -44,7 +45,6 @@ by their canonical skills. Their provenance records append the hashes of these s
 
 ## Next step
 
-Run the targeted and full checks, inspect the legacy trusted guards against this tree, and obtain
-independent review. Publication needs a machine-account login: the inspected GitHub CLI login
-was a code owner, so the new branch is local until that prerequisite is met. Resume the audit
-remediation map after this authoring prerequisite is recorded.
+The authoring prerequisite landed through [PR 15](https://github.com/Zimfra/software_testing/pull/15).
+Continue [[Repository audit remediation implementation plan]] through the fresh-session handoff:
+verify its approval, create the agreed job specs and obtain their owner approval before implementation.

@@ -1,7 +1,7 @@
 ---
 type: map
 title: Repository audit remediation map
-summary: The owner choices and source-level isolation research are resolved and recorded in the proposed remediation implementation plan.
+summary: The owner choices and source-level isolation research are resolved and recorded in the remediation implementation plan approved through PR 15.
 tags: [area/planning, area/agents]
 created: 2026-10-16
 updated: 2026-10-16
@@ -9,7 +9,7 @@ agent: opencode
 status: done
 owner: human
 priority: P1
-next_action: Owner reviews planning PR 15; build-ticket creation follows its verified owner-merged approval.
+next_action: Verify the plan's PR 15 approval reference, then create and obtain owner approval for the agreed job specs.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 evidence:
@@ -19,7 +19,8 @@ evidence:
   - "OWNER DECISION: on 2026-10-16 the owner selected fork-only auditing in Choose the landing audit history scope."
   - "VERIFIED: the research ticket establishes supported SDK APIs and a tested Git bundle primitive, with live containment and the new publication path explicitly unverified."
   - "OWNER DECISION: on 2026-10-16, after the verification approach was presented, the owner directed the agent to proceed and complete the PR for merge."
-  - "UNKNOWN: the remediation plan is proposed, not owner-merged. Docker is unavailable for a live containment check here."
+  - "VERIFIED: the owner merged planning PR 15 on 2026-10-16; the plan records approval_ref and restores its typed map relationship after the validator fix landed."
+  - "UNKNOWN: Docker is unavailable here, live containment is unproven and required job specs still need creation and approval."
 ---
 
 ## Destination
@@ -48,8 +49,8 @@ publication of PR 15. Authentication was required to publish, not to resolve the
 ## Open decisions
 
 No map decision remains open. The verification approach is included in
-[[Repository audit remediation implementation plan]], which is proposed for owner review.
-The plan is published in PR 15 and awaits the owner's merge approval.
+[[Repository audit remediation implementation plan]], approved through the owner's merge of
+PR 15. The next stage is job-spec creation and approval.
 
 ## Decisions so far
 
@@ -69,7 +70,7 @@ pull request, then execution by another LLM in a different session.
 
 ## Not yet specified
 
-The proposed plan specifies the execution/evidence contract, slice boundaries and dependencies.
+The approved plan specifies the execution/evidence contract, slice boundaries and dependencies.
 Exact job-spec commands and file allowlists are recorded during ticket creation after plan approval.
 The first isolation slice must establish a real container test; source research does not satisfy
 that implementation criterion. All A01-A22 findings remain in scope.

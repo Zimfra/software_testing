@@ -6,22 +6,25 @@ tags: [area/planning, area/agents, area/compliance]
 created: 2026-10-16
 updated: 2026-10-16
 agent: opencode
-status: proposed
+status: approved
+approval_ref: "#15"
 owner: human
 priority: P1
-next_action: Owner reviews and merges PR 15; after verifying that merge, record approval and use plan-tickets to create the agreed job specs.
+next_action: Use plan-tickets to create the agreed 26 job specs, obtain their owner approval, then begin Fixture Git containment in a fresh execution session.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
+map: "[[Repository audit remediation map]]"
 job_specs: required
-related: ["[[Repository audit remediation map]]", "[[Audit remediation verification approach]]", "[[Resume repository audit remediation]]"]
+related: ["[[Audit remediation verification approach]]", "[[Resume repository audit remediation]]"]
 evidence:
   - "OWNER DECISION: on 2026-10-16 the owner selected complete workflow isolation, approved the partial-failure policy and selected fork-only auditing in the three linked decision tickets."
   - "OWNER DECISION: after the verification approach was presented, the owner directed the agent to do what it takes to complete the PR for merge and proceed as required; the exact instruction is in the originating idea."
   - "VERIFIED: the research ticket identifies a supported inner SDK provider and records a real Git-bundle experiment preserving candidate identity without transferring source Git configuration, hooks or untracked files."
   - "VERIFIED: structural inspection found 26 unique slices with an acyclic parent graph covering all A01-A22 findings; Fixture Git containment is the first eligible slice."
-  - "VERIFIED: this plan was published for owner review in https://github.com/Zimfra/software_testing/pull/15 with the machine account as author. The plan remains proposed until the owner merges that PR."
+  - "VERIFIED: this plan was published for owner review in https://github.com/Zimfra/software_testing/pull/15 with the machine account as author."
+  - "VERIFIED: GitHub reports PR 15 merged by code owner ahzeems on 2026-10-16 at 16:08:27 UTC, with reviewed head 18e32772ddc74e9debffad66e708b4623e728cf6 and merge commit edb9e35da1284e7593bd62f6408cc719771d9b7d on origin/main. This is the plan's approval reference."
   - "INFERRED: the source-supported outer-container design can implement the selected boundary; the first runtime slice must prove containment through a real non-model container test."
-  - "UNKNOWN: no live container containment, new verifier receipt, isolated publication or model-backed evaluation result is established by this plan. Plan approval requires the owner's merge of the PR adding it."
+  - "UNKNOWN: no live container containment, new verifier receipt, isolated publication or model-backed evaluation result is established by plan approval. Required job specs have not yet been created or approved."
 ---
 
 ## Problem
@@ -48,12 +51,11 @@ project, plan and tickets without the original conversation.
 
 ## Constraints
 
-- This plan is proposed. Verify the owner's actual merged PR before setting `approval_ref` and
-  creating build tickets. The owner approves required job specs before implementation.
-- Bootstrap compatibility: this PR fixes main's validator, which incorrectly counts a downstream
-  plan as an unfinished map ticket. Until that fix lands, the map is linked through `related` so
-  main's trusted guards can validate the proposed plan. When recording the real merge approval,
-  add the typed `map` link to Repository audit remediation map and retain the same ownership.
+- Plan approval is the verified owner merge of [PR 15](https://github.com/Zimfra/software_testing/pull/15).
+  Recheck that reference before ticket creation. The owner approves required job specs before implementation.
+- Bootstrap compatibility: the initial proposed note linked its map through `related` because
+  main's old validator counted a downstream plan as an unfinished map ticket. PR 15 landed the
+  fix, and this approval handoff restores the typed `map` relationship with the same ownership.
 - Use one canonical build ticket per slice below, sized for one fresh context. If a slice grows
   beyond that, split its deliverable and preserve the dependency graph with owner agreement.
 - Use the current harness's tools and the shared repository skills. Attribute authors and
@@ -147,8 +149,8 @@ behavior remains unverified until that boundary is actually exercised with autho
 
 ## Implementation slices
 
-These are the proposed breakdown for owner review. After approval, `plan-tickets` creates the
-canonical job-spec notes and replaces these titles with links. Slice labels below are stable
+These slices are the breakdown approved through PR 15. `plan-tickets` creates the canonical
+job-spec notes and replaces these titles with links. Slice labels below are stable
 cross-references; ticket titles retain the descriptive names. Parents are actual prerequisites,
 not dependencies on this plan or its map.
 
@@ -410,8 +412,8 @@ working-state snapshots and S12 Reproducible runtime and real containment contro
 above to expose subsequent work; run one ticket per fresh session. Logical independence does not
 permit two writers in the same checkout or simultaneous edits to the same file without coordination.
 
-When this plan is owner-merged, verify that merge and record its real `approval_ref`. Use
-`plan-tickets` to confirm or reuse this approved breakdown, create the job specs, and link their
+Verify this plan's recorded owner merge before using `plan-tickets` to confirm or reuse this
+approved breakdown, create the job specs, and link their
 notes here. Each includes Inputs, Allowed files, Forbidden files, Human checkpoints, Secrets needed,
 Tests and evals, Rollback and recovery, Evidence, and Wiki and doc updates. Obtain owner approval
 of the job specs before starting implementation. Do not create a second task list detached from

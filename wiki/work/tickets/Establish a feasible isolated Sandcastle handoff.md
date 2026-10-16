@@ -9,7 +9,7 @@ agent: opencode
 status: done
 owner: agent
 priority: P1
-next_action: Carry the source-supported design and required live-container proof into the proposed plan after the owner agrees the test seams.
+next_action: Use this research when creating the approved plan's job specs; establish live containment through the required implementation control before runtime cutover.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 ticket_kind: research

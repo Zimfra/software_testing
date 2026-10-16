@@ -1,7 +1,7 @@
 ---
 type: reference
 title: Audit remediation verification approach
-summary: Verification seams for the proposed remediation plan, using real Git fixtures, the actual orchestration with fake agents, container boundary controls and offline evaluation outcomes.
+summary: Verification seams for the approved remediation plan, using real Git fixtures, the actual orchestration with fake agents, container boundary controls and offline evaluation outcomes.
 tags: [area/planning, area/agents, area/evals]
 created: 2026-10-16
 updated: 2026-10-16
@@ -12,9 +12,10 @@ project: "[[Repository audit remediation]]"
 ---
 
 On 2026-10-16, after this verification approach was presented, the owner directed the agent to
-proceed and complete the PR for merge. These seams are included in the proposed
-[[Repository audit remediation implementation plan]]. Approval of that plan still requires the
-owner's merge of the PR adding it; the future tests are not claimed as implemented here.
+proceed and complete the PR for merge. These seams are included in
+[[Repository audit remediation implementation plan]], approved by the owner's verified merge of
+[PR 15](https://github.com/Zimfra/software_testing/pull/15). The future tests are implementation
+work; plan approval does not claim they already exist or pass.
 
 ## Why these seams
 

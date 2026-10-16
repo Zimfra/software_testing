@@ -6,10 +6,10 @@ tags: [area/planning, area/agents, area/compliance]
 created: 2026-10-16
 updated: 2026-10-16
 agent: opencode
-status: in-review
+status: in-progress
 owner: human
 priority: P1
-next_action: Owner reviews and merges PR 15; the next LLM verifies approval before creating the agreed job specs.
+next_action: The next LLM verifies the plan's PR 15 approval, creates the agreed job specs and obtains their owner approval before implementation.
 project: "[[Repository audit remediation]]"
 evidence:
   - "OWNER DECISION: on 2026-10-16 the owner said: yes the goal is to take this planning, commit into the repo with a pull request, and for the planning to be executred by another llm in a different terminal session maybe claude for example"
@@ -29,7 +29,10 @@ evidence:
   - "VERIFIED: a structural inspection of the proposed plan found 26 unique slices, an acyclic parent graph, coverage of all A01-A22 findings and Fixture Git containment as the first eligible slice."
   - "VERIFIED: independent standards and spec reviews at 18e32772ddc74e9debffad66e708b4623e728cf6 reported no findings. The independent verifier passed the full check and replayed the map/plan regression controls against base and head."
   - "VERIFIED: the machine account published PR 15 at https://github.com/Zimfra/software_testing/pull/15. GitHub reported author zimmybot, base main, head 18e32772ddc74e9debffad66e708b4623e728cf6 and an outstanding code-owner review request."
-  - "UNKNOWN: Docker is unavailable here, so live containment is not proven. The proposed plan still requires owner merge approval before build-ticket creation."
+  - "VERIFIED: GitHub subsequently reported PR 15 merged by code owner ahzeems at 2026-10-16 16:08:27 UTC as edb9e35da1284e7593bd62f6408cc719771d9b7d. The plan's approval is recorded; the follow-up handoff changes are in PR 16."
+  - "VERIFIED: all 26 slice titles, dependencies, deliverables, acceptance criteria and affected surfaces match the plan at approved head 18e32772ddc74e9debffad66e708b4623e728cf6. The follow-up changes approval and handoff state, not the approved implementation scope."
+  - "VERIFIED: after merging current main and recording approval, npm run check exited 0 on Node 24.22.0 with 766 Node tests, 56 Python tests and all guards passing. The follow-up has its own changelog entry relative to the newly merged main."
+  - "UNKNOWN: Docker is unavailable here, so live containment is not proven. Job specs and their owner approval are still required before implementation."
 ---
 
 ## Problem
@@ -47,6 +50,6 @@ verification and a recoverable handoff.
 
 ## Next step
 
-Review [[Repository audit remediation implementation plan]] in PR 15 and obtain the owner's merge.
-The next LLM verifies that approval before using `plan-tickets` and
-the fresh-session runbook. The handoff must stand alone without this conversation.
+The next LLM verifies the recorded approval of [[Repository audit remediation implementation plan]],
+then uses `plan-tickets` and the fresh-session runbook to create the agreed job specs. Their owner
+approval precedes implementation. The handoff must stand alone without this conversation.
