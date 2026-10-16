@@ -41,7 +41,8 @@ All authoritative work state lives in the repository. The original chat is not a
    plan. Use `write-plan` for any agreed revision; preserve finding coverage, test seams and the
    distinction between proposed work and observed results.
 3. **Verify plan approval before ticket creation.** Follow [[Idea to execution]]. The owner must
-   merge the PR adding the plan. Inspect GitHub's actual state and merger; record the real PR in
+   merge [planning PR 15](https://github.com/Zimfra/software_testing/pull/15). Inspect GitHub's
+   actual state and merger; record the real PR in
    `approval_ref`. A status written by an agent is insufficient. If approval is absent, stop at
    the proposed plan and name the pending action. If the plan still says proposed after GitHub's
    owner merge, update its approval metadata only after verifying that actual merge.

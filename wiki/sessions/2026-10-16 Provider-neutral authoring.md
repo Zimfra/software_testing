@@ -54,6 +54,10 @@ Added a failing regression control and fixed the type check; all 40 work-trackin
 passed. The proposed-plan tree passed the full check with 766 Node and 56 Python tests, plus
 all seven trusted guard CLIs from main. The initial plan uses a related map link until that fix lands.
 
+The owner authenticated the machine account. A validated bot-only CLI context ran the normal PR
+tool successfully and opened [PR 15](https://github.com/Zimfra/software_testing/pull/15) as zimmybot.
+Independent standards/spec reviews and verification at 18e3277 passed; the owner review is pending.
+
 ## Outcome
 
 The implementation and verification are tracked in the originating idea. The work was authored
@@ -63,6 +67,6 @@ ECC-rules guards also passed against the changed tree.
 
 ## Open items
 
-The provider-neutral change passed independent review at 7fd3faa. Review the proposed plan and
-publish it through the machine account for owner merge approval. Live containment proof belongs
+The provider-neutral change passed independent review at 7fd3faa. Obtain owner merge approval
+for the proposed plan in PR 15. Live containment proof belongs
 to implementation. No proposed plan or build ticket is approved by the authoring session.

@@ -9,7 +9,7 @@ agent: opencode
 status: done
 owner: human
 priority: P1
-next_action: Review and publish Repository audit remediation implementation plan; build-ticket creation follows its verified owner-merged approval.
+next_action: Owner reviews planning PR 15; build-ticket creation follows its verified owner-merged approval.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 evidence:
@@ -42,14 +42,14 @@ The current branch also carries the provider-neutral authoring prerequisite. Its
 [[ADR-0026 Any provider may work under shared rules]]. A different provider can use these records;
 capability-specific runtime checks still require their real tools.
 
-[[Planning pull request publication is blocked]] tracks the delivery prerequisite separately:
-authentication is required to publish, not to resolve the design map or draft the proposed plan.
+[[Planning pull request publication is blocked]] records the resolved delivery issue and
+publication of PR 15. Authentication was required to publish, not to resolve the design map.
 
 ## Open decisions
 
 No map decision remains open. The verification approach is included in
 [[Repository audit remediation implementation plan]], which is proposed for owner review.
-Publication is tracked by the delivery issue above.
+The plan is published in PR 15 and awaits the owner's merge approval.
 
 ## Decisions so far
 

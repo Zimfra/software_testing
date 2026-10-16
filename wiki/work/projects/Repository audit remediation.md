@@ -9,7 +9,7 @@ agent: opencode
 status: in-review
 owner: human
 priority: P1
-next_action: Review and publish the proposed implementation plan; after owner merge, verify approval and create the agreed job specs.
+next_action: Owner reviews and merges planning PR 15; after verified approval, the next session creates the agreed job specs.
 idea: "[[Execute the repository audit remediation]]"
 evidence:
 - "OWNER DECISION: on 2026-10-16 the owner requested committed planning, a pull request and execution by another LLM in a separate terminal session."
@@ -42,7 +42,7 @@ and let a fresh LLM implement a bounded slice without inventing decisions or rel
 
 - [x] Every inventory finding is linked to a proposed slice or an explicit, reasoned deferral.
 - [x] Every decision needed by the plan is resolved with owner evidence or reproducible research.
-- [ ] The plan is proposed in a pull request and identifies its intended base, test seams and limits.
+- [x] The plan is proposed in a pull request and identifies its intended base, test seams and limits.
 - [ ] After owner merge, approval is verified on GitHub and recorded before build-ticket creation.
 - [ ] Each build ticket has one deliverable, checkable acceptance, explicit dependencies and a
   valid and broken control for the behavior it changes.
@@ -55,6 +55,6 @@ and let a fresh LLM implement a bounded slice without inventing decisions or rel
 - [[Repository audit remediation map]]: decisions and the next planning action.
 - [[Repository audit findings 2026-10-16]]: baseline findings and evidence limits.
 - [[Resume repository audit remediation]]: entry point for a different LLM session.
-- [[Planning pull request publication is blocked]]: delivery prerequisite for publication and approval.
+- [[Planning pull request publication is blocked]]: resolved publication record for [PR 15](https://github.com/Zimfra/software_testing/pull/15), including the local authentication limits.
 - [[Audit remediation verification approach]]: test seams included in the proposed plan.
 - [[Repository audit remediation implementation plan]]: execution contract, 26 proposed slices and acceptance checks for owner review.

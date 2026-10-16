@@ -9,7 +9,7 @@ agent: opencode
 status: proposed
 owner: human
 priority: P1
-next_action: Publish this proposed plan for owner review; after its PR is owner-merged, verify approval and use plan-tickets to create the agreed job specs.
+next_action: Owner reviews and merges PR 15; after verifying that merge, record approval and use plan-tickets to create the agreed job specs.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 job_specs: required
@@ -19,6 +19,7 @@ evidence:
   - "OWNER DECISION: after the verification approach was presented, the owner directed the agent to do what it takes to complete the PR for merge and proceed as required; the exact instruction is in the originating idea."
   - "VERIFIED: the research ticket identifies a supported inner SDK provider and records a real Git-bundle experiment preserving candidate identity without transferring source Git configuration, hooks or untracked files."
   - "VERIFIED: structural inspection found 26 unique slices with an acyclic parent graph covering all A01-A22 findings; Fixture Git containment is the first eligible slice."
+  - "VERIFIED: this plan was published for owner review in https://github.com/Zimfra/software_testing/pull/15 with the machine account as author. The plan remains proposed until the owner merges that PR."
   - "INFERRED: the source-supported outer-container design can implement the selected boundary; the first runtime slice must prove containment through a real non-model container test."
   - "UNKNOWN: no live container containment, new verifier receipt, isolated publication or model-backed evaluation result is established by this plan. Plan approval requires the owner's merge of the PR adding it."
 ---

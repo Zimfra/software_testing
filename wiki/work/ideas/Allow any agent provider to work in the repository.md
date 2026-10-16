@@ -9,7 +9,7 @@ agent: opencode
 status: in-review
 owner: human
 priority: P1
-next_action: Publish the reviewed provider-neutral change and planning records through a valid machine-account session; continue the linked audit remediation map.
+next_action: Owner reviews and merges PR 15, which carries the provider-neutral change and proposed audit remediation plan.
 related: ["[[ADR-0026 Any provider may work under shared rules]]", "[[Work with any agent provider]]", "[[Repository audit remediation map]]"]
 evidence:
   - "OWNER DECISION: on 2026-10-16 the owner said: lets change the only claude code to any providor - remove these blocks"
@@ -20,6 +20,7 @@ evidence:
   - "VERIFIED: independent OpenCode standards and spec reviewers inspected 4cb19802c18914e707fbd39d2a45342d9b6a0158. The spec reviewer found stale registration guidance in Maintain the repository wiki and an implicit fallback for a harness built-in; this follow-up corrects both."
   - "VERIFIED: npm run pr at 4cb19802c18914e707fbd39d2a45342d9b6a0158 passed all checks, then refused before pushing because gh auth status reported an invalid stored account. The active login is also a code owner; publication requires a valid machine-account session."
   - "VERIFIED: separate OpenCode standards and spec reviewers reported no remaining findings at 7fd3faa86650ce6e2c4c7874e5204ab87c0b611a. An independent verifier ran npm run check at that head: 762 Node tests and 56 Python tests passed, all guards passed, and the checkout remained clean."
+  - "VERIFIED: the provider-neutral change and planning records were published as PR 15 by the machine account on 2026-10-16; owner merge approval remains pending."
   - "UNKNOWN: native skill discovery and model-backed behavior across providers have not been exercised by this change."
 ---
 
