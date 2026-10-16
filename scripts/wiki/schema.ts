@@ -1,6 +1,6 @@
-// The memory note types and their fixed rules. The open-ended lists (allowed tags and
-// agents) live in the schema document itself, between marker comments, so the document a
-// writer reads and the list the linter enforces cannot drift apart.
+// The memory note types and their fixed rules. Allowed tags live in the schema document
+// between marker comments, so the writer's document and the linter's list cannot drift.
+// Author identifiers are open to every provider and validated by shape, not an allowlist.
 
 export type TypeSpec = { folder: string; sections: readonly string[] };
 

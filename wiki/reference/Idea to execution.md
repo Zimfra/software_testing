@@ -4,7 +4,7 @@ title: Idea to execution
 summary: The path from an idea through a map, an owner-approved plan, build tickets and pull requests, with the skill and record at each step.
 tags: [area/planning, area/agents, kind/overview]
 created: 2026-09-20
-updated: 2026-10-10
+updated: 2026-10-16
 agent: claude-code
 status: active
 related: ["[[Land a change]]", "[[Verify a repository change]]"]
@@ -14,6 +14,11 @@ Capture, clarify, plan, approve, ticket, build, land. Every record is a note und
 `wiki/work/`; its fields and sections are in the wiki-memory skill's `references/note-schema.md`.
 Small, settled changes skip the map and the plan and go straight to a branch.
 
+Every provider can follow these skills through its available tools. ECC's planner and architect
+can assist when installed; otherwise use equivalent analysis in the current harness. Native skill
+discovery and Claude authentication are not prerequisites for the workflow. See
+[[Work with any agent provider]].
+
 | Step | Skill | Record and status | Done when |
 |---|---|---|---|
 | Capture | wiki-memory | Idea in `wiki/work/ideas/`, `backlog` | Problem, desired outcome and next step are written |
@@ -21,7 +26,7 @@ Small, settled changes skip the map and the plan and go straight to a branch.
 | Plan | write-plan | Plan in `wiki/work/plans/`, `proposed` | The plan is committed alone and its pull request is open |
 | Approve | (owner) | Plan becomes `approved`, `approval_ref` set | The owner has merged the pull request that adds the plan |
 | Ticket | plan-tickets | Build tickets in `wiki/work/tickets/`, `plan` links the approved plan | Each ticket has one deliverable and checkable acceptance |
-| Build | ECC TDD workflow, verify-work | Ticket `in-progress`, then `in-review` | Tests pass and each criterion has a verdict |
+| Build | Test-first workflow (ECC when available), verify-work | Ticket `in-progress`, then `in-review` | Tests pass and each criterion has a verdict |
 | Land | manage-branch, `npm run pr` | Ticket `done` with `VERIFIED:` evidence | The owner merges the ticket's pull request |
 
 ## Approval is a merged pull request

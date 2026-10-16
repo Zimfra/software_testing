@@ -4,7 +4,7 @@ title: Verify a repository change
 summary: Run npm run check and the hooks, review read-only with separate reviewer subagents, and record evidence before opening a pull request.
 tags: [area/git, area/agents, area/typescript, tool/ecc]
 created: 2026-09-20
-updated: 2026-10-10
+updated: 2026-10-16
 agent: claude-code
 status: active
 related: ["[[Land a change]]", "[[Change records]]", "[[ADR-0022 Independent review means a separate reviewer context]]"]
@@ -60,12 +60,13 @@ committing or opening a pull request.
    To add or change a checker, follow the `write-guard` skill
    (`.claude/skills/write-guard/SKILL.md`).
 5. Review in a separate context, as
-   [[ADR-0022 Independent review means a separate reviewer context]] defines it. Use the ECC
+   [[ADR-0022 Independent review means a separate reviewer context]] defines it. When available, use the ECC
    reviewers (`ecc:code-reviewer`, `ecc:typescript-reviewer` for TypeScript, and
    `ecc:security-reviewer` for hooks, git, file system or credential code), and the repository's
    `.claude/agents/verifier.md` (read-only, one verdict per acceptance criterion) and
    `.claude/agents/finder.md` (findings on pinned base and head SHAs). A changed head needs a
-   new review.
+   new review. Other harnesses use available independent reviewers following those same briefs;
+   record the actual harness and model and any substitutions. See [[Work with any agent provider]].
 6. Fix findings, rerun `npm run check`, and record the reviewed SHA, the commands and their
    results, and each criterion's verdict in the work record as labelled evidence.
 7. Stage only intended files, keeping wiki files in their own `docs(wiki): ` commit. The git

@@ -31,9 +31,10 @@ separate reviewer context.md`. Steps: `wiki/runbooks/Verify a repository change.
 
 ## Review
 
-- The session or agent that wrote a change never certifies it. Review runs in a separate context: the ECC
-  reviewer agents, `/ecc:review-pr`, or this repository's `finder` and `verifier` agents used together
-  (`.claude/agents/`; the finder reads, the verifier reruns the checks).
+- The session or agent that wrote a change never certifies it. Review runs in a separate context: use
+  available reviewers following this repository's `finder` and `verifier` briefs (`.claude/agents/`;
+  the finder reads, the verifier reruns checks), or ECC reviewers when available. Name the actual
+  harness and model; a substituted reviewer is not an ECC run.
 - Review a pinned commit, not a branch name. A new head needs a new review.
 - A verifier judges the artifact and its own runs, never the implementer's account. It does not edit,
   commit or approve what it judges, and it discloses any self-review.
@@ -45,4 +46,5 @@ separate reviewer context.md`. Steps: `wiki/runbooks/Verify a repository change.
   `package.json` (lines and functions at 80%, branches at 70%); change them only there.
 - **E2E tests.** This repository has no UI. Its end-to-end tests are CLI runs against real temporary git
   repositories (`scripts/test-support/repo-fixture.ts`) plus the broken-fixture controls.
-- **TDD.** ECC's test-first workflow is mandatory, with no exceptions (OWNER DECISION, 2026-10-09).
+- **TDD.** The test-first method is mandatory, with no exceptions (OWNER DECISION, 2026-10-09).
+  Apply it through ECC when available or equivalent tools in the current harness (ADR-0026).

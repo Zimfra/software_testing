@@ -82,6 +82,20 @@ await test("rejects a completed map with an open decision ticket", () => {
   const records = graph(); Object.assign(find(records, "Map").data, { status: "done", evidence: ["OWNER DECISION: answered in the map thread"] });
   assert.match(errors(records), /completed map still has open tickets/);
 });
+await test("a completed map gates its decision tickets, not the plans derived from it", async (t) => {
+  for (const status of ["proposed", "approved", "in-progress"]) {
+    await t.test(status, () => {
+      const records = graph();
+      Object.assign(find(records, "Map").data, { status: "done", evidence: ["OWNER DECISION: all design questions answered"] });
+      Object.assign(find(records, "Decision").data, { status: "done", evidence: ["OWNER DECISION: chose the execution boundary"] });
+      Object.assign(find(records, "Plan").data, { map: "[[Map]]", status });
+      if (status !== "proposed") find(records, "Plan").data.approval_ref = "#12";
+      assert.equal(errors(records), "");
+      find(records, "Decision").data.status = "backlog";
+      assert.match(errors(records), /completed map still has open tickets/);
+    });
+  }
+});
 await test("blocks build tickets before plan approval but accepts an evidenced approved plan", () => {
   const records = graph();
   records.push(record("ticket", "Build", { idea: "[[Idea]]", project: "[[Project]]", plan: "[[Plan]]", ticket_kind: "build" }));

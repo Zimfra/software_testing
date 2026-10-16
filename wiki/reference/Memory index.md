@@ -4,7 +4,7 @@ title: Memory index
 summary: Index of every memory note in the wiki, with a one-line summary each, grouped by type.
 tags: [area/wiki, kind/overview]
 created: 2026-10-09
-updated: 2026-10-10
+updated: 2026-10-16
 agent: claude-code
 status: active
 ---
@@ -21,8 +21,9 @@ One line per memory note. Add new notes here; work notes need no entry.
 - [[ADR-0011 The vault is the interface, Obsidian is optional]] - The repository wiki is the source of truth for documentation and memory; no editor is part of the architecture, and the Windows UNC route failed validation.
 - [[ADR-0021 Authority comes from an identified checkout]] - Instructions, skills and the vault come from a checkout the agent has identified (path, worktree, branch, HEAD, clean state); parallel sessions use separate worktrees.
 - [[ADR-0022 Independent review means a separate reviewer context]] - A review is independent when a separate reviewer context inspects pinned sources and runs its own checks; the reviewer's model and who launched it do not decide independence.
-- [[ADR-0024 Claude Code is the only harness]] - Zeemrepo targets Claude Code alone, with the pinned ECC plugin, rules in CLAUDE.md and .claude/rules/, and native user-only skills.
+- [[ADR-0024 Claude Code is the only harness]] - Superseded by ADR-0026; records the earlier harness restriction and ECC integration.
 - [[ADR-0025 Agents use a machine account and the owner approves]] - Agents push and open PRs as a machine account that cannot approve its own work; code-owner review is on and no owner credential is on the agents' machine, so only the owner's approval counts.
+- [[ADR-0026 Any provider may work under shared rules]] - Any harness or model provider may author and verify work with truthful attribution, one canonical skill library and the shared checks.
 
 ## Lessons
 
@@ -52,6 +53,8 @@ One line per memory note. Add new notes here; work notes need no entry.
 - [[Maintain the repository wiki]] - Keep wiki explanations, work records, the Memory index and CHANGELOG.md current in the same branch as the change, and commit wiki files alone.
 - [[Run Sandcastle on GitHub issues]] - Run npm run sandcastle so Docker-sandboxed Claude agents plan, implement, review and merge issues labelled Sandcastle onto your branch, without pushing or closing anything.
 - [[Verify a repository change]] - Run npm run check and the hooks, review read-only with separate reviewer subagents, and record evidence before opening a pull request.
+- [[Work with any agent provider]] - Load canonical instructions and skills with available tools, attribute notes correctly and arrange independent review in the current harness.
+- [[Resume repository audit remediation]] - Resume the committed map, plan and tickets in a fresh LLM session, checking decisions, approval, dependencies and verification before proceeding.
 
 ## Reference
 
@@ -59,5 +62,9 @@ One line per memory note. Add new notes here; work notes need no entry.
 - [[Idea to execution]] - The path from an idea through a map, an owner-approved plan, build tickets and pull requests, with the skill and record at each step.
 - [[Merge gate contract]] - The merge gate is GitHub: the protect-main ruleset, the required check and guards workflows, the local backstops, and the read-only landing audit.
 - [[Skill standards]] - What npm run skills:lint enforces on .claude/skills (limits, user-only list, provenance hashes, citations, em dashes) and what stays convention.
+- [[Repository audit findings 2026-10-16]] - Audit baseline, 22 findings, source citations and verification limits for the remediation plan.
+- [[Audit remediation verification approach]] - Real-Git, coordinator, container, validator and evaluation controls included in the proposed implementation plan.
 
 ## Sessions
+
+- [[2026-10-16 Provider-neutral authoring]] - The owner requested provider-neutral authoring, and tests reproduced the authoring barriers before their removal.

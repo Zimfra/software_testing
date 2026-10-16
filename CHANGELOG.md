@@ -6,6 +6,22 @@ facts that only exist after the owner merges. `npm run changelog:guard` enforces
 
 ## 2026-10-16
 
+- The proposed remediation implementation plan covers all 22 audit findings in 26 dependency-ordered slices, with required job specs, explicit acceptance controls, a real-container CI gate and a receipt-bound isolation/publication contract. The fresh-session handoff now routes directly to that plan and verifies its owner-merged approval before ticket creation and implementation.
+
+- Wiki work validation now counts only child tickets when deciding whether a completed map still has unfinished work. Proposed, approved and executing plans can follow a completed map without reopening it; real unfinished tickets still block completion. The first plan uses a related map link until this guard fix reaches main, then the approval handoff adds its typed map link.
+
+- The remediation map records fork-only landing assurance after the verified inherited commit before the fork's first PR merge. The fresh-session handoff now asks for meaningful progress updates explaining the current task, its rationale, evidence, blockers and next action. Publication authentication is tracked as a delivery issue so it does not block finishing the design map.
+
+- Isolation research identifies an outer disposable container with the pinned SDK's no-sandbox provider inside it, plus controlled Git-bundle transfer and independent verification. A local bundle experiment preserves commit identity without importing source configuration, hooks or untracked files. The map records the research as source-supported, leaves real container containment unverified, and links a proposed verification approach for owner agreement before the implementation plan.
+
+- The remediation map records the approved partial-failure policy: reviewed successes may proceed into a PR, failed or unreviewed work stays unintegrated, incomplete runs exit nonzero, and retries resume missing phases without duplicate notifications. The history-scope decision becomes the next owner question.
+
+- The remediation map records the owner's full-workflow isolation choice, resolves the boundary decision ticket and adds focused research for a feasible isolated handoff. Partial-failure behavior becomes the next owner decision; the proposed runtime and transfer mechanism still require evidence.
+
+- The audit remediation now has a committed-work structure: a baseline findings inventory, an owning idea and project, a clarifying map, three decision tickets, a publication prerequisite and a fresh-session runbook. The map keeps architectural recommendations unresolved until the owner decides, and the handoff routes another LLM through plan approval, session-sized job specs and independent verification.
+
+- Repository authoring now accepts any agent harness or model provider. `AGENTS.md` points to the shared rules, wiki authors use open kebab-case identifiers, skill adapter files are accepted, and other harness instruction paths are workflow-critical. ADR-0026 records the owner's decision; skills and runbooks describe equivalent tool and reviewer use when ECC is unavailable. Regression tests cover accepted new authors and adapters, retained metadata refusals, and the replacement governance policy.
+
 - The Sandcastle runbook's Prerequisites now carry a bullet, after the `GH_TOKEN` bullet, telling the reader to run the "Token setup" check (step 5), throwaway comment included, before the first loop on a new token, and why: the command only reads, so a token that reads issues but cannot write them passes it and answers 403 only when an agent tries to comment, after the agents have done their work.
 
 ## 2026-10-15

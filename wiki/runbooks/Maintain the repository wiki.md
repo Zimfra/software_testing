@@ -4,7 +4,7 @@ title: Maintain the repository wiki
 summary: Keep wiki explanations, work records, the Memory index and CHANGELOG.md current in the same branch as the change, and commit wiki files alone.
 tags: [area/wiki, area/docs, area/git, kind/convention]
 created: 2026-09-21
-updated: 2026-10-10
+updated: 2026-10-16
 agent: claude-code
 status: active
 related: ["[[Land a change]]", "[[Change records]]", "[[Walkthroughs should not duplicate skill rules]]"]
@@ -63,9 +63,10 @@ records hold scope and evidence. Sessions and superseded decisions are history.
    each guard requires.
 
 7. **Commit wiki files alone.** Stage files by name. Wiki files go in their own commit with a
-   subject starting `docs(wiki): `; everything else goes in other commits. A new tag or agent is
+   subject starting `docs(wiki): `; everything else goes in other commits. A new tag is
    added to the allowlist in `.claude/skills/wiki-memory/references/note-schema.md` in a commit
-   of its own, before the note that uses it. The pre-commit hook refuses a mixed index, and
+   of its own, before the note that uses it. Author identifiers need no registration; follow
+   [[Work with any agent provider]] for attribution. The pre-commit hook refuses a mixed index, and
    `npm run wiki:compliance` refuses a branch whose history mixes them or lacks the subject. A
    merge of `main` may resolve conflicts in wiki and other files at once; every file it changes must be
    one git reported as a content conflict, and every hunk must remove a whole conflict marker set, delete nothing

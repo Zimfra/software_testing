@@ -14,9 +14,10 @@ await test("allowedList is empty when the markers are missing", () => {
   assert.equal(allowedList("- `area/git`", "tags").size, 0);
 });
 
-await test("the repository schema allows only Claude Code and humans as authors", () => {
+await test("the repository schema documents open author identities and controlled tags", () => {
   const schema = readFileSync(join(import.meta.dirname, "../..", WIKI_SCHEMA), "utf8");
-  assert.deepEqual([...allowedList(schema, "agents")].sort(), ["claude-code", "human"]);
+  assert.match(schema, /any provider or harness/);
+  assert.match(schema, /kebab-case/);
   assert.ok(allowedList(schema, "tags").size > 10);
 });
 

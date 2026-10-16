@@ -47,6 +47,21 @@ for (const ending of ["\n", "\r\n"]) {
   });
 }
 
+await test("accepts authors from any provider without registering them in the schema", async (t) => {
+  for (const agent of ["claude-code", "human", "opencode", "codex", "gemini-cli", "github-copilot", "future-agent-27"]) {
+    await t.test(agent, (t) => {
+      const root = fixture(t, validNote.replace("agent: claude-code", `agent: ${agent}`));
+      assert.deepEqual(validateWiki(root, { identity }).errors, []);
+    });
+  }
+});
+
+await test("a tag schema needs no author allowlist", (t) => {
+  const root = fixture(t, validNote.replace("agent: claude-code", "agent: future-agent"));
+  writeFileSync(join(root, WIKI_SCHEMA), "<!-- tags:start -->\n- `kind/convention`\n<!-- tags:end -->\n");
+  assert.deepEqual(validateWiki(root, { identity }).errors, []);
+});
+
 const invalidCases: [string, string, RegExp][] = [
   ["missing frontmatter", "Recorded facts.\n", /missing YAML frontmatter/],
   ["malformed closing delimiter", validNote.replace("\n---\n", "\n---oops\n"), /unterminated/],
@@ -66,8 +81,6 @@ const invalidCases: [string, string, RegExp][] = [
   ["memory status", validNote.replace("status: active", "status: done"), /status must be one of active/],
   ["missing replacement", validNote.replace("status: active", "status: superseded"), /superseded_by/],
   ["broken link", validNote + "\n[[Missing note]]\n", /broken wikilink/],
-  ["unrecognised agent", validNote.replace("agent: claude-code", "agent: claude"), /allowed agent/],
-  ["retired agent", validNote.replace("agent: claude-code", "agent: codex"), /allowed agent/],
   ["non-kebab agent", validNote.replace("agent: claude-code", "agent: Claude Code"), /kebab-case/],
 ];
 // Each case must fail for exactly the reason it names: a regex over all errors would also
@@ -172,12 +185,12 @@ await test("an unknown type does not skip the index check", (context) => {
   assert.match(errors, /not indexed/);
 });
 
-await test("rejects a missing Home and a schema without allowlists", (context) => {
+await test("rejects a missing Home and a schema without allowed tags", (context) => {
   const root = fixture(context);
   rmSync(join(root, "wiki/Home.md"));
   writeFileSync(join(root, WIKI_SCHEMA), "# no markers\n");
   const errors = errorsOf(root);
-  for (const expected of [/missing index/, /no allowed tags/, /no allowed agents/]) assert.match(errors, expected);
+  for (const expected of [/missing index/, /no allowed tags/]) assert.match(errors, expected);
 });
 
 await test("rejects notes absent from Home", (context) => {
