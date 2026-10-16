@@ -105,6 +105,9 @@ are created only from such a plan. Ready or executing tickets require completed 
 A blocked item names its blocker; done needs evidence. Use superseded_by for superseded
 records. The backlog is the view of records with status backlog, not another document.
 
+A completed map has no unfinished child tickets. A plan derived from it may still be proposed,
+approved or executing: the downstream plan does not reopen the map's resolved decisions.
+
 Update the owning record, status, next_action, updated date, relationships, and evidence
 when a skill session changes them. Keep the decision or deliverable in one canonical note;
 map and plan sections link to ticket notes rather than copying their bodies. Session notes

@@ -6,6 +6,10 @@ facts that only exist after the owner merges. `npm run changelog:guard` enforces
 
 ## 2026-10-16
 
+- The proposed remediation implementation plan covers all 22 audit findings in 26 dependency-ordered slices, with required job specs, explicit acceptance controls, a real-container CI gate and a receipt-bound isolation/publication contract. The fresh-session handoff now routes directly to that plan and verifies its owner-merged approval before ticket creation and implementation.
+
+- Wiki work validation now counts only child tickets when deciding whether a completed map still has unfinished work. Proposed, approved and executing plans can follow a completed map without reopening it; real unfinished tickets still block completion. The first plan uses a related map link until this guard fix reaches main, then the approval handoff adds its typed map link.
+
 - The remediation map records fork-only landing assurance after the verified inherited commit before the fork's first PR merge. The fresh-session handoff now asks for meaningful progress updates explaining the current task, its rationale, evidence, blockers and next action. Publication authentication is tracked as a delivery issue so it does not block finishing the design map.
 
 - Isolation research identifies an outer disposable container with the pinned SDK's no-sandbox provider inside it, plus controlled Git-bundle transfer and independent verification. A local bundle experiment preserves commit identity without importing source configuration, hooks or untracked files. The map records the research as source-supported, leaves real container containment unverified, and links a proposed verification approach for owner agreement before the implementation plan.
