@@ -6,6 +6,8 @@ facts that only exist after the owner merges. `npm run changelog:guard` enforces
 
 ## 2026-10-16
 
+- The remediation handoff now records verified plan approval, restores the typed map relationship after the validator fix, and advances the next session to creating the agreed job specs. Publication records distinguish the completed planning delivery from the remaining local credential-profile cleanup.
+
 - The proposed remediation implementation plan covers all 22 audit findings in 26 dependency-ordered slices, with required job specs, explicit acceptance controls, a real-container CI gate and a receipt-bound isolation/publication contract. The fresh-session handoff now routes directly to that plan and verifies its owner-merged approval before ticket creation and implementation.
 
 - Wiki work validation now counts only child tickets when deciding whether a completed map still has unfinished work. Proposed, approved and executing plans can follow a completed map without reopening it; real unfinished tickets still block completion. The first plan uses a related map link until this guard fix reaches main, then the approval handoff adds its typed map link.
