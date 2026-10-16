@@ -32,6 +32,19 @@ The owner selected full-workflow isolation with a controlled host import. Record
 The owner approved the partial-failure policy in [[Define Sandcastle partial-failure outcomes]].
 Recorded the four approved behaviors and advanced the map to the history-scope decision.
 
+The owner selected fork-only auditing and requested detailed progress explanations. Verified
+the inherited starting commit against Git history and the fork's first merged PR, recorded the
+scope in [[Choose the landing audit history scope]], and added the reporting preference to the
+fresh-session handoff. Began the isolated-handoff feasibility research.
+
+Moved the publication prerequisite to [[Planning pull request publication is blocked]] and
+superseded its map ticket: a delivery authentication issue should not block design-map completion.
+
+Source research identified the SDK's no-sandbox provider as a supported inner runtime for an
+outer disposable container. A temporary Git experiment preserved the exported commit SHA,
+rejected a missing-prerequisite bundle, and transferred no source config, hook or untracked file.
+Recorded the research limits and [[Audit remediation verification approach]] for owner agreement.
+
 ## Outcome
 
 The implementation and verification are tracked in the originating idea. The work was authored
@@ -43,5 +56,5 @@ ECC-rules guards also passed against the changed tree.
 
 The provider-neutral change passed independent review at 7fd3faa. Resolve the decisions in
 [[Repository audit remediation map]], verify the planning records and publish through the machine
-account. The execution-boundary target and failure policy are selected; isolation feasibility and
-history scope remain open.
+account. The map choices and source-level research are resolved. Agreement on test seams,
+live containment proof in implementation and publication authentication remain open.

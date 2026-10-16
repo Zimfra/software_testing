@@ -9,7 +9,7 @@ agent: opencode
 status: clarifying
 owner: human
 priority: P1
-next_action: Resolve audit-history scope, establish a feasible isolated handoff using the approved failure policy, and clear the machine-account publication prerequisite.
+next_action: Agree the proposed verification approach, write the remediation plan and slices, and resolve the delivery authentication issue before opening the planning PR.
 idea: "[[Execute the repository audit remediation]]"
 evidence:
   - "OWNER DECISION: on 2026-10-16 the owner requested committed planning, a pull request and execution by another LLM in a separate terminal session."
@@ -27,11 +27,15 @@ and let a fresh LLM implement a bounded slice without inventing decisions or rel
   establish its feasible implementation through the linked research ticket.
 - Apply the approved behavior in [[Define Sandcastle partial-failure outcomes]] to run outcomes,
   per-issue integration and recovery.
+- Limit landing assurance to the fork and verified boundary recorded in
+  [[Choose the landing audit history scope]].
 - Resolve the choices that change implementation, then write the proposed plan with test seams
   and dependency-linked implementation slices.
 - Propose `job_specs: required` so build tickets carry inputs, file boundaries, tests, recovery,
   evidence and human checkpoints. Agree the ticket breakdown before creating them.
 - Keep the existing branch, test-first, independent-review and owner-merge workflow.
+- Give meaningful progress updates explaining the current task, why it matters, the evidence
+  found, any concrete blocker and the next action, following the fresh-session runbook.
 
 ## Acceptance criteria
 
@@ -50,3 +54,5 @@ and let a fresh LLM implement a bounded slice without inventing decisions or rel
 - [[Repository audit remediation map]]: decisions and the next planning action.
 - [[Repository audit findings 2026-10-16]]: baseline findings and evidence limits.
 - [[Resume repository audit remediation]]: entry point for a different LLM session.
+- [[Planning pull request publication is blocked]]: delivery prerequisite for publication and approval.
+- [[Audit remediation verification approach]]: proposed test seams awaiting owner agreement.

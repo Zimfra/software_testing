@@ -1,22 +1,24 @@
 ---
 type: map
 title: Repository audit remediation map
-summary: Isolation and partial-failure behavior are selected; resolve audit-history scope and establish a feasible isolated handoff before writing the remediation plan.
+summary: The owner choices and source-level isolation research are resolved; confirm the proposed verification approach before writing the remediation plan.
 tags: [area/planning, area/agents]
 created: 2026-10-16
 updated: 2026-10-16
 agent: opencode
-status: clarifying
+status: done
 owner: human
 priority: P1
-next_action: Work through Choose the landing audit history scope with the owner; the isolated-handoff research can proceed independently.
+next_action: Confirm Audit remediation verification approach with the owner, then use write-plan to record the proposed implementation slices.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 evidence:
   - "VERIFIED: the repository's Idea to execution workflow requires decisions to be settled before write-plan and an owner-merged plan before plan-tickets."
   - "OWNER DECISION: the owner selected full-workflow isolation on 2026-10-16; the answer is recorded in Choose the Sandcastle execution boundary."
   - "OWNER DECISION: on 2026-10-16 the owner approved the partial-failure policy recorded in Define Sandcastle partial-failure outcomes."
-  - "UNKNOWN: audit-history scope remains unresolved and the isolated-handoff design still needs research. No remediation plan is approved."
+  - "OWNER DECISION: on 2026-10-16 the owner selected fork-only auditing in Choose the landing audit history scope."
+  - "VERIFIED: the research ticket establishes supported SDK APIs and a tested Git bundle primitive, with live containment and the new publication path explicitly unverified."
+  - "UNKNOWN: the owner has not yet agreed the proposed test seams, and no remediation plan is approved. Docker is unavailable for a live containment check here."
 ---
 
 ## Destination
@@ -39,13 +41,13 @@ The current branch also carries the provider-neutral authoring prerequisite. Its
 [[ADR-0026 Any provider may work under shared rules]]. A different provider can use these records;
 capability-specific runtime checks still require their real tools.
 
+[[Planning pull request publication is blocked]] tracks the delivery prerequisite separately:
+authentication is required to publish, not to resolve the design map or draft the proposed plan.
+
 ## Open decisions
 
-- [[Choose the landing audit history scope]]: owner chooses what historical provenance to preserve.
-  Work this next.
-- [[Establish a feasible isolated Sandcastle handoff]]: an agent establishes a supported design
-  for the chosen boundary and identifies remaining owner choices.
-- [[Restore machine-account publication access]]: owner resolves the manual prerequisite for the PR.
+No map decision remains open. The `write-plan` preflight still needs owner agreement on
+[[Audit remediation verification approach]]. Publication is tracked by the delivery issue above.
 
 ## Decisions so far
 
@@ -54,21 +56,28 @@ capability-specific runtime checks still require their real tools.
 - [[Define Sandcastle partial-failure outcomes]]: reviewed successes may proceed, failed work
   stays unintegrated, incomplete runs exit nonzero and retries resume missing phases without
   duplicate notifications; owner approved on 2026-10-16.
+- [[Choose the landing audit history scope]]: audit only the fork after its verified inherited
+  starting commit; owner selected on 2026-10-16.
+- [[Establish a feasible isolated Sandcastle handoff]]: source-supported outer-container design
+  with inner no-sandbox execution and exact-SHA bundles; live containment proof is required in
+  the implementation, not claimed by the research.
 
 The owner has also specified the handoff destination: committed planning reviewed through a
 pull request, then execution by another LLM in a different session.
 
 ## Not yet specified
 
-- The exact run-result format and recovery state required by the selected failure policy.
-- The history representation required by the selected audit scope.
-- The final slice boundaries and dependency graph, including any necessary prefactors.
-- Which low-impact findings the owner may choose to defer after seeing the proposed breakdown.
+The proposed plan must specify the run-result and recovery contract, slice boundaries and real
+dependencies within the selected behavior. The first isolation slice must establish a real
+container test; source research does not satisfy that implementation criterion. All A01-A22
+findings remain in scope, with no owner-approved deferral.
 
 ## Out of scope
 
 - Automatically approving or merging changes: ownership stays with the human.
 - Provider runtime ports: the authoring prerequisite permits other harnesses but does not port
   Sandcastle or the live compliance runner to another model API.
+- Inherited upstream landing history at and before the verified fork boundary, per the owner's
+  fork-only audit choice.
 - Live paid model evaluations or credential changes without explicit authorization for the run.
 - Unrelated cleanup or a second issue-tracking system.

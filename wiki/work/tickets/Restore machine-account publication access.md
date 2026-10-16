@@ -1,16 +1,15 @@
 ---
 type: ticket
 title: Restore machine-account publication access
-summary: Establish a valid machine-account GitHub session so the planning branch can be published through the repository's PR tool.
+summary: Superseded by the publication issue because authentication blocks delivery, not the map's design decisions.
 tags: [area/auth, area/github, tool/gh]
 created: 2026-10-16
 updated: 2026-10-16
 agent: opencode
-status: blocked
+status: superseded
+superseded_by: "[[Planning pull request publication is blocked]]"
 owner: human
 priority: P1
-next_action: The owner fixes the invalid stored GitHub account and authenticates the intended machine account, then the agent rechecks publication readiness.
-blocker: GitHub CLI reports an invalid stored account and the active login is a code owner; the owner must establish a valid machine-account session.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 ticket_kind: prerequisite
@@ -45,5 +44,7 @@ should not remove credentials, switch identities or bypass the refusal on the ow
 
 ## Resolution
 
-Blocked pending owner action. Once verified, record the commands' nonsecret results and the
-planning PR URL. Creating the PR is not owner approval of the plan.
+Superseded on 2026-10-16 by [[Planning pull request publication is blocked]]. Authentication
+blocks publishing the plan and obtaining its owner-merged approval; it does not block finishing
+the design map. The issue now owns the blocker and its verification. No authentication repair
+or publication is claimed by this change in tracking.

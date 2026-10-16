@@ -36,7 +36,8 @@ All authoritative work state lives in the repository. The original chat is not a
    evidence and a recommendation. Recommendations in tickets are not decisions.
 2. **Write the plan only after decisions are resolved.** Use `write-plan`, agree the test seams
    with the owner and record a proposed plan with bounded implementation slices. Give every audit
-   finding a slice or an explicit deferral. Link the new plan from the project and map.
+   finding a slice or an explicit deferral. Read [[Audit remediation verification approach]];
+   its draft status means that owner agreement is pending. Link the new plan from the project and map.
 3. **Verify plan approval before ticket creation.** Follow [[Idea to execution]]. The owner must
    merge the PR adding the plan. Inspect GitHub's actual state and merger; record the real PR in
    `approval_ref`. A status written by an agent is insufficient. If approval is absent, stop at
@@ -63,6 +64,20 @@ All authoritative work state lives in the repository. The original chat is not a
    Record the actual PR URL when available. Only the owner approves and merges. Leave the branch,
    commit, completed criteria, remaining blockers and next eligible ticket in the handoff.
 
+## Progress updates
+
+The owner requested detailed explanations of what is being worked on and why on 2026-10-16.
+At the start of a meaningful task and when a result or blocker changes the next action, explain:
+
+- The current ticket and the behavior or planning question being worked on.
+- Why it matters, which finding it addresses and what depends on its result.
+- The evidence obtained so far, distinguishing inspected source, tested behavior and proposals.
+- What remains unresolved and the next concrete action or owner decision.
+
+Keep updates specific to the work rather than narrating each file read or command. The final
+handoff names commits, check results, publication status and the next eligible ticket so another
+session can resume reliably.
+
 ## Verify
 
 - A fresh session can locate the project, map and current ticket through their links and metadata.
@@ -82,7 +97,8 @@ Paste this in a fresh LLM session opened at the repository checkout:
 ```text
 Read AGENTS.md and CLAUDE.md, then load wiki-memory. Follow
 wiki/runbooks/Resume repository audit remediation.md. Identify the checkout and current
-work state, read the project and map, and continue one unblocked decision or approved build
-ticket appropriate to the current phase. Use the repository's skills and independent review.
-Do not infer owner decisions or approval. Leave committed evidence and a concrete next action.
+work state, read the project and map, and follow their recorded next action for the current phase:
+one decision, a plan or ticket-preparation step, or one approved unblocked build ticket. Observe
+the approval gates in the runbook. Use the repository's skills and independent review. Do not
+infer owner decisions or approval. Leave committed evidence and a concrete next action.
 ```
