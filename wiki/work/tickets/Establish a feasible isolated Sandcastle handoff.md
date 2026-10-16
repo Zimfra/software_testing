@@ -32,8 +32,10 @@ agent-controlled executable configuration or commands?
 Start with finding A01 and its pinned upstream sources in [[Repository audit findings 2026-10-16]].
 Inspect `.sandcastle/main.ts`, `scripts/sandcastle/afk.ts`, `scripts/git/pr-ready.ts` and the locked
 SDK. The current publication path runs checks on the host, so its integration with isolated check
-results must be explained rather than assumed. The exact recovery-result format depends on the
-still-open partial-failure decision.
+results must be explained rather than assumed. Design recovery results around the approved
+policy in [[Define Sandcastle partial-failure outcomes]]: reviewed successes may proceed while
+failed work stays unintegrated, and retries preserve completed work without duplicate notifications.
+Bind any reused check and review evidence to the candidate commit it actually verified.
 
 ## Options
 

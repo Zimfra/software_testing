@@ -1,15 +1,15 @@
 ---
 type: ticket
 title: Define Sandcastle partial-failure outcomes
-summary: Decide when a run is successful, what may be integrated after a failed phase, and how a later session recovers unfinished work.
+summary: The owner approved reviewed successes proceeding, failed work staying unintegrated, incomplete runs exiting nonzero, and retries resuming missing phases without duplicate notifications.
 tags: [area/planning, area/agents]
 created: 2026-10-16
 updated: 2026-10-16
 agent: opencode
-status: backlog
+status: done
 owner: human
 priority: P1
-next_action: Ask the owner whether reviewed successes may proceed while failed work stays unintegrated and the overall run reports incomplete.
+next_action: Carry the approved behavior into the isolated-handoff research, run-result design and eventual implementation slices.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 ticket_kind: decision
@@ -18,6 +18,7 @@ depends_on: []
 evidence:
   - "VERIFIED: the audit evaluated the actual loop with mocked SDK failures; ten rejected sandbox creations ended with All done, and the wrapper's unchanged-state path returned exit 0."
   - "VERIFIED: .sandcastle/main.ts can pass leftover branches to the merger, and the AFK work record acknowledges total-failure success and notification retry limits."
+  - "OWNER DECISION: on 2026-10-16 the owner replied 'approved' to the four-part partial-failure policy recorded in Resolution. This resolves the behavior decision, not approval of a remediation plan."
 ---
 
 ## Question
@@ -49,5 +50,16 @@ or wholly blocked queue separate from failed execution, and report the latter cl
 
 ## Resolution
 
-Unresolved. Record the chosen behavior and any exceptions with the owner's words and date.
-Do not infer approval for automatic issue comments or unreviewed integration from this recommendation.
+OWNER DECISION: on 2026-10-16 the owner replied **"approved"** to this proposed policy:
+
+- Successful, checked and reviewed issues may proceed into a PR.
+- Failed or unreviewed issues remain unintegrated.
+- The overall run reports incomplete with a nonzero exit, naming what failed.
+- Retries resume missing phases, preserving completed work and avoiding duplicate notifications.
+
+For example, if issue A passes review and issue B fails review, A may proceed while B stays
+blocked and the run reports incomplete. Owner approval and merging of the resulting PR remain
+separate from these execution outcomes.
+
+The concrete run-result format, exit-code mapping and retry scheduling still need design and
+tests. [[Establish a feasible isolated Sandcastle handoff]] must account for this approved policy.

@@ -9,7 +9,7 @@ agent: opencode
 status: clarifying
 owner: human
 priority: P1
-next_action: Resolve partial-failure behavior and audit-history scope, and establish the isolated-handoff design before writing the proposed remediation plan.
+next_action: Resolve audit-history scope and establish the isolated-handoff design before writing the proposed remediation plan.
 project: "[[Repository audit remediation]]"
 evidence:
   - "OWNER DECISION: on 2026-10-16 the owner said: yes the goal is to take this planning, commit into the repo with a pull request, and for the planning to be executred by another llm in a different terminal session maybe claude for example"
@@ -18,7 +18,9 @@ evidence:
   - "VERIFIED: independent review of 7c2b7c6bc0da50eb954a4ce2b3d63e895db7ae35 found two handoff ambiguities. The follow-up explicitly preserves the existing documentation-only landing default for the host-hardening option and makes job-spec approval conditional on the plan requiring job specs."
   - "OWNER DECISION: on 2026-10-16 the owner selected full-workflow isolation with a controlled host import; Choose the Sandcastle execution boundary records the verbatim answer."
   - "VERIFIED: after recording the isolation decision and its research follow-up, npm run check exited 0 on Node 24.22.0 with 762 Node tests and 56 Python tests passing; wiki-lint validated 66 notes and all repository guards passed."
-  - "UNKNOWN: partial-failure policy and landing-audit history scope remain open, and isolation feasibility needs research. No remediation plan is approved."
+  - "OWNER DECISION: on 2026-10-16 the owner replied 'approved' to the partial-failure policy recorded in Define Sandcastle partial-failure outcomes."
+  - "VERIFIED: after recording the partial-failure approval and updating the handoff, npm run check exited 0 on Node 24.22.0 with 762 Node tests, 56 Python tests and all repository guards passing."
+  - "UNKNOWN: landing-audit history scope remains open and isolation feasibility needs research. No remediation plan is approved."
 ---
 
 ## Problem

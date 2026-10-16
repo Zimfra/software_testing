@@ -29,6 +29,9 @@ The owner selected full-workflow isolation with a controlled host import. Record
 [[Choose the Sandcastle execution boundary]], updated the map's frontier and opened
 [[Establish a feasible isolated Sandcastle handoff]] for the remaining factual design question.
 
+The owner approved the partial-failure policy in [[Define Sandcastle partial-failure outcomes]].
+Recorded the four approved behaviors and advanced the map to the history-scope decision.
+
 ## Outcome
 
 The implementation and verification are tracked in the originating idea. The work was authored
@@ -40,5 +43,5 @@ ECC-rules guards also passed against the changed tree.
 
 The provider-neutral change passed independent review at 7fd3faa. Resolve the decisions in
 [[Repository audit remediation map]], verify the planning records and publish through the machine
-account. The execution-boundary target is selected; feasibility, failure behavior and history
-scope remain open.
+account. The execution-boundary target and failure policy are selected; isolation feasibility and
+history scope remain open.

@@ -1,7 +1,7 @@
 ---
 type: map
 title: Repository audit remediation map
-summary: Full-workflow isolation is selected; resolve failure behavior and audit-history scope and establish a feasible isolated handoff before writing the remediation plan.
+summary: Isolation and partial-failure behavior are selected; resolve audit-history scope and establish a feasible isolated handoff before writing the remediation plan.
 tags: [area/planning, area/agents]
 created: 2026-10-16
 updated: 2026-10-16
@@ -9,13 +9,14 @@ agent: opencode
 status: clarifying
 owner: human
 priority: P1
-next_action: Work through Define Sandcastle partial-failure outcomes with the owner; the isolated-handoff research can proceed independently.
+next_action: Work through Choose the landing audit history scope with the owner; the isolated-handoff research can proceed independently.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 evidence:
   - "VERIFIED: the repository's Idea to execution workflow requires decisions to be settled before write-plan and an owner-merged plan before plan-tickets."
   - "OWNER DECISION: the owner selected full-workflow isolation on 2026-10-16; the answer is recorded in Choose the Sandcastle execution boundary."
-  - "UNKNOWN: partial-failure behavior and audit-history scope remain unresolved, and the isolated-handoff design still needs research. No remediation plan is approved."
+  - "OWNER DECISION: on 2026-10-16 the owner approved the partial-failure policy recorded in Define Sandcastle partial-failure outcomes."
+  - "UNKNOWN: audit-history scope remains unresolved and the isolated-handoff design still needs research. No remediation plan is approved."
 ---
 
 ## Destination
@@ -40,9 +41,8 @@ capability-specific runtime checks still require their real tools.
 
 ## Open decisions
 
-- [[Define Sandcastle partial-failure outcomes]]: owner chooses the meaning of successful,
-  incomplete and recoverable work. Work this next.
 - [[Choose the landing audit history scope]]: owner chooses what historical provenance to preserve.
+  Work this next.
 - [[Establish a feasible isolated Sandcastle handoff]]: an agent establishes a supported design
   for the chosen boundary and identifies remaining owner choices.
 - [[Restore machine-account publication access]]: owner resolves the manual prerequisite for the PR.
@@ -51,6 +51,9 @@ capability-specific runtime checks still require their real tools.
 
 - [[Choose the Sandcastle execution boundary]]: isolate the complete workflow in a disposable
   environment and import changes through a controlled host step; owner selected on 2026-10-16.
+- [[Define Sandcastle partial-failure outcomes]]: reviewed successes may proceed, failed work
+  stays unintegrated, incomplete runs exit nonzero and retries resume missing phases without
+  duplicate notifications; owner approved on 2026-10-16.
 
 The owner has also specified the handoff destination: committed planning reviewed through a
 pull request, then execution by another LLM in a different session.
