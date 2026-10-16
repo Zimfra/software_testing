@@ -21,6 +21,10 @@ and observed their failures before updating the checks. Recorded the owner's pol
 [[ADR-0026 Any provider may work under shared rules]] and the workflow in
 [[Work with any agent provider]].
 
+The owner then requested committed planning and a pull-request handoff for execution by a
+different LLM session. Recorded the baseline inventory, project, map, three unresolved decisions,
+publication prerequisite and [[Resume repository audit remediation]].
+
 ## Outcome
 
 The implementation and verification are tracked in the originating idea. The work was authored
@@ -30,6 +34,6 @@ ECC-rules guards also passed against the changed tree.
 
 ## Open items
 
-Complete independent review, publish through the machine account, and return
-to the audit remediation map. The provider-neutral policy does not decide the map's architecture
-or failure-handling questions.
+The provider-neutral change passed independent review at 7fd3faa. Resolve the decisions in
+[[Repository audit remediation map]], verify the planning records and publish through the machine
+account. The provider-neutral policy does not decide the map's architecture or failure-handling questions.

@@ -6,11 +6,11 @@ tags: [area/agents, area/wiki, area/compliance]
 created: 2026-10-16
 updated: 2026-10-16
 agent: opencode
-status: in-progress
+status: in-review
 owner: human
 priority: P1
-next_action: Obtain independent review of the committed change, then publish through the machine account and resume the audit remediation map.
-related: ["[[ADR-0026 Any provider may work under shared rules]]", "[[Work with any agent provider]]"]
+next_action: Publish the reviewed provider-neutral change and planning records through a valid machine-account session; continue the linked audit remediation map.
+related: ["[[ADR-0026 Any provider may work under shared rules]]", "[[Work with any agent provider]]", "[[Repository audit remediation map]]"]
 evidence:
   - "OWNER DECISION: on 2026-10-16 the owner said: lets change the only claude code to any providor - remove these blocks"
   - "VERIFIED: before implementation, the five targeted Node test files reported 158 tests, 143 passing and 15 failing entries, including parent subtests; failures exposed author rejection, adapter-file rejection, missing workflow-critical paths and stale governance policy."
@@ -19,6 +19,7 @@ evidence:
   - "VERIFIED: the wiki, skill, governance and ECC-rules guards from main at 616a4ea59f84885cae294f0aa5f31dd9dffac129 each exit 0 against the updated tree. The schema examples let the old wiki guard recognize this branch's author while the new guard accepts unregistered identifiers."
   - "VERIFIED: independent OpenCode standards and spec reviewers inspected 4cb19802c18914e707fbd39d2a45342d9b6a0158. The spec reviewer found stale registration guidance in Maintain the repository wiki and an implicit fallback for a harness built-in; this follow-up corrects both."
   - "VERIFIED: npm run pr at 4cb19802c18914e707fbd39d2a45342d9b6a0158 passed all checks, then refused before pushing because gh auth status reported an invalid stored account. The active login is also a code owner; publication requires a valid machine-account session."
+  - "VERIFIED: separate OpenCode standards and spec reviewers reported no remaining findings at 7fd3faa86650ce6e2c4c7874e5204ab87c0b611a. An independent verifier ran npm run check at that head: 762 Node tests and 56 Python tests passed, all guards passed, and the checkout remained clean."
   - "UNKNOWN: native skill discovery and model-backed behavior across providers have not been exercised by this change."
 ---
 

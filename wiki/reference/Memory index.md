@@ -54,6 +54,7 @@ One line per memory note. Add new notes here; work notes need no entry.
 - [[Run Sandcastle on GitHub issues]] - Run npm run sandcastle so Docker-sandboxed Claude agents plan, implement, review and merge issues labelled Sandcastle onto your branch, without pushing or closing anything.
 - [[Verify a repository change]] - Run npm run check and the hooks, review read-only with separate reviewer subagents, and record evidence before opening a pull request.
 - [[Work with any agent provider]] - Load canonical instructions and skills with available tools, attribute notes correctly and arrange independent review in the current harness.
+- [[Resume repository audit remediation]] - Resume the committed map, plan and tickets in a fresh LLM session, checking decisions, approval, dependencies and verification before proceeding.
 
 ## Reference
 
@@ -61,6 +62,7 @@ One line per memory note. Add new notes here; work notes need no entry.
 - [[Idea to execution]] - The path from an idea through a map, an owner-approved plan, build tickets and pull requests, with the skill and record at each step.
 - [[Merge gate contract]] - The merge gate is GitHub: the protect-main ruleset, the required check and guards workflows, the local backstops, and the read-only landing audit.
 - [[Skill standards]] - What npm run skills:lint enforces on .claude/skills (limits, user-only list, provenance hashes, citations, em dashes) and what stays convention.
+- [[Repository audit findings 2026-10-16]] - Audit baseline, 22 findings, source citations and verification limits for the remediation plan.
 
 ## Sessions
 
