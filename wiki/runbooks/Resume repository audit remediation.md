@@ -41,13 +41,15 @@ All authoritative work state lives in the repository. The original chat is not a
    merge the PR adding the plan. Inspect GitHub's actual state and merger; record the real PR in
    `approval_ref`. A status written by an agent is insufficient. If approval is absent, stop at
    the proposed plan and name the pending action.
-4. **Create the agreed job specs.** Use `plan-tickets`, showing the owner the numbered breakdown,
+4. **Create the agreed build tickets.** Use `plan-tickets`, showing the owner the numbered breakdown,
    dependencies and delivered behavior before creation unless that breakdown is already approved.
    Each ticket has one deliverable and fits a fresh context. When `job_specs: required` is set,
    include every required section and obtain the owner's job-spec approval before implementation.
-5. **Select one executable ticket.** Its plan and job spec must be approved and its dependencies
-   completed. Read its Inputs, Allowed files, Forbidden files and Human checkpoints. If its scope
-   or required capability is unclear, record the blocker instead of substituting an assumption.
+5. **Select one executable ticket.** Its plan must be approved and its dependencies completed.
+   Read its Goal, Approach, Acceptance criteria and Out of scope. If the plan requires job specs,
+   also verify the job-spec approval and read Inputs, Allowed files, Forbidden files and Human
+   checkpoints. If scope or a required capability is unclear, record the blocker instead of
+   substituting an assumption.
 6. **Implement test-first.** Follow `manage-branch`, then ECC's TDD method or its equivalent. Use
    `write-guard` for guard changes. Reproduce the original failure in disposable fixtures, observe
    a failing regression control, implement the smallest slice and run its acceptance commands

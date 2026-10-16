@@ -15,6 +15,7 @@ evidence:
   - "OWNER DECISION: on 2026-10-16 the owner said: yes the goal is to take this planning, commit into the repo with a pull request, and for the planning to be executred by another llm in a different terminal session maybe claude for example"
   - "VERIFIED: the audit inspected 616a4ea59f84885cae294f0aa5f31dd9dffac129; the provider-neutral authoring prerequisite is implemented locally at 7fd3faa86650ce6e2c4c7874e5204ab87c0b611a, with independent review and a passing full check recorded in the preceding work."
   - "VERIFIED: after adding the map, tickets, inventory and fresh-session runbook, npm run check exited 0 on Node 24.22.0 with 762 Node tests and 56 Python tests passing; wiki-lint validated 65 notes and every repository guard passed."
+  - "VERIFIED: independent review of 7c2b7c6bc0da50eb954a4ce2b3d63e895db7ae35 found two handoff ambiguities. The follow-up explicitly preserves the existing documentation-only landing default for the host-hardening option and makes job-spec approval conditional on the plan requiring job specs."
   - "UNKNOWN: the owner has not yet chosen the execution boundary, partial-failure policy or landing-audit history scope. No remediation plan is approved."
 ---
 

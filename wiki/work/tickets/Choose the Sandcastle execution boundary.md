@@ -32,6 +32,11 @@ See finding A01 in [[Repository audit findings 2026-10-16]]. The wrapper's check
 cleanup, so changing only that wrapper's order cannot protect earlier host-side operations.
 Giving each agent a different worktree is also insufficient when the worktrees share Git metadata.
 
+[[Sandcastle runs unattended and lands by pull request]] also records a separate execution-policy
+question: the landing step runs `npm run check` on the host. Its current default permits unattended
+landing only for documentation; running agent-written code requires the owner's explicit
+`SANDCASTLE_AFK_LAND_CODE=1` opt-in. Git hardening does not resolve that code-execution boundary.
+
 ## Options
 
 1. **Isolate the complete workflow.** Put the coordinator, agent-side Git operations and checks
@@ -41,7 +46,8 @@ Giving each agent a different worktree is also insufficient when the worktrees s
 2. **Harden the current host workflow.** Keep the SDK architecture and disarm executable Git
    configuration and hooks at every host-side operation, including cleanup and failure paths.
    This may be a smaller initial change, but correctness depends on complete SDK coverage and
-   maintaining it across upgrades.
+   maintaining it across upgrades. Preserve the current documentation-only landing default and
+   explicit code opt-in unless the owner separately chooses and records a different policy.
 
 ## Recommendation
 
