@@ -88,3 +88,5 @@ Record red/green output, the fixture and decoy state comparisons, exact SHAs and
 ## Wiki and doc updates
 
 Update the routing lesson only with observed behavior and update this ticket's status, next action and completion PR.
+
+- [no-doc-change: no decision, reference or runbook states the routing rule; it lives in scripts/lib/git.ts and the routing lesson, which this branch updates, and npm run pr behaves as before because it passes no cwd]
