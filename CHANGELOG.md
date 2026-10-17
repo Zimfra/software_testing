@@ -4,6 +4,10 @@ Every branch adds its own entry here, under a `## YYYY-MM-DD` heading dated betw
 started and the day it lands (UTC). Entries describe the change; they never cite
 facts that only exist after the owner merges. `npm run changelog:guard` enforces this.
 
+## 2026-10-17
+
+- The compliance harness tests no longer hand a child process the caller's environment. The scenario-setup test passed `setup_sandbox` a runner that inherited `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` and injected configuration, so under a hook its `git init` and shell setup commands could act on another repository (audit finding A02). Every Python test spawn now passes `run_comply.isolated_env`, and a new `evals/compliance/test_fixture_env.py`, the Python twin of `scripts/toolchain/fixture-env.test.ts`, refuses any spawn in `evals/compliance/test_*.py` without it, renamed or aliased spawners included. Its decoy-repository controls show that the old runner rewrites a decoy named by inherited routing and that the isolated runner initialises the fixture and leaves the decoy's HEAD, refs, configuration, index and files unchanged.
+
 ## 2026-10-16
 
 - The approved audit plan now links 26 proposed build-ticket job specs with file boundaries, parent dependencies, concrete acceptance controls, human checkpoints, secrets requirements, recovery and evidence instructions. The fresh-session handoff starts at Fixture Git containment after job-spec approval and links the Docker-proof and inactive-auth-profile environment issues.
