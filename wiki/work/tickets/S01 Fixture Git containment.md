@@ -9,7 +9,7 @@ agent: opencode
 status: in-review
 owner: agent
 priority: P1
-next_action: Obtain independent review and verification at the pinned head of fix/s01-fixture-git-containment, then publish it with npm run pr for the owner's review.
+next_action: Re-review and re-verify the final head of fix/s01-fixture-git-containment, then publish it with npm run pr for the owner's review.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 ticket_kind: build
@@ -22,7 +22,9 @@ evidence:
   - "VERIFIED: gh pr view 17 on 2026-10-17 reported MERGED by the code owner after an APPROVED review from the same account."
   - "VERIFIED: base 89f841f; at red commit e6f683a npm run evals:test failed only in the new spawn check, on test_netproxy.py:129 and test_run_comply.py:312, while both decoy controls passed: the caller-environment runner changed the decoy and the isolated runner left it unchanged."
   - "VERIFIED: at fix commit a2c7b78 npm run evals:test ran 60 tests OK; the same suite run with GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE and GIT_CONFIG_COUNT pointed at a scratch decoy passed and left every decoy file hash unchanged."
-  - "UNKNOWN: independent review and verification at the final head are pending."
+  - "VERIFIED: an independent verifier subagent (Claude Code, Opus 5.5) at 2a81146 rated all five acceptance criteria MET: the base files failed the spawn check at test_run_comply.py:312, npm run evals:test and npm run check exited 0, a routed run left its decoy unchanged, and the diff touched only allowed files."
+  - "VERIFIED: an independent finder subagent at 2a81146 reported spawn-check false negatives (a spawner passed as a value, annotated aliases, mutated or shadowed env names), no positive control for configuration injection and an unsafe control that could run under a hook; commits 9fe336f and a269e1a address each, and the restored A02 lambda and the bare subprocess.run form both fail the check in a scratch copy."
+  - "UNKNOWN: re-review and re-verification of the final head are pending; the PR body records their verdict."
 ---
 
 ## Goal
