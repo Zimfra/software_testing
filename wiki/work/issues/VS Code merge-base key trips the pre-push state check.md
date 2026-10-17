@@ -10,7 +10,7 @@ status: backlog
 owner: human
 priority: P3
 issue_kind: environment
-next_action: Owner decides whether git-state should ignore vscode-merge-base keys the way it ignores branch tracking keys, or whether the retry is acceptable.
+next_action: Owner decides whether git-state, which today compares every local config key, should ignore vscode-merge-base keys, or whether the retry is acceptable.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 evidence:
@@ -33,7 +33,8 @@ naming `branch.<...>.vscode-merge-base`, a key no test wrote.
 ## Root cause
 
 Unconfirmed. The editor, not a test, adds the key, and it does so during the check. A retry passes
-because the key already exists in both snapshots.
+because the key already exists in both snapshots. The tracking keys that `git push -u` writes never
+trip the check because git writes them after the hook has run.
 
 ## Fix
 
