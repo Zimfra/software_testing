@@ -4,7 +4,7 @@ title: Run Sandcastle on GitHub issues
 summary: Run npm run sandcastle so Docker-sandboxed Claude agents plan, implement, review and merge issues labelled Sandcastle onto your branch, without pushing or closing anything.
 tags: [area/agents, area/github, tool/claude-code, kind/setup]
 created: 2026-10-13
-updated: 2026-10-15
+updated: 2026-10-17
 agent: claude-code
 status: draft
 related: ["[[Land a change]]", "[[Verify a repository change]]", "[[Sandcastle runs under the repository rules]]"]
@@ -117,7 +117,8 @@ In order:
    branch; each of those exits 2.
    Before landing it compares the branch with `origin/main`, so an edit left by an earlier
    refused run still counts. Only documentation may land unattended: Markdown under `wiki/` or
-   `docs/`, or at the repository root. Any other changed path (code, tests, configuration, a root
+   `docs/`, at the repository root, or a changelog fragment
+   (`changelog/<YYYY-MM-DD>-<slug>.md`, ADR-0027). Any other changed path (code, tests, configuration, a root
    `json.py` that `python3 -m unittest` would import, a nested lint config, an upper-case
    `Scripts/` on a case-insensitive disk) is refused with exit 1 and named. A moved or renamed
    file counts at both its old and new path. The reason: landing runs `npm run check` on this

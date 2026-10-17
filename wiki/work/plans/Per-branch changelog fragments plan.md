@@ -10,7 +10,7 @@ status: approved
 approval_ref: "#24"
 owner: human
 priority: P2
-next_action: Build slice 1, Recognise changelog fragments as documentation; slice 2 waits on it.
+next_action: Slice 1 is in review; slice 2, Switch the changelog to per-branch fragments, starts after it lands.
 idea: "[[Changelog entries cannot conflict between branches]]"
 related: ["[[ADR-0027 Changelog entries are per-branch fragment files]]", "[[ADR-0007 Changelog entries carry no post-merge facts]]", "[[Change records]]"]
 evidence:
@@ -21,6 +21,7 @@ evidence:
   - "UNKNOWN: whether GitHub's conflict check would honour a merge=union attribute; this plan does not depend on it."
   - "VERIFIED: an independent verifier at 1424498 found the first draft omitted the AFK wrapper's documentation patterns (scripts/sandcastle/afk.ts:27), the guards workflow running main's old guard on the switching pull request, and the new guard refusing that pull request's own pointer line."
   - "VERIFIED: gh pr view 24 shows the plan PR MERGED by the owner on 2026-10-17 (squash commit 6a28e1d), which approves this plan."
+  - "OWNER DECISION: on 2026-10-17 the owner chose \"Move exclusion to slice 2 (Recommended)\": governance:check refuses an exclusion that matches no file, and slice 1 adds no file under changelog/, so the changelog/** exclusion lands with the first fragment in slice 2."
   - "INFERRED: the slices below close those gaps and the transition-closing gap a second review found at 3ac46a4; the reviews of this revision record whether they do."
 ---
 
@@ -77,12 +78,10 @@ Ticket: [[Recognise changelog fragments as documentation]].
 - **Behaviour:** `scripts/lib/paths.ts` names the `changelog/` folder and the fragment name
   pattern. The AFK wrapper's documentation rule (`scripts/sandcastle/afk.ts`) counts a
   `changelog/` fragment as documentation, so a docs-only Sandcastle branch still lands unattended.
-  `governance:check` excludes `changelog/**` as history, as it excludes `CHANGELOG.md`. No guard
-  requires fragments yet, and this slice adds no file under `changelog/`: its own record is a
+  No guard requires fragments yet, and this slice adds no file under `changelog/`: its own record is a
   `CHANGELOG.md` entry, as main's guard still requires.
 - **Acceptance:** an `afk-guard` case where a branch adds only a wiki page and a fragment is
-  treated as documentation, failing before the change; a governance case showing a fragment is not
-  scanned; `npm run check` passes.
+  treated as documentation, failing before the change; `npm run check` passes.
 - **Blocked by:** owner approval of this plan.
 
 ### 2. Changelog fragments replace the shared entry
@@ -111,9 +110,12 @@ Ticket: [[Switch the changelog to per-branch fragments]] (parent: slice 1).
   records, this plan, evaluation reports) gets its own exact-span allowance or a named exclusion,
   as the config's model requires.
   ADR-0007 becomes `superseded` with `superseded_by` ADR-0027, and ADR-0027 becomes `active`.
+  `governance:check` excludes `changelog/**` as history, as it excludes `CHANGELOG.md`; the
+  exclusion lands here, with the first fragment, because the check refuses an exclusion that
+  matches no file.
 - **Acceptance:** the refusing cases fail before the change and pass after it; two fixture
   branches from one base each add a fragment and merge into `main` in either order without a
-  conflict, the guard passing on both; the transition case passes only while the base has no
+  conflict, the guard passing on both; a governance case shows a fragment is not scanned; the transition case passes only while the base has no
   fragment, and a branch with a transition entry but no fragment is refused; `governance:check` refuses a planted sentence asserting the old rule;
   `npm run check` passes.
 - **Blocked by:** slice 1.
