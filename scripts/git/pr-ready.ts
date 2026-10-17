@@ -6,6 +6,7 @@
 import { spawnSync } from "node:child_process";
 import { EXIT_ERROR, EXIT_OK, EXIT_REFUSED, consoleOutput, isEntryPoint, runCli, type Output } from "../lib/cli.ts";
 import { MAIN_REFSPEC, environmentFor, gitOptionsAt } from "../lib/git.ts";
+import { parseCodeOwners } from "./code-owners.ts";
 
 // inherit streams the command's output to the terminal (npm run check can run for a minute
 // and its failure explains itself); env adds variables for that command.
@@ -65,11 +66,7 @@ function readiness(run: Run): { branch: string; main: string } | { refusal: stri
 function codeOwners(run: Run, mainCommit: string): string[] {
   const listed = must(run, "git", ["ls-tree", "--name-only", mainCommit, "--", ".github/CODEOWNERS"]);
   if (listed === "") return [];
-  return must(run, "git", ["show", `${mainCommit}:.github/CODEOWNERS`]).split("\n")
-    .map((line) => line.split("#")[0] ?? "")
-    .flatMap((line) => line.trim().split(/\s+/).slice(1))
-    .filter((entry) => /^@[^/\s]+$/.test(entry))
-    .map((entry) => entry.slice(1).toLowerCase());
+  return parseCodeOwners(must(run, "git", ["show", `${mainCommit}:.github/CODEOWNERS`]));
 }
 
 // gh is checked before the push, so a missing login never leaves a branch published with no PR.
