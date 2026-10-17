@@ -16,8 +16,9 @@ const EXECUTED = [
   ".githooks/pre-push", ".github/workflows/check.yml", ".sandcastle/main.ts", ".sandcastle/plan-prompt.md",
   "package.json", "package-lock.json", "tsconfig.json", "eslint.config.ts", ".npmrc", ".nvmrc",
   "json.py", "unittest.py", "wiki/eslint.config.js", "Scripts/evil.test.ts", "setup.sh", "wiki/diagram.png",
+  "changelog/build.mjs", "changelog/2026-10-17-change.py",
 ];
-const DOCS = ["wiki/note.md", "wiki/runbooks/Some page.md", "CHANGELOG.md", "README.md", "docs/guide.md", "NOTES.md"];
+const DOCS = ["wiki/note.md", "wiki/runbooks/Some page.md", "CHANGELOG.md", "README.md", "docs/guide.md", "NOTES.md", "changelog/2026-10-17-afk-change.md"];
 
 function landingLoop(repo: RepoFixture, paths: string[], extra: { failComments?: string[]; also?: () => void } = {}): { run: Run; calls: string[] } {
   repo.git(["switch", "--quiet", "-c", "sandcastle/issue-4", "feat/afk-work"]);
@@ -47,6 +48,12 @@ await test("a run that changed anything but documentation is not landed unattend
       assert.ok(calls.includes("node scripts/git/pr-ready.ts"));
     });
   }
+  await t.test("a wiki page with its changelog fragment lands", (t) => {
+    const repo = fixture(t);
+    const { run, calls } = landingLoop(repo, ["wiki/note.md", "changelog/2026-10-17-wiki-note.md"]);
+    assert.equal(go(repo, run).code, EXIT_OK);
+    assert.ok(calls.includes("node scripts/git/pr-ready.ts"));
+  });
   await t.test("documentation together with code is refused, naming only the code", (t) => {
     const repo = fixture(t);
     const { run } = landingLoop(repo, ["wiki/note.md", "scripts/app/thing.ts"]);

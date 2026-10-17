@@ -36,7 +36,8 @@ open pull requests never conflict on the changelog, and no live text still requi
 - Change `scripts/changes/changelog-validation.ts` and `changelog-guard.ts` to read fragments from
   the branch diff (added, modified and deleted told apart, untracked included).
 - In the same pull request: repoint every live reference the plan lists, add the
-  `config/governance-alignment.json` claim with its history allowances, set ADR-0007 to
+  `config/governance-alignment.json` claim with its history allowances, exclude `changelog/**`
+  there as history beside `CHANGELOG.md` (moved here from slice 1 by owner decision, 2026-10-17), set ADR-0007 to
   `superseded` (`superseded_by` ADR-0027) and ADR-0027 to `active`.
 - Record the branch with its own fragment plus the transition `CHANGELOG.md` entry and pointer line.
 
@@ -44,6 +45,7 @@ open pull requests never conflict on the changelog, and no live text still requi
 
 - [ ] Each refusing case in plan slice 2 is refused with a reason, and was shown failing first (`node --test scripts/changes/*.test.ts`).
 - [ ] Two fixture branches from one base each add a fragment and merge into `main` in either order without a conflict, the guard passing on both (a case in `scripts/changes/changelog-guard.test.ts`).
+- [ ] A fragment under `changelog/` is not scanned by `governance:check` (a case in `scripts/governance/governance-guard.test.ts`, run by `npm test`).
 - [ ] The transition case passes only while the base has no fragment, and a branch with a transition entry but no fragment is refused.
 - [ ] The branch passes main's old `changelog:guard` (the PR's required `guards` check, which runs main's copy) and its own new one (`npm run changelog:guard`), and adds a fragment (`git diff --name-only origin/main...HEAD`).
 - [ ] `npm run governance:check` refuses a planted sentence that still requires a `CHANGELOG.md` entry.
