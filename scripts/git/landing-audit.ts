@@ -4,7 +4,7 @@
 // travel with fetch.
 import { spawnSync } from "node:child_process";
 import { EXIT_ERROR, EXIT_OK, EXIT_REFUSED, consoleOutput, isEntryPoint, runCli, type Output } from "../lib/cli.ts";
-import { git, gitLines, gitOptionsAt, type GitOptions } from "../lib/git.ts";
+import { fetchMain, git, gitLines, gitOptionsAt, type GitOptions } from "../lib/git.ts";
 import { isRecord } from "../lib/record.ts";
 import { CONFIG_DIR } from "../lib/paths.ts";
 
@@ -47,9 +47,9 @@ export function githubMerged(cwd: string | undefined, repo: string, { program = 
   };
 }
 
-// Read from origin/main, not the working tree, so a local edit cannot move the start point.
-function auditConfig(options: GitOptions): { since: string; repo: string } {
-  const parsed: unknown = JSON.parse(git(["show", `refs/remotes/origin/main:${CONFIG}`], options));
+// Read from the fetched main, not the working tree, so a local edit cannot move the start point.
+function auditConfig(main: string, options: GitOptions): { since: string; repo: string } {
+  const parsed: unknown = JSON.parse(git(["show", `${main}:${CONFIG}`], options));
   const full = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
   if (!isRecord(parsed) || typeof parsed.since !== "string" || !full.test(parsed.since)) throw new Error(`${CONFIG} needs a full "since" commit id`);
   if (typeof parsed.repo !== "string" || !/^[\w.-]+\/[\w.-]+$/.test(parsed.repo)) throw new Error(`${CONFIG} needs "repo" as owner/name`);
@@ -68,10 +68,10 @@ export function main(args: readonly string[], options: Options = {}): number {
   }
   const gitOptions = gitOptionsAt(options.cwd);
   // A stale origin/main would audit old history and could report a direct push as absent.
-  git(["fetch", "--quiet", "origin", "main"], gitOptions);
-  const config = auditConfig(gitOptions);
+  const mainCommit = fetchMain(gitOptions);
+  const config = auditConfig(mainCommit, gitOptions);
   const first = config.since;
-  const commits = gitLines(["log", "--first-parent", "--format=%H%x09%s", `${first}..refs/remotes/origin/main`], gitOptions)
+  const commits = gitLines(["log", "--first-parent", "--format=%H%x09%s", `${first}..${mainCommit}`], gitOptions)
     .map((line) => { const [sha = "", ...subject] = line.split("\t"); return { sha, subject: subject.join("\t") }; });
   const verdicts = classifyLandings(commits, options.merged ?? githubMerged(options.cwd, config.repo));
   const bad = verdicts.filter((entry) => entry.verdict !== "ok");

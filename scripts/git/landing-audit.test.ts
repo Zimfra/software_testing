@@ -133,3 +133,34 @@ await test("--help prints usage, other arguments are an error, and a bad repo na
   publish(t, repo);
   assert.throws(() => main([], { cwd: repo.dir, output, merged: () => true }), /"repo" as owner\/name/);
 });
+
+await test("a narrowed fetch refspec cannot leave the audit on a stale origin/main, and other remote refs are left alone", (t) => {
+  const repo = createRepo("landing-audit-narrow-");
+  t.after(() => repo.cleanup());
+  const start = repo.commit("start");
+  repo.write("config/landing-audit.json", JSON.stringify({ since: start, repo: "o/r" }));
+  const landed = repo.commit("Merge pull request #2 from o/feat");
+  publish(t, repo);
+  repo.commit("fix: direct push");
+  repo.git(["push", "--quiet", "origin", "main"]);
+  repo.git(["update-ref", "refs/remotes/origin/main", landed]);
+  repo.git(["update-ref", "refs/remotes/origin/other", start]);
+  repo.git(["config", "remote.origin.fetch", "+refs/heads/other:refs/remotes/origin/other"]);
+  const err: string[] = [];
+  const code = main([], { cwd: repo.dir, output: { write: () => undefined, warn: (line) => err.push(line) }, merged: (pr, sha) => pr === 2 && sha === landed });
+  assert.equal(code, 1, "the direct push on origin is found although fetch would only fill FETCH_HEAD");
+  assert.match(err.join("\n"), /\[no-pr\] fix: direct push/);
+  assert.equal(repo.git(["rev-parse", "refs/remotes/origin/other"]), start, "an unrelated remote-tracking ref is not rewritten");
+});
+
+await test("an origin without main is an error, never a clean verdict", (t) => {
+  const repo = createRepo("landing-audit-nomain-");
+  t.after(() => repo.cleanup());
+  const start = repo.commit("start");
+  repo.git(["update-ref", "refs/remotes/origin/main", start]);
+  const remote = mkdtempSync(join(tmpdir(), "landing-audit-empty-"));
+  t.after(() => rmSync(remote, { recursive: true, force: true }));
+  execFileSync("git", ["init", "--quiet", "--bare", remote], { env: cleanGitEnv });
+  repo.git(["remote", "add", "origin", remote]);
+  assert.throws(() => main([], { cwd: repo.dir, output: { write: () => undefined, warn: () => undefined }, merged: () => true }), /git fetch/);
+});

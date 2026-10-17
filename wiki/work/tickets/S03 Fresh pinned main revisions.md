@@ -4,12 +4,12 @@ title: S03 Fresh pinned main revisions
 summary: Make readiness and audit callers compare against an explicitly refreshed and pinned main commit, including narrowed fetch refspecs.
 tags: [area/git, area/github, area/planning]
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 agent: opencode
-status: proposed
+status: done
 owner: agent
 priority: P1
-next_action: Verify job-spec approval and S02 completion, then build local bare-origin freshness controls.
+next_action: None once the owner merges its pull request; S07 Fork-only landing assurance then has its only parent complete, and S13 also waits on it.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 ticket_kind: build
@@ -18,7 +18,14 @@ depends_on: ["[[S02 Explicit-checkout command routing]]"]
 related: ["[[Repository audit findings 2026-10-16]]"]
 evidence:
   - "VERIFIED: this job spec preserves approved slice S03, finding A09 and its S02 prerequisite."
-  - "UNKNOWN: job-spec approval and implementation evidence are pending."
+  - "OWNER DECISION: job-spec approval is PR 17, merged after an APPROVED code-owner review; the owner confirmed it on 2026-10-17 (\"ive merged it\")."
+  - "VERIFIED: parent S02 landed as PR 21 (5d56a42); this branch starts from 6a28e1d."
+  - "VERIFIED: at red commit e18fff2, with a real local bare origin, remote.origin.fetch narrowed to another branch and refs/remotes/origin/main left at an older commit, npm run audit passed over a direct push and npm run pr passed a branch behind main; the tests for an origin without main already errored."
+  - "VERIFIED: at fix commit 0770e83, node --test on scripts/git, the AFK tests and scripts/lib/git.test.ts passed 268 of 268; an unrelated refs/remotes/origin/other stayed at its commit; and making readiness re-read the tracking ref instead of the captured commit failed the moved-ref test."
+  - "VERIFIED: an independent verifier at b39254e rated all five criteria MET: the base code failed exactly the two narrowed-refspec tests, its own probe saw fetchMain return the advertised main with no tracking ref, and a tree, blob or tag of a tree as origin main each threw."
+  - "VERIFIED: an independent finder at b39254e reported no CRITICAL or HIGH issue and no change in exit semantics; after it, tests cover fetchMain with a narrowed refspec and no tracking ref, an unreachable origin in both fetchMain and npm run pr, and a main naming a tree, whose test fails when ^{commit} is removed."
+  - "INFERRED: a fetch that hangs cannot pass, because lib/git.ts and spawnRunner stop git at their timeouts and treat it as a failure; the existing hung-step test in pr-ready.test.ts exercises spawnRunner's timeout only, and no fetch-specific or lib/git.ts timeout test exists."
+  - "UNKNOWN: review of the head after these tests is pending; the PR body records it."
 ---
 
 ## Goal
@@ -38,11 +45,11 @@ Ensure successful fetch/readiness checks use the intended remote main revision r
 
 ## Acceptance criteria
 
-- [ ] The old readiness/audit path fails a stale-ref control backed by a real local bare origin.
-- [ ] A successful refresh identifies the correct main commit even with narrowed refspecs or an absent tracking ref.
-- [ ] Unreachable origin, timeout, missing main and unreadable/noncommit results cannot become a passing comparison.
-- [ ] Later comparisons use the captured revision; unrelated remote refs are not rewritten.
-- [ ] Targeted Git/Sandcastle tests and the full check pass.
+- [x] The old readiness/audit path fails a stale-ref control backed by a real local bare origin.
+- [x] A successful refresh identifies the correct main commit even with narrowed refspecs or an absent tracking ref.
+- [x] Unreachable origin, timeout, missing main and unreadable/noncommit results cannot become a passing comparison.
+- [x] Later comparisons use the captured revision; unrelated remote refs are not rewritten.
+- [x] Targeted Git/Sandcastle tests and the full check pass.
 
 ## Out of scope
 

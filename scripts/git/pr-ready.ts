@@ -5,7 +5,7 @@
 // npm run check, then pushes the branch and opens or reports its PR. Merging is the owner's act on GitHub.
 import { spawnSync } from "node:child_process";
 import { EXIT_ERROR, EXIT_OK, EXIT_REFUSED, consoleOutput, isEntryPoint, runCli, type Output } from "../lib/cli.ts";
-import { environmentFor, gitOptionsAt } from "../lib/git.ts";
+import { MAIN_REFSPEC, environmentFor, gitOptionsAt } from "../lib/git.ts";
 
 // inherit streams the command's output to the terminal (npm run check can run for a minute
 // and its failure explains itself); env adds variables for that command.
@@ -42,29 +42,30 @@ function must(run: Run, command: string, args: readonly string[], options?: RunO
   return result.stdout.trim();
 }
 
-/** The branch to publish, or a refusal. */
-function readiness(run: Run): { branch: string } | { refusal: string } {
+/** The branch to publish and the main commit it was checked against, or a refusal. */
+function readiness(run: Run): { branch: string; main: string } | { refusal: string } {
   const head = run("git", ["symbolic-ref", "--quiet", "--short", "HEAD"]);
   const branch = head.stdout.trim();
   if (head.status !== 0 || branch === "main") return { refusal: "Run this on a feature branch, not main or a detached HEAD." };
   if (must(run, "git", ["status", "--porcelain"]) !== "") return { refusal: "The branch has uncommitted changes. Commit or stash them first." };
-  must(run, "git", ["fetch", "--quiet", "origin", "main"]);
-  const contains = run("git", ["merge-base", "--is-ancestor", "refs/remotes/origin/main", "HEAD"]);
+  must(run, "git", ["fetch", "--quiet", "origin", MAIN_REFSPEC]);
+  const mainCommit = must(run, "git", ["rev-parse", "--verify", "--quiet", "refs/remotes/origin/main^{commit}"]);
+  const contains = run("git", ["merge-base", "--is-ancestor", mainCommit, "HEAD"]);
   if (contains.status === 1) return { refusal: "The branch is behind main: merge origin/main into this branch (never rebase published history), then rerun." };
   if (contains.status !== 0) throw new Error("cannot compare this branch with origin/main");
-  if (must(run, "git", ["rev-list", "--count", "refs/remotes/origin/main..HEAD"]) === "0") return { refusal: "The branch has no commits that are not on main; there is nothing to open a pull request for." };
+  if (must(run, "git", ["rev-list", "--count", `${mainCommit}..HEAD`]) === "0") return { refusal: "The branch has no commits that are not on main; there is nothing to open a pull request for." };
   if (run("npm", ["run", "check"], { inherit: true }).status !== 0) return { refusal: "npm run check failed (output above). Fix it before opening the pull request." };
-  return { branch };
+  return { branch, main: mainCommit };
 }
 
 /**
- * Lower-case user logins named in origin/main's .github/CODEOWNERS. A file that is absent from
+ * Lower-case user logins named in the fetched main's .github/CODEOWNERS. A file that is absent from
  * the tree means no code owners; a tree that cannot be read throws, so the refusal never fails open.
  */
-function codeOwners(run: Run): string[] {
-  const listed = must(run, "git", ["ls-tree", "--name-only", "refs/remotes/origin/main", "--", ".github/CODEOWNERS"]);
+function codeOwners(run: Run, mainCommit: string): string[] {
+  const listed = must(run, "git", ["ls-tree", "--name-only", mainCommit, "--", ".github/CODEOWNERS"]);
   if (listed === "") return [];
-  return must(run, "git", ["show", "refs/remotes/origin/main:.github/CODEOWNERS"]).split("\n")
+  return must(run, "git", ["show", `${mainCommit}:.github/CODEOWNERS`]).split("\n")
     .map((line) => line.split("#")[0] ?? "")
     .flatMap((line) => line.trim().split(/\s+/).slice(1))
     .filter((entry) => /^@[^/\s]+$/.test(entry))
@@ -73,7 +74,7 @@ function codeOwners(run: Run): string[] {
 
 // gh is checked before the push, so a missing login never leaves a branch published with no PR.
 // The pre-push hook would rerun npm run check; it skips that for the commit just checked here.
-function publish(run: Run, branch: string): string | { refusal: string } {
+function publish(run: Run, branch: string, mainCommit: string): string | { refusal: string } {
   const auth = run("gh", ["auth", "status"]);
   if (auth.status !== 0) return { refusal: "gh is not logged in. Run gh auth login, then rerun." };
   // Agents act as the machine account, which cannot approve its own pull requests; under the
@@ -87,7 +88,7 @@ function publish(run: Run, branch: string): string | { refusal: string } {
   if (user === owner) {
     refusals.push(`gh is logged in as the repository owner (${owner}). Agents push as the machine account: log gh in as it and remove the owner's login from this machine (wiki/reference/Merge gate contract.md).`);
   }
-  if (codeOwners(run).includes(user.toLowerCase())) {
+  if (codeOwners(run, mainCommit).includes(user.toLowerCase())) {
     refusals.push(`gh is logged in as a code owner (${user}) named in .github/CODEOWNERS. Agents push as the machine account: log gh in as it and remove the owner's login from this machine (wiki/reference/Merge gate contract.md).`);
   }
   if (refusals.length > 0) return { refusal: refusals.join("\npr-ready: ") };
@@ -124,7 +125,7 @@ export function main(args: readonly string[], options: Options = {}): number {
     output.write(`pr-ready: ${ready.branch} is ready; dry run, nothing pushed.`);
     return EXIT_OK;
   }
-  const published = publish(run, ready.branch);
+  const published = publish(run, ready.branch, ready.main);
   if (typeof published !== "string") {
     output.warn(`pr-ready: ${published.refusal}`);
     return EXIT_REFUSED;
