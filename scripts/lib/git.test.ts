@@ -223,6 +223,8 @@ await test("fetchMain throws for an unreachable origin and for a main that is no
   origin.commit("first");
   const unreachable = narrowedClone(t, origin);
   unreachable.git(["remote", "set-url", "origin", join(origin.dir, "no-such-repository")]);
+  // A leftover tracking ref, so only the failed fetch itself can stop the call.
+  unreachable.git(["update-ref", "refs/remotes/origin/main", unreachable.git(["rev-parse", "HEAD"])]);
   assert.throws(() => fetchMain(gitOptionsAt(unreachable.dir)), GitError);
   // update-ref refuses to point a branch at a tree, so the loose ref file is written directly.
   const tree = origin.git(["rev-parse", "HEAD^{tree}"]);
