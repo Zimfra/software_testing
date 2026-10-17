@@ -9,7 +9,7 @@ agent: opencode
 status: in-progress
 owner: human
 priority: P1
-next_action: Start S02 Explicit-checkout command routing on a fresh branch; S01 landed in PR 18.
+next_action: Start S04 Content-sensitive working-state snapshots on a fresh branch; S01 landed in PR 18 and S02 in PR 21. From S04 on, each ticket's own PR marks it done.
 idea: "[[Execute the repository audit remediation]]"
 evidence:
   - "OWNER DECISION: on 2026-10-16 the owner requested committed planning, a pull request and execution by another LLM in a separate terminal session."
@@ -19,6 +19,7 @@ evidence:
   - "OWNER DECISION: on 2026-10-17 the owner set the execution defaults: containment proof from CI runners only (\"CI runners only (Recommended)\"), offline controls only with any live or paid trial reported UNKNOWN (\"Offline only (Recommended)\"), and one ticket branch and PR at a time in plan order (\"One at a time (Recommended)\")."
   - "OWNER DECISION: on 2026-10-17 the owner chose the machine account as the local commit author (\"zimmybot (Recommended)\")."
   - "VERIFIED: S01 landed as PR 18, merged as 875a2e8 by the code owner after an APPROVED review."
+  - "VERIFIED: S02 landed as PR 21, merged as 5d56a42 by the code owner after an APPROVED review."
 ---
 
 ## Outcome
