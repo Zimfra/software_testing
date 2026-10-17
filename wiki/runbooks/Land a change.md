@@ -4,7 +4,7 @@ title: Land a change
 summary: Take work from a feature branch to an owner-merged pull request; nothing is ever pushed to main.
 tags: [area/git, area/github, kind/convention]
 created: 2026-10-09
-updated: 2026-10-10
+updated: 2026-10-17
 agent: claude-code
 status: active
 related: ["[[Change records]]"]
@@ -56,8 +56,9 @@ requests on GitHub (owner decision, 2026-10-09).
 ## Verify
 
 - `gh pr view <n> --json state,mergedBy` shows `MERGED` by the owner.
-- `npm run audit` fetches origin's main and reports every commit on it since the PR-only rule
-  as a merged pull request.
+- `npm run audit` fetches origin's main and reports every commit on it after the fork's
+  boundary commit as a pull request into main that a code owner of the time merged as that
+  commit. History inherited from upstream, at and before the boundary, is outside the audit.
 - The pre-push hook refuses `git push origin main`; the GitHub ruleset refuses it too.
 - Dependabot opens weekly pull requests for the pinned GitHub Actions and all npm
   dependencies (development ones grouped). A bot cannot write a

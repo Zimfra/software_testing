@@ -4,12 +4,12 @@ title: S07 Fork-only landing assurance
 summary: Audit this fork after its verified boundary and validate exact main-branch PR landings against the relevant historical owner policy.
 tags: [area/git, area/github, area/planning]
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 agent: opencode
-status: proposed
+status: done
 owner: agent
 priority: P1
-next_action: Verify job approval and S03 completion, then implement the approved fork boundary and provenance controls.
+next_action: None once the owner merges its pull request; with A07 fixed, npm run audit on main is expected to pass.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 ticket_kind: build
@@ -18,7 +18,15 @@ depends_on: ["[[S03 Fresh pinned main revisions]]"]
 related: ["[[Choose the landing audit history scope]]", "[[Repository audit findings 2026-10-16]]"]
 evidence:
   - "VERIFIED: this job spec preserves approved slice S07, findings A07/A08 and its S03 prerequisite."
-  - "UNKNOWN: job-spec approval and implementation evidence are pending."
+  - "OWNER DECISION: job-spec approval is PR 17, merged after an APPROVED code-owner review; the owner confirmed it on 2026-10-17 (\"ive merged it\")."
+  - "VERIFIED: parent S03 landed as PR 25, squash commit 4b64bcc, whose tree equals the reviewed head 6182ebd; this branch starts from 4b64bcc."
+  - "VERIFIED: before the fix, npm run audit on main 4b64bcc exited 1 and reported every fork merge (PR 2 to PR 25) as unverified-pr, because config/landing-audit.json named ahzeems/Zeemrepo (A07)."
+  - "VERIFIED: at 204cd29, node --test on landing-audit, code-owners and pr-ready tests passed 52 of 52. Removing the base check, the merger check, the boundary check or the strict gh parsing, reading CODEOWNERS at the landing commit instead of its parent, or comparing logins case-sensitively each failed at least one test."
+  - "VERIFIED: fixture coverage: a direct update after the boundary is reported and the boundary commit is not; a boundary on a merged side branch or a missing commit is an error before GitHub is asked; a PR into another branch is wrong-base; an open PR, another merge commit or no PR is unverified-pr; a merger outside the CODEOWNERS of the time, or none, is unauthorized-merger; a CODEOWNERS handover passes earlier merges by the old owner and fails a later one by them; malformed or partial gh answers and gh failures are errors."
+  - "VERIFIED: a live read-only run of the new classification with gh as the machine account on 2026-10-17 found f9c1b9d on main's first-parent line and all 20 commits after it, bf3e407 (PR 2) to 4b64bcc (PR 25), ok: merged into main as that commit by ahzeems, the code owner at each parent."
+  - "INFERRED: the policy each landing is held to is CODEOWNERS at its first parent on main, which itself landed through a reviewed PR; .github/CODEOWNERS named only @ahzeems at every parent in range, so no fixture used a real historical rotation."
+  - "UNKNOWN: npm run audit itself reads its config from the fetched main, so the end-to-end pass on the real repository is only observable after this PR merges; independent review of this head is pending and the PR body records it."
+
 ---
 
 ## Goal
@@ -39,11 +47,11 @@ Make a passing landing audit establish the approved fork-only main-branch PR pro
 
 ## Acceptance criteria
 
-- [ ] The first fork merge is included; history at and before the inherited boundary is excluded.
-- [ ] Wrong/missing/nonancestor boundaries and failed external queries cannot pass.
-- [ ] A direct update, non-main PR, mismatched SHA or unauthorized merger is detected.
-- [ ] A historical owner change does not invalidate a previously authorized landing merely because today's owner differs.
-- [ ] Correct fork fixtures pass and output explicitly states the scope of assurance.
+- [x] The first fork merge is included; history at and before the inherited boundary is excluded.
+- [x] Wrong/missing/nonancestor boundaries and failed external queries cannot pass.
+- [x] A direct update, non-main PR, mismatched SHA or unauthorized merger is detected.
+- [x] A historical owner change does not invalidate a previously authorized landing merely because today's owner differs.
+- [x] Correct fork fixtures pass and output explicitly states the scope of assurance.
 
 ## Out of scope
 

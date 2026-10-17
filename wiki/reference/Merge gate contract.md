@@ -82,9 +82,19 @@ config-protection read from the plugin's `scripts/hooks/config-protection.js`, v
   explicit refspec and reads its config and history from the commit that fetch captured, so a
   stale or narrowed local ref cannot hide a direct push; it writes only that ref and `FETCH_HEAD`.
   A failed fetch
-  or a missing main is an error. Freshness means origin's main at the moment of that fetch. It
-  walks main's first-parent history after the `since` commit in `config/landing-audit.json`,
-  and asks GitHub whether each commit's PR (from its merge or squash subject) merged as that
-  exact commit. Anything else is reported; a `gh` failure is an error, never a verdict.
+  or a missing main is an error. Freshness means origin's main at the moment of that fetch.
+  `config/landing-audit.json` names the repository (`Zimfra/software_testing`) and an exclusive
+  boundary, `since`: the inherited upstream commit immediately before this fork's first pull
+  request merge. A boundary that is not on main's first-parent history is an error. The audit
+  walks main's first-parent history after it and asks GitHub about each commit's PR (from its
+  merge or squash subject). A commit passes only when that PR is merged, merged as this exact
+  commit, targeted `main`, and was merged by a user named in `.github/CODEOWNERS` as it stood on
+  main just before that commit landed, so a later change of owner does not invalidate an earlier
+  landing and a PR cannot authorize its own merger. Anything else is reported (`no-pr`,
+  `unverified-pr`, `wrong-base`, `unauthorized-merger`); a `gh` failure or an answer missing one
+  of those fields is an error, never a verdict.
+  It does not cover history at and before the boundary, which came from the upstream repository
+  ([[Choose the landing audit history scope]]), or team entries and email addresses in
+  `CODEOWNERS`, which it skips as `npm run pr` does.
 
 Only the owner merges. Agents prepare, check, push the branch and open the pull request.
