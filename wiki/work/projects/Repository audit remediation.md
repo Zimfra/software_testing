@@ -4,17 +4,21 @@ title: Repository audit remediation
 summary: Deliver an owner-reviewed remediation plan and independently verifiable work from the repository audit, executable across fresh LLM sessions.
 tags: [area/planning, area/agents, area/compliance]
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 agent: opencode
 status: in-progress
 owner: human
 priority: P1
-next_action: Owner reviews the 26 proposed job specs; after verified approval, the next session starts S01 and follows the completed-parent frontier.
+next_action: Start S02 Explicit-checkout command routing on a fresh branch; S01 landed in PR 18.
 idea: "[[Execute the repository audit remediation]]"
 evidence:
   - "OWNER DECISION: on 2026-10-16 the owner requested committed planning, a pull request and execution by another LLM in a separate terminal session."
   - "VERIFIED: GitHub reports planning PR 15 merged by code owner ahzeems on 2026-10-16 as edb9e35da1284e7593bd62f6408cc719771d9b7d; the plan's approval metadata is now recorded."
   - "OWNER DECISION: on 2026-10-16 the owner requested the job specs, tickets and issues needed for the next LLM to take the build."
+  - "OWNER DECISION: on 2026-10-17 the owner confirmed \"ive merged it\" for job-spec PR 17; GitHub reported it merged after an APPROVED code-owner review."
+  - "OWNER DECISION: on 2026-10-17 the owner set the execution defaults: containment proof from CI runners only (\"CI runners only (Recommended)\"), offline controls only with any live or paid trial reported UNKNOWN (\"Offline only (Recommended)\"), and one ticket branch and PR at a time in plan order (\"One at a time (Recommended)\")."
+  - "OWNER DECISION: on 2026-10-17 the owner chose the machine account as the local commit author (\"zimmybot (Recommended)\")."
+  - "VERIFIED: S01 landed as PR 18, merged as 875a2e8 by the code owner after an APPROVED review."
 ---
 
 ## Outcome

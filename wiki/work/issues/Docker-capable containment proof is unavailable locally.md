@@ -4,20 +4,22 @@ title: Docker-capable containment proof is unavailable locally
 summary: This checkout has no Docker executable, so containment evidence must come from a Docker-capable runner or an owner-authorized local setup.
 tags: [area/agents, area/planning]
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 agent: opencode
 status: blocked
 owner: human
 priority: P1
 issue_kind: environment
-next_action: Supply matching-head Docker-capable CI proof for S12, or authorize a local runtime setup; keep ordinary authoring work independent of this prerequisite.
-blocker: command -v docker returned exit 1 in this checkout environment; no live local containment result is available.
+next_action: S12 adds the real container control to a required CI job on GitHub's Docker-capable runners and records a matching-head passing run; no local Docker is installed.
+blocker: No containment proof exists until S12 lands its CI control; command -v docker also returns exit 1 on the machine now used.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 related: ["[[S12 Reproducible runtime and real containment control]]", "[[S18 Public-command cutover and end-to-end isolation proof]]"]
 evidence:
   - "VERIFIED: command -v docker returned exit 1 on 2026-10-16 while creating the job specs."
   - "UNKNOWN: real containment has not been demonstrated locally; S12 must create and run the required non-model container control."
+  - "OWNER DECISION: on 2026-10-17 the owner chose \"CI runners only (Recommended)\": the containment proof for S12, S14, S15 and S18 comes from CI, and nothing is installed locally."
+  - "VERIFIED: on 2026-10-17 the required check and guards workflows run on ubuntu-latest; command -v docker and command -v podman found nothing on the machine now used."
 ---
 
 ## Reproduction
