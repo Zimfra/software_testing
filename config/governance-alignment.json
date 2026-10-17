@@ -124,7 +124,7 @@
     },
     {
       "id": "changelog-md-entry",
-      "pattern": "`?CHANGELOG\\.md`?\\s+entr(?:y|ies)\\b|\\bentr(?:y|ies)\\s+(?:in|to)\\s+`?CHANGELOG\\.md",
+      "pattern": "`?CHANGELOG\\.md`?\\s+(?:file\\s+)?entr(?:y|ies)\\b|\\bentr(?:y|ies)\\b[^.`]{0,40}?\\b(?:in|to|into)\\s+(?:the\\s+)?`?CHANGELOG\\.md|\\brecord(?:s|ed)?\\s+(?:the|its|each|every)\\s+change\\s+in\\s+`?CHANGELOG\\.md",
       "supersededBy": "ADR-0027: each branch adds its own fragment, changelog/<YYYY-MM-DD>-<slug>.md; CHANGELOG.md is history"
     }
   ],
@@ -233,6 +233,12 @@
       "path": "wiki/work/ideas/First real Sandcastle run and the wrapper probe fix.md",
       "contains": "changelog-guard refused a branch without a CHANGELOG.md entry",
       "reason": "Evidence recorded on its day, when a CHANGELOG.md entry was the rule.",
+      "claims": ["changelog-md-entry"]
+    },
+    {
+      "path": "wiki/work/ideas/Changelog entries cannot conflict between branches.md",
+      "contains": "requires every branch to add an entry under a date heading in `CHANGELOG.md`",
+      "reason": "The idea's Problem section describes the rule the switch to fragments replaces.",
       "claims": ["changelog-md-entry"]
     }
   ]
