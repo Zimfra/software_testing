@@ -56,7 +56,11 @@ In Zeemrepo this is built into the shared helpers:
   selected fixture printed the decoy (audit finding A03). Now git, and git launched by node or
   npm, resolves the selected checkout and the decoy stays byte-identical
   (`scripts/git/pr-ready.test.ts`). Both production callers pass no `cwd`, so under a hook they
-  still act on the hooked repository.
+  still act on the hooked repository, with its index, and the same tests show that an injected
+  graft file, replace-ref base or `GIT_NO_REPLACE_OBJECTS` does not change what git reads. An
+  explicit `cwd` drops every `GIT_` variable, including `GIT_ASKPASS`, `GIT_SSH_COMMAND` and
+  `GIT_TERMINAL_PROMPT`, so a future caller that pushes from an explicit `cwd` must supply its
+  own credentials helper.
 
 `scripts/toolchain/fixture-env.test.ts` now reads the syntax tree of all test code and fails any
 `child_process` call that does not pass `env: cleanGitEnv`, and the pre-push hook refuses a push

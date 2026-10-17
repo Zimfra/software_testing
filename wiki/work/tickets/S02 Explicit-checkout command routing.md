@@ -22,7 +22,10 @@ evidence:
   - "VERIFIED: parent S01 landed as PR 18, merged as 875a2e8 by the code owner after an APPROVED review; its record is done on main at 7542dd2."
   - "VERIFIED: base 7542dd2; at red commit the new pr-ready test failed because git rev-parse --show-toplevel run through spawnRunner(selected) printed the decoy repository; the no-cwd test already passed."
   - "VERIFIED: after the fix, node --test scripts/git/pr-ready.test.ts scripts/lib/git.test.ts passed 58 of 58 and scripts/sandcastle/afk.test.ts, the other spawnRunner caller, 53 of 53."
-  - "UNKNOWN: independent review and verification at the final head are pending; the PR body records their verdict."
+  - "VERIFIED: red commit 2f19e70 and fix commit 787c96e; an independent verifier at 89fc078 rated all five criteria MET, reproducing the red failure against the base runner and probing history injection with its own script."
+  - "VERIFIED: an independent finder at 89fc078 reported no CRITICAL or HIGH issue; its MEDIUM gaps (history injection untested, no-cwd routing shown only through environment text) are closed by tests that run git through the runner, and dropping GRAFT_FILE, REPLACE_REF_BASE or NO_REPLACE_OBJECTS from the scrub, or GIT_INDEX_FILE in no-cwd mode, each fails a test in a scratch copy."
+  - "INFERRED: the explicit-cwd tests read the developer's global git configuration, as any git run does; the runner cannot pin it because it drops every GIT_ variable, and nothing they run writes outside temporary repositories."
+  - "UNKNOWN: re-verification of the final head is pending; the PR body records its verdict."
 ---
 
 ## Goal
