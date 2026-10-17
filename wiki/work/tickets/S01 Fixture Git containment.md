@@ -4,12 +4,12 @@ title: S01 Fixture Git containment
 summary: Keep every Python fixture subprocess inside its intended disposable repository when Git routing variables are inherited.
 tags: [area/git, area/evals, area/planning]
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 agent: opencode
-status: proposed
+status: in-review
 owner: agent
 priority: P1
-next_action: Verify owner approval of this job spec, then implement from an identified root checkout with inherited Git routing scrubbed.
+next_action: Obtain independent review and verification at the pinned head of fix/s01-fixture-git-containment, then publish it with npm run pr for the owner's review.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 ticket_kind: build
@@ -18,7 +18,11 @@ depends_on: []
 related: ["[[Repository audit findings 2026-10-16]]"]
 evidence:
   - "VERIFIED: this job spec expands approved slice S01 and finding A02; it has no build-ticket dependencies."
-  - "UNKNOWN: job-spec approval and implementation evidence are pending."
+  - "OWNER DECISION: on 2026-10-17 the owner confirmed \"ive merged it\" for PR 17, which added this job spec."
+  - "VERIFIED: gh pr view 17 on 2026-10-17 reported MERGED by the code owner after an APPROVED review from the same account."
+  - "VERIFIED: base 89f841f; at red commit e6f683a npm run evals:test failed only in the new spawn check, on test_netproxy.py:129 and test_run_comply.py:312, while both decoy controls passed: the caller-environment runner changed the decoy and the isolated runner left it unchanged."
+  - "VERIFIED: at fix commit a2c7b78 npm run evals:test ran 60 tests OK; the same suite run with GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE and GIT_CONFIG_COUNT pointed at a scratch decoy passed and left every decoy file hash unchanged."
+  - "UNKNOWN: independent review and verification at the final head are pending."
 ---
 
 ## Goal
