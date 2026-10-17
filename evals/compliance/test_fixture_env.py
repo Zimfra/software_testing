@@ -6,12 +6,18 @@ worktree (wiki lesson "Hook-run checks must preserve Git state"). So every child
 tests passes an env built by run_comply.isolated_env, which keeps no Git routing or configuration.
 scripts/toolchain/fixture-env.test.ts is the TypeScript twin.
 
-The check reads the syntax tree. A spawner may only be called or bound to a plain name; passing it
-as a value, storing it or star-importing its module is refused. An env name counts as isolated only
-when every binding of it in the nearest scope that binds it is an untouched isolated_env call.
-Not followed: a mapping changed through another alias or a function, and a spawner reached through
-a computed attribute other than getattr with a literal name. os.exec*e and os.posix_spawn take env
-positionally and are always refused; spawn through subprocess instead.
+The check reads the syntax tree and covers the common forms, not every possible one. A spawner
+function may only be called or bound to a plain name; passing it as a value, storing it or
+star-importing its module is refused. An env name counts as isolated only when every assignment of
+it in the nearest scope that binds it is an isolated_env call from run_comply and nothing there
+writes into it or removes keys from it.
+Not followed: a spawning module itself passed or stored (`s = subprocess`, then `s.run`), which the
+confinement tests do legitimately; a mapping changed through another alias or a function; names
+bound by `import ... as`, `except ... as`, `match` or a walrus inside a comprehension; isolated_env
+or run_comply rebound; computed imports, sys.modules and event-loop or other spawn APIs not listed
+in SPAWNERS; and calls of the exempt control. os.exec*e and os.posix_spawn take env positionally
+and are always refused; spawn through subprocess instead. A spawner class in a type position
+(isinstance, annotations) is refused too.
 """
 
 import ast
@@ -28,13 +34,16 @@ import run_comply
 
 HERE = Path(__file__).resolve().parent
 SPAWNERS = {
-    "subprocess": {"run", "Popen", "call", "check_call", "check_output", "getoutput", "getstatusoutput"},
+    # create_subprocess_* also under subprocess, for the asyncio.subprocess chain.
+    "subprocess": {"run", "Popen", "call", "check_call", "check_output", "getoutput", "getstatusoutput",
+                   "create_subprocess_exec", "create_subprocess_shell"},
     "os": {"system", "popen", "posix_spawn", "posix_spawnp"},  # plus every exec* and spawn*
     "asyncio": {"create_subprocess_exec", "create_subprocess_shell"},
+    "pty": {"spawn"},
 }
 ISOLATING_MODULE = "run_comply"
 # Methods through which code can write into an environment mapping after it was built.
-MUTATORS = {"update", "setdefault", "__setitem__", "__ior__"}
+MUTATORS = {"update", "setdefault", "__setitem__", "__ior__", "pop", "popitem", "clear", "__delitem__"}
 # Scopes as Python resolves names: a class body is not visible from the methods inside it.
 FUNCTION_SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
 SCOPES = (ast.Module, ast.ClassDef, *FUNCTION_SCOPES)
@@ -80,13 +89,17 @@ def read_imports(tree: ast.Module) -> Imports:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                if alias.name in SPAWNERS:
+                top = alias.name.split(".")[0]  # `import os.path` binds os
+                if alias.asname is None and top in SPAWNERS:
+                    imports.modules[top] = top
+                elif alias.name in SPAWNERS:
                     imports.modules[alias.asname or alias.name] = alias.name
                 if alias.name == ISOLATING_MODULE:
                     imports.isolating_modules.add(alias.asname or alias.name)
-        elif isinstance(node, ast.ImportFrom) and node.module in SPAWNERS:
+        elif isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] in SPAWNERS:
+            module = (node.module or "").split(".")[0]  # asyncio.subprocess counts as asyncio
             imports.star.extend([node] if any(alias.name == "*" for alias in node.names) else [])
-            imports.spawners.update(alias.asname or alias.name for alias in node.names if is_spawner(node.module, alias.name))
+            imports.spawners.update(alias.asname or alias.name for alias in node.names if is_spawner(module, alias.name))
         elif isinstance(node, ast.ImportFrom) and node.module == ISOLATING_MODULE:
             imports.isolating.update(alias.asname or alias.name for alias in node.names if alias.name == "isolated_env")
     return imports
@@ -153,7 +166,7 @@ def tainted_names(scope: ast.AST, nodes: list[ast.AST]) -> set[str]:
             names.add(node.name)
         elif isinstance(node, (ast.Global, ast.Nonlocal)):
             names.update(node.names)
-        elif isinstance(node, ast.Subscript) and isinstance(node.ctx, ast.Store) and isinstance(node.value, ast.Name):
+        elif isinstance(node, ast.Subscript) and isinstance(node.ctx, (ast.Store, ast.Del)) and isinstance(node.value, ast.Name):
             names.add(node.value.id)
         elif (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in MUTATORS
               and isinstance(node.func.value, ast.Name)):
@@ -214,8 +227,8 @@ def loads_spawner_module_dynamically(node: ast.AST) -> bool:
 def exempt_lines(tree: ast.Module, path: str) -> set[int]:
     if Path(path).name != UNSAFE_CONTROL[0]:
         return set()
-    return {line for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == UNSAFE_CONTROL[1]
-            for line in range(node.lineno, (node.end_lineno or node.lineno) + 1)}
+    first = next((node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == UNSAFE_CONTROL[1]), None)
+    return set() if first is None else set(range(first.lineno, (first.end_lineno or first.lineno) + 1))
 
 
 def is_loaded(node: ast.AST) -> bool:
@@ -286,6 +299,12 @@ class SpawnCheck(unittest.TestCase):
             "import os, subprocess, run_comply\nenv = dict(os.environ)\nclass T:\n    env = run_comply.isolated_env(b, g)\n"
             "    def m(self):\n        subprocess.run(x, env=env)",
             "import subprocess\nsubprocess.run(x, env=other.isolated_env(b, g))",
+            "import os.path\nos.system('git init')",
+            "import asyncio\nasyncio.subprocess.create_subprocess_exec('git')",
+            "from asyncio.subprocess import create_subprocess_exec\ncreate_subprocess_exec('git')",
+            "import pty\npty.spawn(['git'])",
+            "import subprocess, run_comply\nenv = run_comply.isolated_env(b, g)\nenv.pop('GIT_CONFIG_GLOBAL')\nsubprocess.run(x, env=env)",
+            "import subprocess, run_comply\nenv = run_comply.isolated_env(b, g)\ndel env['GIT_CONFIG_NOSYSTEM']\nsubprocess.run(x, env=env)",
         ]
         for source in offending:
             self.assertEqual(len(unscrubbed_spawns("sample.py", source)), 1, source)
@@ -294,6 +313,7 @@ class SpawnCheck(unittest.TestCase):
         self.assertEqual(len(unscrubbed_spawns("test_fixture_env.py", unsafe + "class T:\n    def unsafe_run(self, a):\n"
                                                                           "        return subprocess.run(a)\n")), 1,
                          "a second function of that name elsewhere in the file is not exempt")
+        self.assertEqual(len(unscrubbed_spawns("test_fixture_env.py", unsafe + unsafe)), 1, "only the first top-level definition is")
         clean = [
             "import os, subprocess, run_comply\nsubprocess.run(args, env=run_comply.isolated_env(dict(os.environ), g))",
             "import os, subprocess, run_comply\nenv = run_comply.isolated_env(dict(os.environ), g)\nrun = lambda args, **kw: subprocess.run(args, env=env, **kw)",
