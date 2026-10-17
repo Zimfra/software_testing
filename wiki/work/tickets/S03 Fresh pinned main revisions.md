@@ -24,7 +24,7 @@ evidence:
   - "VERIFIED: at fix commit 0770e83, node --test on scripts/git, the AFK tests and scripts/lib/git.test.ts passed 268 of 268; an unrelated refs/remotes/origin/other stayed at its commit; and making readiness re-read the tracking ref instead of the captured commit failed the moved-ref test."
   - "VERIFIED: an independent verifier at b39254e rated all five criteria MET: the base code failed exactly the two narrowed-refspec tests, its own probe saw fetchMain return the advertised main with no tracking ref, and a tree, blob or tag of a tree as origin main each threw."
   - "VERIFIED: an independent finder at b39254e reported no CRITICAL or HIGH issue and no change in exit semantics; after it, tests cover fetchMain with a narrowed refspec and no tracking ref, an unreachable origin in both fetchMain and npm run pr, and a main naming a tree, whose test fails when ^{commit} is removed."
-  - "INFERRED: a fetch that hangs cannot pass, because lib/git.ts and spawnRunner stop git at their timeouts and treat it as a failure, which the existing hung-step test in pr-ready.test.ts exercises; no fetch-specific timeout test exists."
+  - "INFERRED: a fetch that hangs cannot pass, because lib/git.ts and spawnRunner stop git at their timeouts and treat it as a failure; the existing hung-step test in pr-ready.test.ts exercises spawnRunner's timeout only, and no fetch-specific or lib/git.ts timeout test exists."
   - "UNKNOWN: review of the head after these tests is pending; the PR body records it."
 ---
 
