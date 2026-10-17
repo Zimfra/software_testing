@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { lstatSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { test, type TestContext } from "node:test";
 import { EXIT_ERROR, EXIT_OK, EXIT_REFUSED, type Output } from "../lib/cli.ts";
 import { cleanGitEnv, createRepo, type RepoFixture } from "../test-support/repo-fixture.ts";
@@ -228,4 +228,65 @@ await test("a step that hangs is stopped, and config injected through GIT_ varia
     if (saved === undefined) delete process.env.GIT_CONFIG_COUNT;
     else process.env.GIT_CONFIG_COUNT = saved;
   }
+});
+
+// Mode and bytes of every path under `root`, .git included: HEAD, refs, config, index and files.
+function treeState(root: string): Record<string, string> {
+  const state: Record<string, string> = {};
+  for (const entry of readdirSync(root, { recursive: true, withFileTypes: true })) {
+    const path = join(entry.parentPath, entry.name);
+    const content = entry.isSymbolicLink() ? readlinkSync(path) : entry.isFile() ? readFileSync(path).toString("base64") : "";
+    state[relative(root, path)] = `${lstatSync(path).mode}:${content}`;
+  }
+  return state;
+}
+
+// What a hook or a parent session leaves behind: routing toward a decoy, plus injected config.
+function withDecoyRouting<T>(decoy: string, body: () => T): T {
+  const routing: Record<string, string> = {
+    GIT_DIR: join(decoy, ".git"), GIT_WORK_TREE: decoy, GIT_INDEX_FILE: join(decoy, ".git", "index"),
+    GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "fixture.injected", GIT_CONFIG_VALUE_0: "yes",
+  };
+  const saved = Object.fromEntries(Object.keys(routing).map((key) => [key, process.env[key]]));
+  Object.assign(process.env, routing);
+  try {
+    return body();
+  } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+}
+
+await test("an explicit cwd is the checkout git, node and npm act on, whatever routing is inherited", (t) => {
+  const selected = createRepo("pr-ready-selected-");
+  const decoy = createRepo("pr-ready-decoy-");
+  t.after(() => { selected.cleanup(); decoy.cleanup(); });
+  selected.commit("selected");
+  decoy.commit("decoy");
+  const before = treeState(decoy.dir);
+  const toplevel = (command: string, args: string[]) => withDecoyRouting(decoy.dir, () => spawnRunner(selected.dir)(command, args).stdout.trim());
+  assert.equal(toplevel("git", ["rev-parse", "--show-toplevel"]), realpathSync(selected.dir), "git");
+  assert.equal(toplevel("node", ["-e", "process.stdout.write(require('node:child_process').execFileSync('git', ['rev-parse', '--show-toplevel']))"]),
+    realpathSync(selected.dir), "a git launched by node");
+  assert.equal(toplevel("npm", ["exec", "--yes=false", "-c", "git rev-parse --show-toplevel"]), realpathSync(selected.dir), "a git launched by npm");
+  withDecoyRouting(decoy.dir, () => {
+    const run = spawnRunner(selected.dir);
+    assert.equal(run("git", ["config", "fixture.marker", "set"]).status, 0);
+    assert.equal(run("sh", ["-c", "printf x > made.txt && git add made.txt"]).status, 0);
+    assert.equal(run("git", ["config", "--get", "fixture.injected"]).status, 1, "injected config does not reach the command");
+  });
+  assert.deepEqual(treeState(decoy.dir), before, "the decoy's HEAD, refs, config, index and files are unchanged");
+  assert.equal(selected.git(["config", "--get", "fixture.marker"]), "set");
+  assert.equal(selected.git(["diff", "--cached", "--name-only"]), "made.txt");
+});
+
+await test("without a cwd the hook's repository stays the target, and only injected config is dropped", (t) => {
+  const decoy = createRepo("pr-ready-hooked-");
+  t.after(() => decoy.cleanup());
+  decoy.commit("hooked");
+  const seen = withDecoyRouting(decoy.dir, () =>
+    spawnRunner(undefined)("sh", ["-c", "printf '%s|%s' \"$GIT_DIR\" \"${GIT_CONFIG_COUNT:-unset}\""]).stdout);
+  assert.equal(seen, `${join(decoy.dir, ".git")}|unset`);
 });
