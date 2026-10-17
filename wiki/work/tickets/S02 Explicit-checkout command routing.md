@@ -4,12 +4,12 @@ title: S02 Explicit-checkout command routing
 summary: Make an explicit runner cwd authoritative despite inherited Git repository, index or configuration routing.
 tags: [area/git, area/typescript, area/planning]
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 agent: opencode
-status: proposed
+status: in-review
 owner: agent
 priority: P1
-next_action: Verify this job spec's approval and S01 completion, then reproduce routing through the actual spawnRunner boundary.
+next_action: Obtain independent review and verification at the pinned head of fix/s02-explicit-checkout-routing, then publish it with npm run pr for the owner's review.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 ticket_kind: build
@@ -18,7 +18,11 @@ depends_on: ["[[S01 Fixture Git containment]]"]
 related: ["[[Repository audit findings 2026-10-16]]"]
 evidence:
   - "VERIFIED: this job spec preserves approved slice S02, finding A03 and its S01 prerequisite."
-  - "UNKNOWN: job-spec approval and implementation evidence are pending."
+  - "OWNER DECISION: job-spec approval is PR 17, merged after an APPROVED code-owner review; the owner confirmed it on 2026-10-17 (\"ive merged it\")."
+  - "VERIFIED: parent S01 landed as PR 18, merged as 875a2e8 by the code owner after an APPROVED review; its record is done on main at 7542dd2."
+  - "VERIFIED: base 7542dd2; at red commit the new pr-ready test failed because git rev-parse --show-toplevel run through spawnRunner(selected) printed the decoy repository; the no-cwd test already passed."
+  - "VERIFIED: after the fix, node --test scripts/git/pr-ready.test.ts scripts/lib/git.test.ts passed 58 of 58 and scripts/sandcastle/afk.test.ts, the other spawnRunner caller, 53 of 53."
+  - "UNKNOWN: independent review and verification at the final head are pending; the PR body records their verdict."
 ---
 
 ## Goal
