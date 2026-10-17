@@ -22,20 +22,21 @@ evidence:
   - "VERIFIED: before the fix, the new afk-guard cases (a fragment alone, and a wiki page with a fragment) failed, and the new paths.test.ts cases failed because the pattern did not exist."
   - "VERIFIED: at ca0fef9, node --test on paths.test.ts, afk-guard.test.ts and afk.test.ts passed 115 of 115, lint and typecheck passed; removing the fragment pattern from the AFK rule failed 3 tests, and loosening the slug to .+ failed the paths test. changelog/build.mjs and changelog/2026-10-17-change.py are still refused."
   - "VERIFIED: git diff --name-only origin/main...HEAD lists no file under changelog/."
+  - "VERIFIED: an independent verifier (Claude Code subagent, Opus 5.5, separate context) rated cd2545e FAIL on one MEDIUM finding, a garbled Approach bullet in this ticket, with four LOW findings; the code passed all checks and every planted mutation. Fixed after it: the bullet and the Goal's overstated scope, this box left unticked until a passing review, the pattern now built from CHANGELOG_DIR (bf58125), and paths.test.ts now refuses a pattern with flags and the paths changelog/2026-10-17-change.md.ts and one with a newline, so dropping $ or adding the m flag each fails two tests."
   - "UNKNOWN: independent review of the final head is pending; the PR body records it."
 ---
 
 ## Goal
 
-A `changelog/<YYYY-MM-DD>-<slug>.md` fragment is recognised as documentation everywhere the
-repository classifies paths, while `CHANGELOG.md` stays the required record.
+A `changelog/<YYYY-MM-DD>-<slug>.md` fragment is recognised as documentation by the AFK
+landing rule, while `CHANGELOG.md` stays the required record.
 
 ## Approach
 
 - Plan slice 1, "Fragment paths are recognised as documentation".
 - Write the failing tests first: an `afk-guard` case (`scripts/sandcastle/afk-guard.test.ts`)
-  where a branch adds only a wiki page and a fragment and is treated as documentation, and a
-  - `scripts/lib/paths.ts`: name the `changelog/` folder and the fragment name pattern once.
+  where a branch adds only a wiki page and a fragment and is treated as documentation.
+- `scripts/lib/paths.ts`: name the `changelog/` folder and the fragment name pattern once.
 - `scripts/sandcastle/afk.ts`: count a path matching that pattern as documentation.
 - Record the branch with a `CHANGELOG.md` entry, as main's guard still requires.
 
@@ -43,7 +44,7 @@ repository classifies paths, while `CHANGELOG.md` stays the required record.
 
 - [x] The new `afk-guard` case fails before the change and passes after it (`node --test scripts/sandcastle/afk-guard.test.ts`).
 - [x] The branch adds no file under `changelog/` (`git diff --name-only origin/main...HEAD`).
-- [x] `npm run check` passes, and an independent verifier rates these criteria at the final head.
+- [ ] `npm run check` passes, and an independent verifier rates these criteria at the final head.
 
 ## Out of scope
 
