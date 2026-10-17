@@ -22,7 +22,11 @@ evidence:
   - "VERIFIED: parent S01 landed as PR 18 (875a2e8); base for this branch is 5d56a42."
   - "VERIFIED: at test commit 1c7aa55 the new git-state tests ran against the base git-state.ts and 9 failed: rewritten dirty and untracked files, executable bits on dirty and untracked files, a retargeted symlink and a file whose name holds a tab, spaces and a newline each left git status byte-identical yet passed, the secret-content rewrite passed, and an unreadable file did not error."
   - "VERIFIED: at fix commit d26cfaf node --test scripts/git/git-state.test.ts passed 42 of 42, including unchanged dirty state, ignored files, links outside the fixture never read, and a tracked directory replaced by an outside link recorded without reading."
-  - "UNKNOWN: independent review and verification at the final head are pending; the PR body records their verdict."
+  - "VERIFIED: an independent verifier at ba7636c rated all five criteria MET, with its own CLI probes: git status byte-identical before and after rewrites, verify exiting 1 at that head and 0 with the base code, outside files made unreadable without changing the snapshot, and npm run check leaving nothing the snapshot flags."
+  - "VERIFIED: an independent finder at ba7636c reported no CRITICAL or HIGH issue. Fix commit 5060e0e closes its MEDIUM points: a non-UTF-8 name now stops the snapshot (its test fails without the guard), files are hashed in chunks after a 2 GiB sparse file reproduced ERR_FS_FILE_TOO_LARGE, and the refusal message names editors as well as tests."
+  - "VERIFIED: at 5060e0e node --test scripts/git/git-state.test.ts passed 44 of 44."
+  - "UNKNOWN: whether editor swap or autosave files that are neither tracked nor ignored should be exempt; that widens or narrows the snapshot boundary, which the human checkpoint reserves for the owner."
+  - "UNKNOWN: re-review of the final head is pending; the PR body records its verdict and the npm run check result."
 ---
 
 ## Goal
