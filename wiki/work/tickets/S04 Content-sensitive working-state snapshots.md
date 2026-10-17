@@ -23,10 +23,11 @@ evidence:
   - "VERIFIED: at test commit 1c7aa55 the new git-state tests ran against the base git-state.ts and 9 failed: rewritten dirty and untracked files, executable bits on dirty and untracked files, a retargeted symlink and a file whose name holds a tab, spaces and a newline each left git status byte-identical yet passed, the secret-content rewrite passed, and an unreadable file did not error."
   - "VERIFIED: at fix commit d26cfaf node --test scripts/git/git-state.test.ts passed 42 of 42, including unchanged dirty state, ignored files, links outside the fixture never read, and a tracked directory replaced by an outside link recorded without reading."
   - "VERIFIED: an independent verifier at ba7636c rated all five criteria MET, with its own CLI probes: git status byte-identical before and after rewrites, verify exiting 1 at that head and 0 with the base code, outside files made unreadable without changing the snapshot, and npm run check leaving nothing the snapshot flags."
-  - "VERIFIED: an independent finder at ba7636c reported no CRITICAL or HIGH issue. Fix commit 5060e0e closes its MEDIUM points: a non-UTF-8 name now stops the snapshot (its test fails without the guard), files are hashed in chunks after a 2 GiB sparse file reproduced ERR_FS_FILE_TOO_LARGE, and the refusal message names editors as well as tests."
+  - "VERIFIED: an independent finder at ba7636c reported no CRITICAL or HIGH issue. Fix commit 5060e0e addresses its MEDIUM points: a non-UTF-8 name now stops the snapshot (its test fails without the guard), files are hashed in chunks after a 2 GiB sparse file reproduced ERR_FS_FILE_TOO_LARGE, and the refusal message names editors as well as tests; whether editor files leave the snapshot is the owner decision below."
   - "VERIFIED: at 5060e0e node --test scripts/git/git-state.test.ts passed 44 of 44."
-  - "UNKNOWN: whether editor swap or autosave files that are neither tracked nor ignored should be exempt; that widens or narrows the snapshot boundary, which the human checkpoint reserves for the owner."
-  - "UNKNOWN: re-review of the final head is pending; the PR body records its verdict and the npm run check result."
+  - "OWNER DECISION: on 2026-10-17 the owner chose \"Ignore them in .gitignore (Recommended)\" for editor swap and autosave files: a separate pull request adds their patterns to .gitignore, so they leave the snapshot by the existing ignored-file rule and git-state keeps no special case."
+  - "VERIFIED: a second verifier at 1e658ae rated all five criteria MET; it reproduced the non-UTF-8 pass with ba7636c's code and the refusal at 1e658ae, a 2 GiB sparse file erroring before and hashing after, and npm run check exiting 0 with 793 Node tests while the checkout's own snapshot, check and verify sequence exited 0."
+  - "UNKNOWN: review of the wording-only commit after 1e658ae is pending; the PR body records it."
 ---
 
 ## Goal
