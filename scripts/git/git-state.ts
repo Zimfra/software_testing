@@ -5,7 +5,8 @@
 // `npm run check` and refuses the push if the check changed it. It detects; it cannot undo.
 // Covered: HEAD, the checked-out branch, core.bare, local and per-worktree config, every ref,
 // the index and the working tree: what git status lists, plus the bytes, executable bit or
-// symlink target of each path it lists, so rewriting an already-dirty file is caught. Not covered: global config, hooks, the object store, and
+// symlink target of each path it lists, so rewriting an already-dirty file is caught. A directory
+// listed as one entry (a nested repository, a submodule) is not looked into. Not covered: global config, hooks, the object store, and
 // branch.<name>.vscode-merge-base, which the VS Code Git extension writes when it sees a new
 // branch, often while the hook's check runs; git never reads it (owner decision, 2026-10-17).
 // The snapshot holds hashes, never config values, and messages redact config subsections
