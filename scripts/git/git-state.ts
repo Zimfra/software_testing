@@ -4,7 +4,9 @@
 // and core.bare have been lost that way). The hook snapshots this state before
 // `npm run check` and refuses the push if the check changed it. It detects; it cannot undo.
 // Covered: HEAD, the checked-out branch, core.bare, local and per-worktree config, every ref,
-// the index and the working tree. Not covered: global config, hooks, the object store.
+// the index and the working tree. Not covered: global config, hooks, the object store, and
+// branch.<name>.vscode-merge-base, which the VS Code Git extension writes when it sees a new
+// branch, often while the hook's check runs; git never reads it (owner decision, 2026-10-17).
 // The snapshot holds hashes, never config values, and messages redact config subsections
 // (they can hold URLs with tokens), so neither the shell variable nor stderr leaks secrets.
 //   snapshot: prints the state as one JSON line
@@ -40,15 +42,18 @@ function absentOnOne(args: readonly string[], options: GitOptions): string | nul
   }
 }
 
+const EDITOR_KEY = /^branch\..+\.vscode-merge-base$/;
+
 // `config -z` prints "key\nvalue" records separated by NUL, so values may hold newlines.
 // Entries are grouped under their redacted key and each group hashed in file order, so the
-// snapshot holds neither values nor subsections; core.bare is tracked on its own.
+// snapshot holds neither values nor subsections; core.bare is tracked on its own, and VS Code's
+// merge-base keys are skipped.
 function parseConfig(listing: string): Config {
   const groups = new Map<string, string[][]>();
   for (const entry of listing.split("\0").filter((record) => record.length > 0)) {
     const split = entry.indexOf("\n");
     const key = split === -1 ? entry : entry.slice(0, split);
-    if (key === "core.bare") continue;
+    if (key === "core.bare" || EDITOR_KEY.test(key)) continue;
     const name = redactKey(key);
     groups.set(name, [...(groups.get(name) ?? []), [key, split === -1 ? "" : entry.slice(split + 1)]]);
   }
