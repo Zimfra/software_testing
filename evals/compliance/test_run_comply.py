@@ -309,7 +309,7 @@ class ScenarioSetup(unittest.TestCase):
                         "cat > notes.md <<'EOF'\nhello\nEOF", "cd src && touch inside.txt", "false",
                         "printf '---\\nname: x\\n---\\n' > front.md", "printf -- '---\\nok\\n' > dashed.md",
                         "printf '%s-%s\\n' a b > plain.txt")
-            run_comply.setup_sandbox(sandbox, commands, lambda args, **kw: subprocess.run(args, **kw), messages.append)
+            run_comply.setup_sandbox(sandbox, commands, lambda args, **kw: subprocess.run(args, env=run_comply.isolated_env(dict(os.environ), Path(directory) / "gh"), **kw), messages.append)
             self.assertFalse((sandbox / "stale").exists(), "a reused sandbox starts empty")
             self.assertTrue((sandbox / ".git").is_dir())
             self.assertEqual((sandbox / "src/f.py").read_text(), "def f():\n    return 1\n")
