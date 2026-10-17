@@ -16,7 +16,9 @@ await test("repository paths are relative, forward-slash, and directories end in
 await test("only _PATTERN exports are patterns, and each is anchored at both ends", () => {
   for (const [name, value] of Object.entries(paths)) {
     assert.equal(value instanceof RegExp, name.endsWith("_PATTERN"), name);
-    if (value instanceof RegExp) assert.ok(value.source.startsWith("^") && value.source.endsWith("$"), `${name} is not anchored`);
+    if (!(value instanceof RegExp)) continue;
+    assert.ok(value.source.startsWith("^") && value.source.endsWith("$"), `${name} is not anchored`);
+    assert.equal(value.flags, "", `${name} takes no flags, so ^ and $ anchor the whole path and case counts`);
   }
 });
 
@@ -32,6 +34,7 @@ await test("a changelog fragment is a dated, lower-case kebab-case Markdown file
     "changelog/notes.md", "changelog/2026-10-17.md", "changelog/2026-10-17-.md", "changelog/2026-10-17-Upper.md",
     "changelog/2026-10-17-a--b.md", "changelog/2026-10-17-change.py", "changelog/sub/2026-10-17-change.md",
     "CHANGELOG/2026-10-17-change.md", "wiki/changelog/2026-10-17-change.md", "changelog/26-10-17-change.md",
+    "changelog/2026-10-17-change.md.ts", "changelog/2026-10-17-change.md\nscripts/x.ts",
   ]) {
     assert.ok(!paths.CHANGELOG_FRAGMENT_PATTERN.test(path), path);
   }
