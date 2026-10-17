@@ -9,7 +9,7 @@ agent: opencode
 status: in-progress
 owner: human
 priority: P1
-next_action: After S07 lands, take the next unblocked ticket (S05 is unblocked by S02 and S04); S01 to S04 landed in PRs 18, 21, 25 and 23. Each ticket's own PR marks it done.
+next_action: Start S04 Content-sensitive working-state snapshots on a fresh branch; S01 landed in PR 18 and S02 in PR 21. From S04 on, each ticket's own PR marks it done.
 idea: "[[Execute the repository audit remediation]]"
 evidence:
   - "OWNER DECISION: on 2026-10-16 the owner requested committed planning, a pull request and execution by another LLM in a separate terminal session."

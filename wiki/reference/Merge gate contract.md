@@ -95,6 +95,10 @@ config-protection read from the plugin's `scripts/hooks/config-protection.js`, v
   of those fields is an error, never a verdict.
   It does not cover history at and before the boundary, which came from the upstream repository
   ([[Choose the landing audit history scope]]), or team entries and email addresses in
-  `CODEOWNERS`, which it skips as `npm run pr` does.
+  `CODEOWNERS`, which it skips as `npm run pr` does. Like `npm run pr`, it treats a user named on
+  any `CODEOWNERS` line as an owner of the whole repository, so a path-scoped line such as
+  `/docs/ @<helper>` would authorize that user's merges of any pull request; today the file has
+  only the `*` line. It reads only `.github/CODEOWNERS`: a `CODEOWNERS` at the root or in `docs/`,
+  which GitHub also honours, is not read, and every merge would then be reported unauthorized.
 
 Only the owner merges. Agents prepare, check, push the branch and open the pull request.
