@@ -36,6 +36,9 @@ every `GIT_*` variable, and `scripts/lib/git.ts` does the same whenever a caller
 
 The backstop is `scripts/git/git-state.ts`. `.githooks/pre-push` snapshots `HEAD`, the checked-out
 branch, `core.bare`, local and per-worktree config, every ref, the index and the working tree
+(the `git status` listing plus, since 2026-10-17, the bytes, executable bit or symlink target
+of each path it lists, because a rewrite of an already-dirty file leaves the listing unchanged;
+a directory listed as one entry, such as a nested repository or submodule, is not looked into)
 before `npm run check`, and verifies them afterwards, even when the check failed, refusing the
 push if anything moved. It skips one key, `branch.<name>.vscode-merge-base`: the VS Code Git
 extension writes it when it first sees a branch, often during the check, and git never reads it
