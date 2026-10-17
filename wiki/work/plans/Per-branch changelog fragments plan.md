@@ -6,10 +6,11 @@ tags: [area/git, area/planning, kind/convention]
 created: 2026-10-17
 updated: 2026-10-17
 agent: claude-code
-status: proposed
+status: approved
+approval_ref: "#24"
 owner: human
 priority: P2
-next_action: Owner reviews this plan and ADR-0027; after the owner merges their pull request, set approval_ref and create the two build tickets with plan-tickets.
+next_action: Build slice 1, Recognise changelog fragments as documentation; slice 2 waits on it.
 idea: "[[Changelog entries cannot conflict between branches]]"
 related: ["[[ADR-0027 Changelog entries are per-branch fragment files]]", "[[ADR-0007 Changelog entries carry no post-merge facts]]", "[[Change records]]"]
 evidence:
@@ -19,6 +20,7 @@ evidence:
   - "OWNER DECISION: on 2026-10-17 the owner chose \"Folder is the changelog (Recommended)\" and \"Existing guard tests (Recommended)\" as the test seam."
   - "UNKNOWN: whether GitHub's conflict check would honour a merge=union attribute; this plan does not depend on it."
   - "VERIFIED: an independent verifier at 1424498 found the first draft omitted the AFK wrapper's documentation patterns (scripts/sandcastle/afk.ts:27), the guards workflow running main's old guard on the switching pull request, and the new guard refusing that pull request's own pointer line."
+  - "VERIFIED: gh pr view 24 shows the plan PR MERGED by the owner on 2026-10-17 (squash commit 6a28e1d), which approves this plan."
   - "INFERRED: the slices below close those gaps and the transition-closing gap a second review found at 3ac46a4; the reviews of this revision record whether they do."
 ---
 
@@ -70,6 +72,8 @@ wrapper's landing rule keeps its own existing test, `scripts/sandcastle/afk-guar
 
 ### 1. Fragment paths are recognised as documentation
 
+Ticket: [[Recognise changelog fragments as documentation]].
+
 - **Behaviour:** `scripts/lib/paths.ts` names the `changelog/` folder and the fragment name
   pattern. The AFK wrapper's documentation rule (`scripts/sandcastle/afk.ts`) counts a
   `changelog/` fragment as documentation, so a docs-only Sandcastle branch still lands unattended.
@@ -82,6 +86,8 @@ wrapper's landing rule keeps its own existing test, `scripts/sandcastle/afk-guar
 - **Blocked by:** owner approval of this plan.
 
 ### 2. Changelog fragments replace the shared entry
+
+Ticket: [[Switch the changelog to per-branch fragments]] (parent: slice 1).
 
 - **Behaviour:** `changelog:guard` accepts a branch that adds at least one new valid fragment, and
   refuses a branch with no fragment, an empty fragment or one with no `- ` entry, a fragment dated

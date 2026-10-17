@@ -9,7 +9,7 @@ agent: claude-code
 status: backlog
 owner: human
 priority: P2
-next_action: Owner reviews the proposed plan and ADR-0027; merging their pull request approves the plan, and its two build tickets follow.
+next_action: The plan is approved (PR 24); build its tickets in order, starting with Recognise changelog fragments as documentation.
 related: ["[[ADR-0027 Changelog entries are per-branch fragment files]]", "[[Per-branch changelog fragments plan]]"]
 ---
 
