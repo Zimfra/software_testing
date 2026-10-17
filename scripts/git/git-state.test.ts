@@ -39,6 +39,28 @@ await test("unchanged state passes, including an unborn and a detached HEAD", as
   });
 });
 
+await test("VS Code's merge-base key is editor metadata, not an escape", async (t) => {
+  await t.test("added during the check", (t) => {
+    const repo = fresh(t);
+    assert.equal(changedBy(repo, () => repo.git(["config", "branch.main.vscode-merge-base", "origin/main"])).code, EXIT_OK);
+  });
+  await t.test("changed or removed during the check", (t) => {
+    const repo = fresh(t);
+    repo.git(["config", "branch.main.vscode-merge-base", "origin/main"]);
+    assert.equal(changedBy(repo, () => repo.git(["config", "branch.main.vscode-merge-base", "origin/other"])).code, EXIT_OK);
+    assert.equal(changedBy(repo, () => repo.git(["config", "--unset", "branch.main.vscode-merge-base"])).code, EXIT_OK);
+  });
+  for (const [name, key] of [["a tracking key", "branch.main.merge"], ["another VS Code key", "branch.main.vscode-merge-base-x"],
+    ["the same variable outside branch", "fixture.main.vscode-merge-base"], ["the variable with no branch", "branch.vscode-merge-base"]] as const) {
+    await t.test(`${name} is still refused`, (t) => {
+      const repo = fresh(t);
+      const result = changedBy(repo, () => repo.git(["config", key, "x"]));
+      assert.equal(result.code, EXIT_REFUSED, key);
+      assert.match(result.err, /local git config changed/);
+    });
+  }
+});
+
 await test("each kind of escape is refused and named", async (t) => {
   const cases: [string, (repo: RepoFixture) => void, RegExp][] = [
     ["a fixture commit", (repo) => repo.commit("leaked"), /HEAD moved/],
