@@ -6,7 +6,7 @@ tags: [area/git, kind/convention]
 created: 2026-10-17
 updated: 2026-10-17
 agent: claude-code
-status: active
+status: draft
 related: ["[[Changelog entries cannot conflict between branches]]", "[[ADR-0007 Changelog entries carry no post-merge facts]]"]
 ---
 ## Context
@@ -30,8 +30,15 @@ OWNER DECISION, 2026-10-17: "Folder is the changelog (Recommended)".
 - The folder is the changelog from then on. Nothing folds fragments back into one file.
 - `CHANGELOG.md` keeps every entry written before the switch, unchanged, and gains one line
   pointing to the folder. Branches no longer edit it.
-- ADR-0007 still applies: a fragment describes the change and never a fact that exists only after
-  the merge.
+- A fragment describes the change and never a fact that exists only after the merge. This
+  restates ADR-0007's rule for the new location; the pull request that switches the guard marks
+  ADR-0007 superseded by this decision and sets this one active.
+- One transition: the switching pull request itself still adds a dated `CHANGELOG.md` entry,
+  because the required `guards` check runs main's old guard against it. After that, no branch
+  edits `CHANGELOG.md`, and a branch opened before the switch moves its entry into a fragment
+  when it merges `main`.
+- A fragment is changed only on the branch that adds it; a correction after merge is a new
+  fragment.
 
 ## Consequences
 

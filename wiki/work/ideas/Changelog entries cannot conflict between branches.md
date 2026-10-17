@@ -18,8 +18,9 @@ related: ["[[ADR-0027 Changelog entries are per-branch fragment files]]", "[[Per
 `changelog:guard` requires every branch to add an entry under a date heading in `CHANGELOG.md`,
 and entries go at the top of the current day's section. Two pull requests open at once therefore
 insert different lines at the same place. On 2026-10-17, PR 22 and PR 23 each added a line under
-`## 2026-10-17`; after the owner merged PR 22, GitHub reported PR 23 as conflicting in
-`CHANGELOG.md` and refused to merge it until `main` was merged into the branch by hand.
+`## 2026-10-17`; after the owner merged PR 22, the owner reported GitHub's message that PR 23
+had conflicts in `CHANGELOG.md`, and it could not merge until `main` was merged into the branch
+by hand (merge commit 271578d).
 
 Nothing was lost: the conflict is the safe outcome. It costs a merge, a re-check, a fresh review
 and a second owner approval each time, and Sandcastle, which runs several agents at once, would

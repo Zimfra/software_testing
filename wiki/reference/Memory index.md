@@ -24,7 +24,7 @@ One line per memory note. Add new notes here; work notes need no entry.
 - [[ADR-0024 Claude Code is the only harness]] - Superseded by ADR-0026; records the earlier harness restriction and ECC integration.
 - [[ADR-0025 Agents use a machine account and the owner approves]] - Agents push and open PRs as a machine account that cannot approve its own work; code-owner review is on and no owner credential is on the agents' machine, so only the owner's approval counts.
 - [[ADR-0026 Any provider may work under shared rules]] - Any harness or model provider may author and verify work with truthful attribution, one canonical skill library and the shared checks.
-- [[ADR-0027 Changelog entries are per-branch fragment files]] - Each branch records its change in its own dated file under changelog/; CHANGELOG.md keeps the history before the switch, so concurrent branches never conflict on it.
+- [[ADR-0027 Changelog entries are per-branch fragment files]] - Draft until its build lands. Each branch records its change in its own dated file under changelog/; CHANGELOG.md keeps the history before the switch, so concurrent branches never conflict on it.
 
 ## Lessons
 
