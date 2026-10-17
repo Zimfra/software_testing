@@ -377,3 +377,9 @@ await test("readiness compares the main commit it captured, even if the tracking
   assert.equal(result.code, EXIT_REFUSED, "the old ref planted after capture is not what readiness compares");
   assert.match(result.err, /behind main/);
 });
+
+await test("an unreachable origin stops readiness instead of comparing a leftover ref", (t) => {
+  const repo = fixture(t);
+  repo.git(["remote", "set-url", "origin", join(repo.dir, "no-such-remote")]);
+  assert.throws(() => go(repo, runner(repo).run), /git fetch .* failed/);
+});
