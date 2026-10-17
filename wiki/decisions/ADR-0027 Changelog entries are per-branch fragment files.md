@@ -34,7 +34,8 @@ OWNER DECISION, 2026-10-17: "Folder is the changelog (Recommended)".
   restates ADR-0007's rule for the new location; the pull request that switches the guard marks
   ADR-0007 superseded by this decision and sets this one active.
 - One transition: the switching pull request itself still adds a dated `CHANGELOG.md` entry,
-  because the required `guards` check runs main's old guard against it. After that, no branch
+  because the required `guards` check runs main's old guard against it, and also adds its own
+  fragment, which closes the transition for every later branch. After that, no branch
   edits `CHANGELOG.md`, and a branch opened before the switch moves its entry into a fragment
   when it merges `main`.
 - A fragment is changed only on the branch that adds it; a correction after merge is a new
@@ -44,8 +45,9 @@ OWNER DECISION, 2026-10-17: "Folder is the changelog (Recommended)".
 
 - Two branches can no longer conflict on the changelog, because each adds a different file.
 - Reading the history means listing `changelog/` in name order rather than reading one file.
-- The rule text in `CLAUDE.md`, `.claude/rules/zeem/change-records.md`, `wiki-and-docs.md`, the
-  Change records reference, the Sandcastle prompts and `config/governance-alignment.json` changes
-  in the same pull request as the guard, so no live text asserts the old rule.
+- Every live text that requires a `CHANGELOG.md` entry (rules, `CLAUDE.md`, `README.md`,
+  runbooks, the Change records reference, the Sandcastle prompts and
+  `config/governance-alignment.json`; the plan lists them) changes in the same pull request as
+  the guard, so no live text asserts the old rule.
 - Two branches that pick the same date and slug would still conflict; the slug names the branch's
   topic, which makes that rare and visible.

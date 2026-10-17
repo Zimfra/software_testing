@@ -18,7 +18,8 @@ evidence:
   - "VERIFIED: scripts/changes/changelog-validation.ts judges entries by the lines a branch added under a date heading in CHANGELOG.md; scripts/lib/paths.ts:6 names the file."
   - "OWNER DECISION: on 2026-10-17 the owner chose \"Folder is the changelog (Recommended)\" and \"Existing guard tests (Recommended)\" as the test seam."
   - "UNKNOWN: whether GitHub's conflict check would honour a merge=union attribute; this plan does not depend on it."
-  - "VERIFIED: an independent verifier at 1424498 found the first draft omitted the AFK wrapper's documentation patterns (scripts/sandcastle/afk.ts:27), the guards workflow running main's old guard on the switching pull request, and the new guard refusing that pull request's own pointer line; this revision addresses each."
+  - "VERIFIED: an independent verifier at 1424498 found the first draft omitted the AFK wrapper's documentation patterns (scripts/sandcastle/afk.ts:27), the guards workflow running main's old guard on the switching pull request, and the new guard refusing that pull request's own pointer line."
+  - "INFERRED: the slices below close those gaps and the transition-closing gap a second review found at 3ac46a4; the reviews of this revision record whether they do."
 ---
 
 The plan is approved when the owner merges the pull request that adds it; then set
@@ -43,7 +44,8 @@ folder. ADR-0027 is active and ADR-0007 is superseded by it.
 - A replaced rule is retired in the same pull request, and every live reference is repointed;
   `governance:check` must refuse text that still asserts the old rule.
 - Historical records stay as written: existing `CHANGELOG.md` entries, decision bodies and work
-  records are not edited, apart from one pointer line in `CHANGELOG.md` and ADR-0007's status.
+  records are not edited, apart from the switching pull request's pointer line and transition
+  entry in `CHANGELOG.md`, and ADR-0007's status.
 - The required `guards` check runs main's copy of the guards against a pull request
   (`.github/workflows/guards.yml`), so the switching pull request must satisfy main's old
   changelog guard as well as its own new one.
@@ -72,7 +74,8 @@ wrapper's landing rule keeps its own existing test, `scripts/sandcastle/afk-guar
   pattern. The AFK wrapper's documentation rule (`scripts/sandcastle/afk.ts`) counts a
   `changelog/` fragment as documentation, so a docs-only Sandcastle branch still lands unattended.
   `governance:check` excludes `changelog/**` as history, as it excludes `CHANGELOG.md`. No guard
-  requires fragments yet.
+  requires fragments yet, and this slice adds no file under `changelog/`: its own record is a
+  `CHANGELOG.md` entry, as main's guard still requires.
 - **Acceptance:** an `afk-guard` case where a branch adds only a wiki page and a fragment is
   treated as documentation, failing before the change; a governance case showing a fragment is not
   scanned; `npm run check` passes.
@@ -86,23 +89,26 @@ wrapper's landing rule keeps its own existing test, `scripts/sandcastle/afk-guar
   change to or deletion of a fragment that exists on the base, entry lines added to
   `CHANGELOG.md`, and a post-merge fact. The fragment set comes from the branch diff with
   added, modified and deleted paths told apart, untracked files included.
-- **Transition:** while the base has no `changelog/` folder, the guard also accepts the branch's
-  dated `CHANGELOG.md` entry and pointer line, so this pull request passes main's old guard in the
-  `guards` check and its own new guard in `check`. The guard's refusal for a branch that still
+- **Transition:** while the base has no file matching the fragment pattern, the guard also
+  accepts the branch's dated `CHANGELOG.md` entry and pointer line, so this pull request passes main's old guard in the
+  `guards` check and its own new guard in `check`. This pull request must also add its own
+  fragment, so main holds a fragment once it merges and the transition never applies again. The guard's refusal for a branch that still
   carries a `CHANGELOG.md` entry tells it to move the entry into a fragment.
 - **Rule and references, same pull request:** `CLAUDE.md`, `README.md`,
   `.claude/rules/zeem/change-records.md`, `.claude/rules/zeem/wiki-and-docs.md`,
   `wiki/reference/Change records.md`, the runbooks Land a change, Maintain the repository wiki,
-  Run Sandcastle on GitHub issues and Verify a repository change (and that runbook's Memory index
-  line), `.sandcastle/implement-prompt.md`, `.sandcastle/merge-prompt.md`, the guard's usage text,
+  Run Sandcastle on GitHub issues and Verify a repository change, the Memory index lines for
+  Maintain the repository wiki and for ADR-0007 ("Superseded by ADR-0027"), `.sandcastle/implement-prompt.md`, `.sandcastle/merge-prompt.md`, the guard's usage text,
   the comment in `scripts/wiki/wiki-compliance-validation.ts`, `repo-memory-validation`, and
   `config/governance-alignment.json`, which gains a claim refusing live text that still requires
-  a `CHANGELOG.md` entry, with allowances for decision bodies, work records and this plan.
+  a `CHANGELOG.md` entry; each existing history file the claim matches (decision bodies, work
+  records, this plan, evaluation reports) gets its own exact-span allowance or a named exclusion,
+  as the config's model requires.
   ADR-0007 becomes `superseded` with `superseded_by` ADR-0027, and ADR-0027 becomes `active`.
 - **Acceptance:** the refusing cases fail before the change and pass after it; two fixture
   branches from one base each add a fragment and merge into `main` in either order without a
   conflict, the guard passing on both; the transition case passes only while the base has no
-  `changelog/`; `governance:check` refuses a planted sentence asserting the old rule;
+  fragment, and a branch with a transition entry but no fragment is refused; `governance:check` refuses a planted sentence asserting the old rule;
   `npm run check` passes.
 - **Blocked by:** slice 1.
 
@@ -112,12 +118,14 @@ wrapper's landing rule keeps its own existing test, `scripts/sandcastle/afk-guar
   with no conflict, and the guard passes on both.
 - [ ] Each refusing case in slice 2 is refused by `changelog:guard` with a reason, and was shown
   failing first.
-- [ ] The switching pull request passes both main's old guard and its own new guard.
+- [ ] The switching pull request passes both main's old guard and its own new guard, and adds a
+  fragment, so main holds one after it merges and the transition is closed.
+- [ ] Slice 1 adds no file under `changelog/`.
 - [ ] A docs-only Sandcastle branch with a fragment still lands unattended.
 - [ ] No live rule, prompt, runbook, reference, README or config still requires a `CHANGELOG.md`
   entry, and `governance:check` refuses one planted back.
 - [ ] Existing `CHANGELOG.md` history is unchanged apart from its pointer line and the
-  transition entry.
+  transition entries of slices 1 and 2.
 - [ ] `npm run check` passes, and an independent verifier rates each criterion at each slice's
   final head.
 
