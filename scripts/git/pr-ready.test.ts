@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { lstatSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync } from "node:fs";
+import { copyFileSync, lstatSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { test, type TestContext } from "node:test";
@@ -241,14 +241,9 @@ function treeState(root: string): Record<string, string> {
   return state;
 }
 
-// What a hook or a parent session leaves behind: routing toward a decoy, plus injected config.
-function withDecoyRouting<T>(decoy: string, body: () => T): T {
-  const routing: Record<string, string> = {
-    GIT_DIR: join(decoy, ".git"), GIT_WORK_TREE: decoy, GIT_INDEX_FILE: join(decoy, ".git", "index"),
-    GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "fixture.injected", GIT_CONFIG_VALUE_0: "yes",
-  };
-  const saved = Object.fromEntries(Object.keys(routing).map((key) => [key, process.env[key]]));
-  Object.assign(process.env, routing);
+function withEnv<T>(variables: Record<string, string>, body: () => T): T {
+  const saved = Object.fromEntries(Object.keys(variables).map((key) => [key, process.env[key]]));
+  Object.assign(process.env, variables);
   try {
     return body();
   } finally {
@@ -258,6 +253,21 @@ function withDecoyRouting<T>(decoy: string, body: () => T): T {
     }
   }
 }
+
+// What a hook or a parent session leaves behind: routing toward a decoy, plus injected config.
+function withDecoyRouting<T>(decoy: string, body: () => T): T {
+  return withEnv({
+    GIT_DIR: join(decoy, ".git"), GIT_WORK_TREE: decoy, GIT_INDEX_FILE: join(decoy, ".git", "index"),
+    GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "fixture.injected", GIT_CONFIG_VALUE_0: "yes",
+  }, body);
+}
+
+await test("an explicit cwd with nothing inherited acts on that checkout", (t) => {
+  const selected = createRepo("pr-ready-plain-");
+  t.after(() => selected.cleanup());
+  selected.commit("plain");
+  assert.equal(spawnRunner(selected.dir)("git", ["rev-parse", "--show-toplevel"]).stdout.trim(), realpathSync(selected.dir));
+});
 
 await test("an explicit cwd is the checkout git, node and npm act on, whatever routing is inherited", (t) => {
   const selected = createRepo("pr-ready-selected-");
@@ -282,11 +292,43 @@ await test("an explicit cwd is the checkout git, node and npm act on, whatever r
   assert.equal(selected.git(["diff", "--cached", "--name-only"]), "made.txt");
 });
 
-await test("without a cwd the hook's repository stays the target, and only injected config is dropped", (t) => {
-  const decoy = createRepo("pr-ready-hooked-");
-  t.after(() => decoy.cleanup());
-  decoy.commit("hooked");
-  const seen = withDecoyRouting(decoy.dir, () =>
-    spawnRunner(undefined)("sh", ["-c", "printf '%s|%s' \"$GIT_DIR\" \"${GIT_CONFIG_COUNT:-unset}\""]).stdout);
-  assert.equal(seen, `${join(decoy.dir, ".git")}|unset`);
+// A hooked repository whose history three injected variables could each rewrite: a graft file
+// that cuts HEAD's parent, a replace-ref base under refs/alt/, and turning off its real
+// refs/replace/ entry. Its alternate index holds a staged file, as a pre-commit hook's does.
+function hookedRepository(t: TestContext): { dir: string; index: string; graft: string; clean: string } {
+  const repo = createRepo("pr-ready-hooked-");
+  t.after(() => repo.cleanup());
+  repo.commit("first");
+  const first = repo.git(["rev-parse", "HEAD"]);
+  repo.commit("second");
+  const second = repo.git(["rev-parse", "HEAD"]);
+  const altFirst = repo.git(["commit-tree", `${first}^{tree}`, "-m", "alt-first"]);
+  repo.git(["update-ref", `refs/replace/${first}`, altFirst]);
+  repo.git(["update-ref", `refs/alt/${second}`, first]);
+  const graft = join(repo.dir, ".git", "test-grafts");
+  writeFileSync(graft, `${second}\n`);
+  repo.write("staged.txt", "staged\n");
+  repo.git(["add", "staged.txt"]);
+  const index = join(repo.dir, ".git", "alt-index");
+  copyFileSync(join(repo.dir, ".git", "index"), index);
+  repo.git(["reset", "--quiet"]);
+  return { dir: repo.dir, index, graft, clean: repo.git(["log", "--format=%s"]) };
+}
+
+await test("without a cwd git runs in the hook's repository and index, and injected history is dropped", (t) => {
+  const hooked = hookedRepository(t);
+  const routing = { GIT_DIR: join(hooked.dir, ".git"), GIT_WORK_TREE: hooked.dir, GIT_INDEX_FILE: hooked.index };
+  const log = (injected: Record<string, string>) => withEnv({ ...routing, ...injected }, () =>
+    spawnRunner(undefined)("git", ["log", "--format=%s"]).stdout.trim());
+  assert.equal(hooked.clean, "second\nalt-first", "the repository's own replace ref applies");
+  withEnv(routing, () => {
+    const run = spawnRunner(undefined);
+    assert.equal(run("git", ["rev-parse", "--absolute-git-dir"]).stdout.trim(), realpathSync(join(hooked.dir, ".git")));
+    assert.equal(run("git", ["diff", "--cached", "--name-only"]).stdout.trim(), "staged.txt", "the hook's index is kept");
+    assert.equal(run("sh", ["-c", `GIT_GRAFT_FILE='${hooked.graft}' git log --format=%s`]).stdout.trim(), "second",
+      "a graft set inside the command still works, so the control below is real");
+  });
+  for (const injected of [{ GIT_GRAFT_FILE: hooked.graft }, { GIT_REPLACE_REF_BASE: "refs/alt/" }, { GIT_NO_REPLACE_OBJECTS: "1" }]) {
+    assert.equal(log(injected), hooked.clean, Object.keys(injected).join(","));
+  }
 });
