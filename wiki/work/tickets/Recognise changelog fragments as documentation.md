@@ -39,7 +39,7 @@ repository classifies paths, while `CHANGELOG.md` stays the required record.
 ## Acceptance criteria
 
 - [ ] The new `afk-guard` case fails before the change and passes after it (`node --test scripts/sandcastle/afk-guard.test.ts`).
-- [ ] The governance case shows a fragment under `changelog/` is not scanned (`npm run governance:check` tests).
+- [ ] The governance case shows a fragment under `changelog/` is not scanned (a case in `scripts/governance/governance-guard.test.ts`, run by `npm test`).
 - [ ] The branch adds no file under `changelog/` (`git diff --name-only origin/main...HEAD`).
 - [ ] `npm run check` passes, and an independent verifier rates these criteria at the final head.
 

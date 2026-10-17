@@ -43,9 +43,9 @@ open pull requests never conflict on the changelog, and no live text still requi
 ## Acceptance criteria
 
 - [ ] Each refusing case in plan slice 2 is refused with a reason, and was shown failing first (`node --test scripts/changes/*.test.ts`).
-- [ ] Two fixture branches from one base each add a fragment and merge into `main` in either order without a conflict, the guard passing on both.
+- [ ] Two fixture branches from one base each add a fragment and merge into `main` in either order without a conflict, the guard passing on both (a case in `scripts/changes/changelog-guard.test.ts`).
 - [ ] The transition case passes only while the base has no fragment, and a branch with a transition entry but no fragment is refused.
-- [ ] The branch passes main's old `changelog:guard` and its own new one, and adds a fragment.
+- [ ] The branch passes main's old `changelog:guard` (the PR's required `guards` check, which runs main's copy) and its own new one (`npm run changelog:guard`), and adds a fragment (`git diff --name-only origin/main...HEAD`).
 - [ ] `npm run governance:check` refuses a planted sentence that still requires a `CHANGELOG.md` entry.
 - [ ] `npm run check` passes, and an independent verifier rates these criteria at the final head.
 
@@ -55,3 +55,4 @@ open pull requests never conflict on the changelog, and no live text still requi
 - A `merge=union` attribute.
 - Editing or moving existing `CHANGELOG.md` entries beyond the pointer line and transition entry.
 - Changing the post-merge rule itself.
+- Dependabot's exemption from the change-record guards (`.github/workflows/guards.yml`), which stays as it is, as the plan's constraints require.
