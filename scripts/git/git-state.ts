@@ -4,7 +4,8 @@
 // and core.bare have been lost that way). The hook snapshots this state before
 // `npm run check` and refuses the push if the check changed it. It detects; it cannot undo.
 // Covered: HEAD, the checked-out branch, core.bare, local and per-worktree config, every ref,
-// the index and the working tree. Not covered: global config, hooks, the object store, and
+// the index and the working tree: what git status lists, plus the bytes, executable bit or
+// symlink target of each path it lists, so rewriting an already-dirty file is caught. Not covered: global config, hooks, the object store, and
 // branch.<name>.vscode-merge-base, which the VS Code Git extension writes when it sees a new
 // branch, often while the hook's check runs; git never reads it (owner decision, 2026-10-17).
 // The snapshot holds hashes, never config values, and messages redact config subsections
@@ -12,8 +13,8 @@
 //   snapshot: prints the state as one JSON line
 //   verify:   reads a snapshot on stdin and refuses if the state differs
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, lstatSync, readFileSync, readlinkSync, realpathSync } from "node:fs";
+import { dirname, resolve, sep } from "node:path";
 import { EXIT_ERROR, EXIT_OK, EXIT_REFUSED, consoleOutput, isEntryPoint, runCli, type Output } from "../lib/cli.ts";
 import { GitError, git, gitOptionsAt, type GitOptions } from "../lib/git.ts";
 import { isRecord } from "../lib/record.ts";
@@ -67,6 +68,55 @@ function worktreeConfig(options: GitOptions): Config | null {
   return existsSync(path) ? parseConfig(git(["config", "--file", path, "--list", "-z"], options)) : null;
 }
 
+// Paths git status lists, porcelain v1 -z: "XY path" records, and after a rename or copy the
+// source path as its own record. Paths are relative to the top of the work tree.
+function statusPaths(listing: string): string[] {
+  const records = listing.split("\0").filter((record) => record.length > 0);
+  const paths: string[] = [];
+  for (let i = 0; i < records.length; i += 1) {
+    const record = records[i] ?? "";
+    paths.push(record.slice(3));
+    if (/^(R|C|.R|.C)/.test(record.slice(0, 2)) && i + 1 < records.length) paths.push(records[++i] ?? "");
+  }
+  return paths;
+}
+
+const isMissing = (error: unknown): boolean =>
+  error instanceof Error && "code" in error && (error.code === "ENOENT" || error.code === "ENOTDIR");
+
+// One path's state as a digest: absent, a symlink's target text (never followed), or a file's
+// executable bit and bytes. A path whose directory resolves outside the work tree (a tracked
+// directory replaced by a link) is recorded as such and never read, and an unreadable file
+// throws, so it never passes as unchanged.
+function entryState(top: string, path: string): string {
+  const full = resolve(top, path);
+  let parent: string;
+  try {
+    parent = realpathSync(dirname(full));
+  } catch (error) {
+    if (isMissing(error)) return "absent";
+    throw error;
+  }
+  if (parent !== top && !parent.startsWith(top + sep)) return "outside";
+  const target = resolve(parent, full.slice(dirname(full).length + 1));
+  let info;
+  try {
+    info = lstatSync(target);
+  } catch (error) {
+    if (isMissing(error)) return "absent";
+    throw error;
+  }
+  if (info.isSymbolicLink()) return `link ${digest(readlinkSync(target))}`;
+  if (!info.isFile()) return info.isDirectory() ? "directory" : "other";
+  return `file ${(info.mode & 0o111) === 0 ? "-" : "x"} ${createHash("sha256").update(readFileSync(target)).digest("hex")}`;
+}
+
+function workingTree(options: GitOptions): string {
+  const listing = git(["status", "--porcelain=v1", "-z", "--untracked-files=all"], options);
+  const top = realpathSync(git(["rev-parse", "--show-toplevel"], options));
+  return digest(JSON.stringify([listing, statusPaths(listing).map((path) => entryState(top, path))]));
+}
+
 // A repository flipped to core.bare=true has no work tree for status or ls-files to read;
 // the core.bare change itself is the refusal, so those two read as "bare".
 const BARE = "bare";
@@ -83,7 +133,7 @@ function readState(options: GitOptions = {}): GitState {
     worktreeConfig: worktreeConfig(options),
     refs: digest(git(["for-each-ref", "--format=%(refname) %(objectname)"], options)),
     index: workTree ? digest(git(["ls-files", "--stage", "-z"], options)) : BARE,
-    tree: workTree ? digest(git(["status", "--porcelain=v1", "-z", "--untracked-files=all"], options)) : BARE,
+    tree: workTree ? workingTree(options) : BARE,
   };
 }
 
