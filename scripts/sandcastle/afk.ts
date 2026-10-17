@@ -12,6 +12,7 @@ import { lstatSync, readFileSync, readdirSync, readlinkSync, statSync } from "no
 import { join, resolve } from "node:path";
 import { EXIT_ERROR, EXIT_OK, EXIT_REFUSED, consoleOutput, isEntryPoint, runCli, type Output } from "../lib/cli.ts";
 import { spawnRunner, type Run } from "../git/pr-ready.ts";
+import { MAIN_REFSPEC } from "../lib/git.ts";
 import { branchWork, type BranchWork } from "./already-done.ts";
 
 export type Options = { cwd?: string; output?: Output; run?: Run; env?: NodeJS.ProcessEnv };
@@ -57,7 +58,7 @@ function resolveRepo(run: Run): string {
 // from leaving the comparison below on a stale or absent origin/main.
 function fetchMain(run: Run): boolean {
   try {
-    const fetched = run("git", ["fetch", "--quiet", "origin", "+refs/heads/main:refs/remotes/origin/main"]).status === 0;
+    const fetched = run("git", ["fetch", "--quiet", "origin", MAIN_REFSPEC]).status === 0;
     return fetched && run("git", ["rev-parse", "--verify", "--quiet", "refs/remotes/origin/main^{commit}"]).status === 0;
   } catch {
     return false;

@@ -356,3 +356,24 @@ await test("an origin without main stops readiness instead of comparing a leftov
   execFileSync("git", ["--git-dir", remote, "update-ref", "-d", "refs/heads/main"], { env: cleanGitEnv });
   assert.throws(() => go(repo, runner(repo).run), /git fetch .* failed/);
 });
+
+await test("readiness compares the main commit it captured, even if the tracking ref moves afterwards", (t) => {
+  const repo = fixture(t);
+  const before = repo.git(["rev-parse", "main"]);
+  repo.git(["switch", "--quiet", "-c", "elsewhere", "main"]);
+  repo.write("moved.md", "main moved\n");
+  repo.commit("main moved on origin");
+  repo.git(["push", "--quiet", "origin", "elsewhere:main"]);
+  repo.git(["switch", "--quiet", "feat/x"]);
+  const base = runner(repo).run;
+  const run: Run = (command, args, options) => {
+    const result = base(command, args, options);
+    if (command === "git" && args[0] === "rev-parse" && args.includes("refs/remotes/origin/main^{commit}")) {
+      repo.git(["update-ref", "refs/remotes/origin/main", before]);
+    }
+    return result;
+  };
+  const result = go(repo, run);
+  assert.equal(result.code, EXIT_REFUSED, "the old ref planted after capture is not what readiness compares");
+  assert.match(result.err, /behind main/);
+});
