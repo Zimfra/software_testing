@@ -80,7 +80,8 @@ config-protection read from the plugin's `scripts/hooks/config-protection.js`, v
   never merges. `--dry-run` stops before pushing.
 - `npm run audit` (`scripts/git/landing-audit.ts`) fetches origin's main itself through the same
   explicit refspec and reads its config and history from the commit that fetch captured, so a
-  stale or narrowed local ref cannot hide a direct push, and changes nothing else; a failed fetch
+  stale or narrowed local ref cannot hide a direct push; it writes only that ref and `FETCH_HEAD`.
+  A failed fetch
   or a missing main is an error. Freshness means origin's main at the moment of that fetch. It
   walks main's first-parent history after the `since` commit in `config/landing-audit.json`,
   and asks GitHub whether each commit's PR (from its merge or squash subject) merged as that
