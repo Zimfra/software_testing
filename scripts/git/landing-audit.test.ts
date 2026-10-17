@@ -155,7 +155,7 @@ await test("gh's answer is read strictly, a missing PR is an answer, and a gh fa
   assert.equal(githubPullRequest(undefined, "o/r", { program: missing })(1), null, "no such PR is a verdict");
   const broken = fakeGh(t, "echo 'HTTP 401: Bad credentials' >&2; exit 1");
   assert.throws(() => githubPullRequest(undefined, "o/r", { program: broken })(1), /gh pr view 1 failed: HTTP 401/);
-  for (const answer of ['{"state":"MERGED","mergeCommit":{"oid":"x"}}', '{"state":"MERGED","mergeCommit":{"oid":1},"baseRefName":"main","mergedBy":null}', "[]", "not json"]) {
+  for (const answer of ['{"state":"MERGED","mergeCommit":{"oid":"x"}}', '{"mergeCommit":null,"baseRefName":"main","mergedBy":null}', '{"state":"OPEN","mergeCommit":null,"mergedBy":null}', '{"state":"MERGED","mergeCommit":{"oid":1},"baseRefName":"main","mergedBy":null}', "[]", "not json"]) {
     const malformed = fakeGh(t, `printf '%s' '${answer}'`);
     assert.throws(() => githubPullRequest(undefined, "o/r", { program: malformed })(1), /gh pr view 1/, answer);
   }
@@ -274,4 +274,16 @@ await test("a code-owner change applies from the commit after it lands, so earli
   assert.equal(stale.code, 1);
   assert.match(stale.err, /\[unauthorized-merger\] Merge pull request #4/);
   assert.doesNotMatch(stale.err, /#2|#3/);
+});
+
+await test("a landing whose parent has no CODEOWNERS file has no authorized merger", (t) => {
+  const repo = createRepo("landing-audit-noowners-");
+  t.after(() => repo.cleanup());
+  const start = repo.commit("start");
+  repo.write("config/landing-audit.json", JSON.stringify({ since: start, repo: "o/r" }));
+  const landed = repo.commit("Merge pull request #2 from o/feat");
+  publish(t, repo);
+  const result = runAudit(repo, landedAs({ 2: landed }));
+  assert.equal(result.code, 1);
+  assert.match(result.err, /\[unauthorized-merger\] Merge pull request #2/);
 });
