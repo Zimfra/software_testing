@@ -13,7 +13,7 @@
 //   snapshot: prints the state as one JSON line
 //   verify:   reads a snapshot on stdin and refuses if the state differs
 import { createHash } from "node:crypto";
-import { existsSync, lstatSync, readFileSync, readlinkSync, realpathSync } from "node:fs";
+import { closeSync, existsSync, lstatSync, openSync, readFileSync, readSync, readlinkSync, realpathSync } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
 import { EXIT_ERROR, EXIT_OK, EXIT_REFUSED, consoleOutput, isEntryPoint, runCli, type Output } from "../lib/cli.ts";
 import { GitError, git, gitOptionsAt, type GitOptions } from "../lib/git.ts";
@@ -81,6 +81,21 @@ function statusPaths(listing: string): string[] {
   return paths;
 }
 
+const CHUNK_BYTES = 1 << 20;
+
+/** sha256 of a file read in chunks, so neither memory nor Node's single-read limit caps its size. */
+export function hashFile(path: string, chunkBytes = CHUNK_BYTES): string {
+  const hash = createHash("sha256");
+  const buffer = Buffer.alloc(chunkBytes);
+  const descriptor = openSync(path, "r");
+  try {
+    for (let read = readSync(descriptor, buffer); read > 0; read = readSync(descriptor, buffer)) hash.update(buffer.subarray(0, read));
+  } finally {
+    closeSync(descriptor);
+  }
+  return hash.digest("hex");
+}
+
 const isMissing = (error: unknown): boolean =>
   error instanceof Error && "code" in error && (error.code === "ENOENT" || error.code === "ENOTDIR");
 
@@ -108,11 +123,14 @@ function entryState(top: string, path: string): string {
   }
   if (info.isSymbolicLink()) return `link ${digest(readlinkSync(target))}`;
   if (!info.isFile()) return info.isDirectory() ? "directory" : "other";
-  return `file ${(info.mode & 0o111) === 0 ? "-" : "x"} ${createHash("sha256").update(readFileSync(target)).digest("hex")}`;
+  return `file ${(info.mode & 0o111) === 0 ? "-" : "x"} ${hashFile(target)}`;
 }
 
 function workingTree(options: GitOptions): string {
   const listing = git(["status", "--porcelain=v1", "-z", "--untracked-files=all"], options);
+  // git prints names as raw bytes; one that is not UTF-8 decodes with U+FFFD and could not be
+  // read back, so it would pass as absent. Stop instead.
+  if (listing.includes("\uFFFD")) throw new Error("git-state: a path git status lists is not valid UTF-8, so its contents cannot be checked; rename it or add it to .gitignore");
   const top = realpathSync(git(["rev-parse", "--show-toplevel"], options));
   return digest(JSON.stringify([listing, statusPaths(listing).map((path) => entryState(top, path))]));
 }
@@ -205,7 +223,7 @@ export function main(args: readonly string[], options: Options = {}): number {
   }
   const changes = stateChanges(before, readState(gitOptions));
   for (const change of changes) output.warn(`git-state: ${change}`);
-  if (changes.length > 0) output.warn("git-state: the check changed this repository's git state. A test probably ran git here instead of in its fixture. Inspect and restore before pushing.");
+  if (changes.length > 0) output.warn("git-state: the check changed this repository's git state. A test probably ran git here instead of in its fixture, or an editor or another program changed a dirty or untracked file while the check ran. Inspect and restore before pushing.");
   return changes.length === 0 ? EXIT_OK : EXIT_REFUSED;
 }
 

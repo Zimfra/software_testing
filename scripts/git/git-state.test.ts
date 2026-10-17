@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { test, type TestContext } from "node:test";
 import { EXIT_ERROR, EXIT_OK, EXIT_REFUSED, type Output } from "../lib/cli.ts";
 import { createRepo, type RepoFixture } from "../test-support/repo-fixture.ts";
-import { main, redactKey } from "./git-state.ts";
+import { hashFile, main, redactKey } from "./git-state.ts";
 
 function run(cwd: string, args: string[], stdin = ""): { code: number; out: string; err: string } {
   const out: string[] = [];
@@ -143,9 +143,7 @@ await test("content changes that leave git status unchanged are refused", async 
       repo.write("odd na\tme\nx.txt", "one\n");
       const status = repo.git(["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
       const result = changedBy(repo, () => change(repo));
-      if (!name.includes("executable")) {
-        assert.equal(repo.git(["status", "--porcelain=v1", "-z", "--untracked-files=all"]), status, "git status is unchanged");
-      }
+      assert.equal(repo.git(["status", "--porcelain=v1", "-z", "--untracked-files=all"]), status, "git status is unchanged");
       assert.equal(result.code, EXIT_REFUSED, name);
       assert.match(result.err, /the working tree changed/);
     });
@@ -189,7 +187,8 @@ await test("a symlink is read as its target text, never followed, and contents n
   assert.doesNotMatch(run(repo.dir, ["snapshot"]).out, /SECRET-CONTENT|secret\.txt|outside/);
 });
 
-await test("an unreadable working file is an error, not a passing snapshot", (t) => {
+// Root reads a mode-000 file anyway, so there is nothing to refuse.
+await test("an unreadable working file is an error, not a passing snapshot", { skip: process.getuid?.() === 0 }, (t) => {
   const repo = dirtyRepo(t);
   chmodSync(join(repo.dir, "untracked.txt"), 0o000);
   assert.throws(() => run(repo.dir, ["snapshot"]), /EACCES|permission/i);
@@ -205,4 +204,23 @@ await test("a listed path under a directory that now links outside the work tree
   rmSync(join(repo.dir, "dir"), { recursive: true });
   symlinkSync(outside, join(repo.dir, "dir"));
   assert.equal(changedBy(repo, () => writeFileSync(join(outside, "file.txt"), "outside two\n")).code, EXIT_OK);
+});
+
+// git status -z prints names as raw bytes; one that is not UTF-8 cannot be read back by name, so
+// the snapshot stops instead of recording it as absent and passing a later rewrite.
+await test("a listed name that is not valid UTF-8 stops the snapshot", { skip: process.platform !== "linux" }, (t) => {
+  const repo = fresh(t);
+  writeFileSync(Buffer.concat([Buffer.from(`${repo.dir}/caf`), Buffer.from([0xe9]), Buffer.from(".txt")]), "one\n");
+  assert.throws(() => run(repo.dir, ["snapshot"]), /not valid UTF-8/);
+});
+
+await test("files are hashed in chunks, so size is bounded by the disk, not by one read", (t) => {
+  const repo = fresh(t);
+  const path = join(repo.dir, "chunks.bin");
+  const content = Buffer.from("0123456789abcdefghij");
+  writeFileSync(path, content);
+  const whole = hashFile(path, 1 << 20);
+  assert.equal(hashFile(path, 7), whole, "three uneven chunks give the same digest");
+  writeFileSync(path, Buffer.concat([content.subarray(0, 19), Buffer.from("J")]));
+  assert.notEqual(hashFile(path, 7), whole, "a change in the last chunk is seen");
 });
