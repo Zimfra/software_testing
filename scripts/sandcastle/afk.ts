@@ -13,6 +13,7 @@ import { join, resolve } from "node:path";
 import { EXIT_ERROR, EXIT_OK, EXIT_REFUSED, consoleOutput, isEntryPoint, runCli, type Output } from "../lib/cli.ts";
 import { spawnRunner, type Run } from "../git/pr-ready.ts";
 import { MAIN_REFSPEC } from "../lib/git.ts";
+import { CHANGELOG_FRAGMENT_PATTERN } from "../lib/paths.ts";
 import { branchWork, type BranchWork } from "./already-done.ts";
 
 export type Options = { cwd?: string; output?: Output; run?: Run; env?: NodeJS.ProcessEnv };
@@ -21,11 +22,11 @@ export type Options = { cwd?: string; output?: Output; run?: Run; env?: NodeJS.P
 export const PROMPT_REPO = "Zimfra/software_testing";
 // The landing step runs `npm run check` on the host, as the owner and unattended, and that executes
 // the repository's own scripts, tests and configuration, including whatever an agent just changed.
-// So the guard is an allowlist of what is not executed: Markdown documentation. Any other changed
-// path (a root json.py that `python3 -m unittest` would import, a nested eslint config, an
-// upper-case Scripts/ on a case-insensitive disk) needs a person to read the diff first, unless the
-// owner opted in to landing code unattended with SANDCASTLE_AFK_LAND_CODE=1.
-const DOCUMENTATION = [/^wiki\/.+\.md$/, /^docs\/.+\.md$/, /^[^/]+\.md$/];
+// So the guard is an allowlist of what is not executed: Markdown documentation, changelog fragments
+// included. Any other changed path (a root json.py that `python3 -m unittest` would import, a nested
+// eslint config, an upper-case Scripts/ on a case-insensitive disk) needs a person to read the diff
+// first, unless the owner opted in to landing code unattended with SANDCASTLE_AFK_LAND_CODE=1.
+const DOCUMENTATION = [/^wiki\/.+\.md$/, /^docs\/.+\.md$/, /^[^/]+\.md$/, CHANGELOG_FRAGMENT_PATTERN];
 const LAND_CODE_ENV = "SANDCASTLE_AFK_LAND_CODE";
 const ISSUE_BRANCH = /^refs\/heads\/sandcastle\/issue-([1-9]\d*)$/;
 
