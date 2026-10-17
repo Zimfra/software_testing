@@ -4,12 +4,12 @@ title: S02 Explicit-checkout command routing
 summary: Make an explicit runner cwd authoritative despite inherited Git repository, index or configuration routing.
 tags: [area/git, area/typescript, area/planning]
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 agent: opencode
-status: proposed
+status: in-review
 owner: agent
 priority: P1
-next_action: Verify this job spec's approval and S01 completion, then reproduce routing through the actual spawnRunner boundary.
+next_action: Obtain independent review and verification at the pinned head of fix/s02-explicit-checkout-routing, then publish it with npm run pr for the owner's review.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 ticket_kind: build
@@ -18,7 +18,14 @@ depends_on: ["[[S01 Fixture Git containment]]"]
 related: ["[[Repository audit findings 2026-10-16]]"]
 evidence:
   - "VERIFIED: this job spec preserves approved slice S02, finding A03 and its S01 prerequisite."
-  - "UNKNOWN: job-spec approval and implementation evidence are pending."
+  - "OWNER DECISION: job-spec approval is PR 17, merged after an APPROVED code-owner review; the owner confirmed it on 2026-10-17 (\"ive merged it\")."
+  - "VERIFIED: parent S01 landed as PR 18, merged as 875a2e8 by the code owner after an APPROVED review; its record is done on main at 7542dd2."
+  - "VERIFIED: base 7542dd2; at red commit the new pr-ready test failed because git rev-parse --show-toplevel run through spawnRunner(selected) printed the decoy repository; the no-cwd test already passed."
+  - "VERIFIED: after the fix, node --test scripts/git/pr-ready.test.ts scripts/lib/git.test.ts passed 58 of 58 and scripts/sandcastle/afk.test.ts, the other spawnRunner caller, 53 of 53."
+  - "VERIFIED: red commit 2f19e70 and fix commit 787c96e; an independent verifier at 89fc078 rated all five criteria MET, reproducing the red failure against the base runner and probing history injection with its own script."
+  - "VERIFIED: an independent finder at 89fc078 reported no CRITICAL or HIGH issue; its MEDIUM gaps (history injection untested, no-cwd routing shown only through environment text) are closed by tests that run git through the runner, and dropping GRAFT_FILE, REPLACE_REF_BASE or NO_REPLACE_OBJECTS from the scrub, or GIT_INDEX_FILE in no-cwd mode, each fails a test in a scratch copy."
+  - "INFERRED: the explicit-cwd tests read the developer's global git configuration, as any git run does; the runner cannot pin it because it drops every GIT_ variable, and nothing they run writes outside temporary repositories."
+  - "UNKNOWN: re-verification of the final head is pending; the PR body records its verdict."
 ---
 
 ## Goal
@@ -84,3 +91,5 @@ Record red/green output, the fixture and decoy state comparisons, exact SHAs and
 ## Wiki and doc updates
 
 Update the routing lesson only with observed behavior and update this ticket's status, next action and completion PR.
+
+- [no-doc-change: no decision, reference or runbook states the routing rule; it lives in scripts/lib/git.ts and the routing lesson, which this branch updates, and npm run pr behaves as before because it passes no cwd]
