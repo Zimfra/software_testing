@@ -5,7 +5,7 @@
 // npm run check, then pushes the branch and opens or reports its PR. Merging is the owner's act on GitHub.
 import { spawnSync } from "node:child_process";
 import { EXIT_ERROR, EXIT_OK, EXIT_REFUSED, consoleOutput, isEntryPoint, runCli, type Output } from "../lib/cli.ts";
-import { environmentFor } from "../lib/git.ts";
+import { environmentFor, gitOptionsAt } from "../lib/git.ts";
 
 // inherit streams the command's output to the terminal (npm run check can run for a minute
 // and its failure explains itself); env adds variables for that command.
@@ -22,12 +22,13 @@ Exit: 0 ready, 1 refused, 2 a step could not run.`;
 // streamed npm run check has no limit, because it legitimately runs for minutes.
 const STEP_TIMEOUT_MS = 120_000;
 
-// The environment drops variables that inject git config or rewrite history (lib/git.ts's rule).
+// lib/git.ts's rule: with an explicit cwd every GIT_ variable goes, so git, and anything that runs
+// git, acts on that checkout; without one, only variables that inject config or rewrite history go.
 export function spawnRunner(cwd: string | undefined, timeoutMs = STEP_TIMEOUT_MS): Run {
   return (command, args, options = {}) => {
     const inherit = options.inherit === true;
     const result = spawnSync(command, args, {
-      cwd, encoding: "utf8", env: { ...environmentFor({}), ...options.env },
+      cwd, encoding: "utf8", env: { ...environmentFor(gitOptionsAt(cwd)), ...options.env },
       stdio: inherit ? "inherit" : ["ignore", "pipe", "inherit"], ...(inherit ? {} : { timeout: timeoutMs }),
     });
     if (result.error) throw result.error;
