@@ -86,8 +86,8 @@ wrapper's landing rule keeps its own existing test, `scripts/sandcastle/afk-guar
 - **Behaviour:** `changelog:guard` accepts a branch that adds at least one new valid fragment, and
   refuses a branch with no fragment, an empty fragment or one with no `- ` entry, a fragment dated
   before the branch started or after today, a name not matching `<YYYY-MM-DD>-<slug>.md`, a
-  change to or deletion of a fragment that exists on the base, entry lines added to
-  `CHANGELOG.md`, and a post-merge fact. The fragment set comes from the branch diff with
+  change to or deletion of a fragment that exists on the base, any change to `CHANGELOG.md` once
+  the base holds a fragment, and a post-merge fact. The fragment set comes from the branch diff with
   added, modified and deleted paths told apart, untracked files included.
 - **Transition:** while the base has no file matching the fragment pattern, the guard also
   accepts the branch's dated `CHANGELOG.md` entry and pointer line, so this pull request passes main's old guard in the
@@ -124,8 +124,9 @@ wrapper's landing rule keeps its own existing test, `scripts/sandcastle/afk-guar
 - [ ] A docs-only Sandcastle branch with a fragment still lands unattended.
 - [ ] No live rule, prompt, runbook, reference, README or config still requires a `CHANGELOG.md`
   entry, and `governance:check` refuses one planted back.
-- [ ] Existing `CHANGELOG.md` history is unchanged apart from its pointer line and the
-  transition entries of slices 1 and 2.
+- [ ] Existing `CHANGELOG.md` entries are not edited; after slice 2's base, the only lines added
+  to it are the switching pull request's pointer line and transition entry, and any later change
+  to it is refused.
 - [ ] `npm run check` passes, and an independent verifier rates each criterion at each slice's
   final head.
 
