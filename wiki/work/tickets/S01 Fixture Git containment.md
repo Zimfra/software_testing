@@ -91,3 +91,5 @@ Record baseline/head SHAs, red/green commands and exits, decoy state comparisons
 ## Wiki and doc updates
 
 Update the fixture-environment guidance and this ticket's status/evidence. Record completion through the owner-merged implementation PR before children become eligible.
+
+- [no-doc-change: the write-guard skill holds the fixture-environment rule itself; this branch adds the Python half there, and no decision, reference or runbook states the rule]
