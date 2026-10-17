@@ -6,6 +6,8 @@ facts that only exist after the owner merges. `npm run changelog:guard` enforces
 
 ## 2026-10-17
 
+- The audit remediation records now close S01 after its merge, record the owner's execution defaults for the remaining job specs (containment proof from CI runners only, offline controls only, one ticket at a time, the machine account as local commit author) and close the inactive-GitHub-profile issue as resolved in the checkout now used. A new issue records that VS Code writes a `vscode-merge-base` key into local git config during the pre-push check, which makes the first push of a new branch fail.
+
 - The compliance harness tests no longer hand a child process the caller's environment. The scenario-setup test passed `setup_sandbox` a runner that inherited `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` and injected configuration, so under a hook its `git init` and shell setup commands could act on another repository (audit finding A02). Every Python test spawn now passes `run_comply.isolated_env`, and a new `evals/compliance/test_fixture_env.py`, the Python twin of `scripts/toolchain/fixture-env.test.ts`, refuses a spawn in `evals/compliance/test_*.py` without it in the common forms: direct, renamed and annotated aliases, a spawner function passed as a value or stored, and an env written into or emptied after it was built. It reads the syntax tree, and its docstring lists the forms it does not follow. Its decoy-repository controls show that the old runner rewrites a decoy named by inherited routing and receives injected configuration, and that the isolated runner initialises the fixture and leaves the decoy's HEAD, refs, configuration, index and files unchanged.
 
 ## 2026-10-16
