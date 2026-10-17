@@ -9,7 +9,7 @@ agent: opencode
 status: done
 owner: agent
 priority: P1
-next_action: None. Its child S03 Fresh pinned main revisions is eligible; S05 also waits on S04.
+next_action: None. Its child S03 Fresh pinned main revisions is eligible; S05 also waits on S04, and S13 waits on S03.
 idea: "[[Execute the repository audit remediation]]"
 project: "[[Repository audit remediation]]"
 ticket_kind: build
@@ -25,7 +25,7 @@ evidence:
   - "VERIFIED: red commit 2f19e70 and fix commit 787c96e; an independent verifier at 89fc078 rated all five criteria MET, reproducing the red failure against the base runner and probing history injection with its own script."
   - "VERIFIED: an independent finder at 89fc078 reported no CRITICAL or HIGH issue; its MEDIUM gaps (history injection untested, no-cwd routing shown only through environment text) are closed by tests that run git through the runner, and dropping GRAFT_FILE, REPLACE_REF_BASE or NO_REPLACE_OBJECTS from the scrub, or GIT_INDEX_FILE in no-cwd mode, each fails a test in a scratch copy."
   - "INFERRED: the explicit-cwd tests read the developer's global git configuration, as any git run does; the runner cannot pin it because it drops every GIT_ variable, and nothing they run writes outside temporary repositories."
-  - "VERIFIED: a second verifier at c695f5e rated all five criteria MET and found every finder point resolved or accepted with a reason; four mutations of the scrub rule each failed a test."
+  - "INFERRED: PR 21's body records a second verifier at c695f5e as PASS, with every finder point resolved or accepted with a reason and four mutations of the scrub rule each failing a test; that verifier's own report is not stored in the repository."
   - "VERIFIED: gh pr view 21 on 2026-10-17 reported MERGED as 5d56a42 by the code owner after an APPROVED review; c695f5e is an ancestor of origin/main."
 ---
 
@@ -47,11 +47,11 @@ Ensure Git, Node and npm launched with an explicit cwd operate on that identifie
 
 ## Acceptance criteria
 
-- [ ] The old runner fails the explicit-cwd decoy control before the fix.
-- [ ] Git inspection and commands launched through Node or npm resolve the selected fixture, not the decoy.
-- [ ] The decoy's refs, index, configuration and files remain unchanged.
-- [ ] Omitted-cwd hook routing retains the intended behavior; configuration/history injection remains scrubbed.
-- [ ] Targeted tests and the full check pass without relaxing the fixture-environment guard.
+- [x] The old runner fails the explicit-cwd decoy control before the fix.
+- [x] Git inspection and commands launched through Node or npm resolve the selected fixture, not the decoy.
+- [x] The decoy's refs, index, configuration and files remain unchanged.
+- [x] Omitted-cwd hook routing retains the intended behavior; configuration/history injection remains scrubbed.
+- [x] Targeted tests and the full check pass without relaxing the fixture-environment guard.
 
 ## Out of scope
 
