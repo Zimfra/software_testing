@@ -332,3 +332,27 @@ await test("without a cwd git runs in the hook's repository and index, and injec
     assert.equal(log(injected), hooked.clean, Object.keys(injected).join(","));
   }
 });
+
+await test("a narrowed fetch refspec cannot leave readiness on a stale origin/main, and other remote refs are left alone", (t) => {
+  const repo = fixture(t);
+  const before = repo.git(["rev-parse", "main"]);
+  repo.git(["switch", "--quiet", "-c", "elsewhere", "main"]);
+  repo.write("moved.md", "main moved\n");
+  repo.commit("main moved on origin");
+  repo.git(["push", "--quiet", "origin", "elsewhere:main"]);
+  repo.git(["switch", "--quiet", "feat/x"]);
+  repo.git(["update-ref", "refs/remotes/origin/main", before]);
+  repo.git(["update-ref", "refs/remotes/origin/other", before]);
+  repo.git(["config", "remote.origin.fetch", "+refs/heads/other:refs/remotes/origin/other"]);
+  const result = go(repo, runner(repo).run);
+  assert.equal(result.code, EXIT_REFUSED, "the branch lacks the commit origin's main now has");
+  assert.match(result.err, /behind main/);
+  assert.equal(repo.git(["rev-parse", "refs/remotes/origin/other"]), before, "an unrelated remote-tracking ref is not rewritten");
+});
+
+await test("an origin without main stops readiness instead of comparing a leftover ref", (t) => {
+  const repo = fixture(t);
+  const remote = repo.git(["remote", "get-url", "origin"]);
+  execFileSync("git", ["--git-dir", remote, "update-ref", "-d", "refs/heads/main"], { env: cleanGitEnv });
+  assert.throws(() => go(repo, runner(repo).run), /git fetch .* failed/);
+});
