@@ -71,11 +71,17 @@ config-protection read from the plugin's `scripts/hooks/config-protection.js`, v
 ## Commands
 
 - `npm run pr` (`scripts/git/pr-ready.ts`) refuses unless the branch is a named feature
-  branch, clean, contains `origin/main`, has commits of its own and passes `npm run check`.
+  branch, clean, contains origin's main, has commits of its own and passes `npm run check`.
+  It fetches `+refs/heads/main:refs/remotes/origin/main` (`MAIN_REFSPEC` in `scripts/lib/git.ts`),
+  so a narrowed `remote.origin.fetch` cannot leave the ref stale and no other remote ref changes,
+  resolves it to a commit, and checks containment, its own commits and `CODEOWNERS` against that
+  captured commit; a failed fetch, a missing main or a non-commit is an error.
   It then checks `gh auth status`, refuses if `gh` is logged in as the repository owner or a code owner, pushes the branch and opens or reports its pull request. It
   never merges. `--dry-run` stops before pushing.
-- `npm run audit` (`scripts/git/landing-audit.ts`) fetches origin's main itself, so a stale
-  local ref cannot hide a direct push, and changes nothing else; a failed fetch is an error. It
+- `npm run audit` (`scripts/git/landing-audit.ts`) fetches origin's main itself through the same
+  explicit refspec and reads its config and history from the commit that fetch captured, so a
+  stale or narrowed local ref cannot hide a direct push, and changes nothing else; a failed fetch
+  or a missing main is an error. Freshness means origin's main at the moment of that fetch. It
   walks main's first-parent history after the `since` commit in `config/landing-audit.json`,
   and asks GitHub whether each commit's PR (from its merge or squash subject) merged as that
   exact commit. Anything else is reported; a `gh` failure is an error, never a verdict.
